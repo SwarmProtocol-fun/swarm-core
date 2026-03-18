@@ -9,6 +9,10 @@
  * 3. Look up mod service in registry
  * 4. Check subscription access
  * 5. Proxy request to mod service with service token
+ *
+ * NOTE: This route uses [slug] (not [modSlug]) to match the sibling
+ * dynamic routes. Next.js requires all dynamic segments at the same
+ * directory level to use the same parameter name.
  */
 
 import { type NextRequest } from "next/server";
