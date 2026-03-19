@@ -4,14 +4,14 @@
 
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { ConnectButton } from "thirdweb/react";
+import { ConnectButton, useActiveAccount } from "thirdweb/react";
 import { thirdwebClient } from "@/lib/thirdweb-client";
 import { WALLET_CHAINS } from "@/lib/chains";
 import { swarmWallets } from "@/lib/wallets";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense, lazy, useRef } from "react";
 import Image from "next/image";
-import { ArrowRight, Sun, Moon } from "lucide-react";
+import { ArrowRight, Sun, Moon, Loader2 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useSession } from "@/contexts/SessionContext";
 import { debug } from "@/lib/debug";
@@ -33,6 +33,7 @@ function LandingPageContent() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const { authenticated, loading } = useSession();
+  const account = useActiveAccount();
   const authConfig = useThirdwebAuth();
   // Staggered loading: center first, then flanks after delay
   const [robotsReady, setRobotsReady] = useState<boolean[]>([false, false, false]);
@@ -49,6 +50,8 @@ function LandingPageContent() {
     debug.log("[Swarm:Landing] Authenticated, navigating to:", target);
     router.replace(target);
   }, [authenticated, loading, router, redirectParam]);
+
+  const isAuthenticating = account && !authenticated;
 
   // Stagger robot loading: center immediately, left at 4s, right at 8s
   useEffect(() => {
@@ -93,8 +96,35 @@ function LandingPageContent() {
     return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
+  if (!mounted || loading) {
+    return <div className="min-h-screen bg-transparent" />; // Prevent hydration mismatch
+  }
+
+  // Show a full-screen loading state while SIWE completes in the background
+  // (e.g. after Google OAuth popup closes but before redirect to /dashboard).
+  if (isAuthenticating) {
+    return (
+      <main className="min-h-screen relative overflow-hidden bg-background text-foreground flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6 p-4 z-50">
+          <Loader2 className="w-12 h-12 animate-spin text-primary" />
+          <div className="space-y-2 text-center">
+            <h2 className="text-xl font-semibold text-foreground/80 tracking-tight">Authenticating...</h2>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto">
+              Please wait while we verify your session securely.
+            </p>
+          </div>
+        </div>
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-b from-transparent to-primary/5 pointer-events-none" />
+      </main>
+    );
+  }
+
+
+
+
   return (
-    <div className="flex flex-col min-h-screen overflow-x-hidden">
+    <main className="min-h-screen relative overflow-hidden bg-background text-foreground selection:bg-primary/20">
+      <div className="flex flex-col min-h-screen overflow-x-hidden">
       <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-black/50 backdrop-blur-xl">
         <div className="flex h-20 items-center justify-between px-6 max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
@@ -229,6 +259,7 @@ function LandingPageContent() {
         </p>
       </footer>
     </div>
+    </main>
   );
 }
 
