@@ -5,11 +5,20 @@
 import { ThirdwebProvider, AutoConnect } from 'thirdweb/react';
 import { thirdwebClient } from '@/lib/thirdweb-client';
 import { swarmWallets } from '@/lib/wallets';
+import { debug } from '@/lib/debug';
+import type { Wallet } from 'thirdweb/wallets';
 
 export function Web3ProviderInner({ children }: { children: React.ReactNode }) {
   return (
     <ThirdwebProvider>
-      <AutoConnect client={thirdwebClient} wallets={swarmWallets} timeout={15000} />
+      <AutoConnect
+        client={thirdwebClient}
+        wallets={swarmWallets}
+        timeout={15000}
+        onConnect={(wallet: Wallet) => {
+          debug.log("[Swarm:AutoConnect] Wallet connected!", wallet.id);
+        }}
+      />
       {children}
     </ThirdwebProvider>
   );
