@@ -32,7 +32,7 @@ function WalletDisplay({ authConfig }: { authConfig: ReturnType<typeof useThirdw
 
   // Wallet connected → use thirdweb's ConnectButton (shows address + chain + disconnect)
   if (account) {
-    return <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} autoConnect={false} />;
+    return <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} />;
   }
 
   // Session valid but wallet not connected → show truncated address badge
@@ -54,7 +54,7 @@ function WalletDisplay({ authConfig }: { authConfig: ReturnType<typeof useThirdw
               onClick={() => { setShowMenu(false); }}
               className="w-full text-left px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50"
             >
-              <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} autoConnect={false} connectButton={{ label: "Connect Wallet" }} />
+              <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} connectButton={{ label: "Connect Wallet" }} />
             </div>
             <button
               onClick={async () => { setShowMenu(false); await logout(); }}
@@ -69,7 +69,7 @@ function WalletDisplay({ authConfig }: { authConfig: ReturnType<typeof useThirdw
   }
 
   // Not authenticated → show Connect button
-  return <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} autoConnect={false} connectButton={{ label: "Connect" }} />;
+  return <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} connectButton={{ label: "Connect" }} />;
 }
 
 export function Header() {
