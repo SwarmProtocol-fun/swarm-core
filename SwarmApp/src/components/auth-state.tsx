@@ -101,7 +101,7 @@ function DisconnectedState() {
           Your wallet was disconnected.
         </p>
       </div>
-      <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} auth={authConfig} />
+      <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} />
       <Link
         href="/"
         className="text-xs text-muted-foreground hover:text-foreground transition-colors"

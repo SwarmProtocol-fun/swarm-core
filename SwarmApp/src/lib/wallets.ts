@@ -19,7 +19,7 @@ export const swarmWallets = [
   inAppWallet({
     auth: {
       mode: "redirect",
-      redirectUrl: APP_ORIGIN,
+      redirectUrl: APP_ORIGIN + "/login",
       options: ["google", "email", "passkey"],
     },
   }),
