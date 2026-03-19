@@ -120,9 +120,22 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   // thirdweb wallet state from localStorage. This prevents thirdweb from
   // auto-reconnecting the wallet and re-triggering SIWE when the user
   // cleared cookies externally (not through our logout flow).
+  //
+  // IMPORTANT: Skip cleanup when an OAuth redirect is in progress
+  // (URL contains walletId + authResult params). Clearing localStorage
+  // during a redirect would destroy the in-progress wallet connection
+  // before thirdweb can process the OAuth callback.
   const cleanedRef = useRef(false);
   useEffect(() => {
     if (loading || session.authenticated || cleanedRef.current) return;
+
+    // Detect OAuth redirect callback — do NOT clear thirdweb state mid-redirect
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("walletId") && params.has("authResult")) {
+      debug.log("[Swarm:Session] OAuth redirect detected — skipping thirdweb state cleanup");
+      return;
+    }
+
     cleanedRef.current = true;
     try {
       const twKeys = Object.keys(localStorage).filter(
