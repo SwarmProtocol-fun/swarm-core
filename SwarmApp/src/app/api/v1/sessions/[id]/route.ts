@@ -73,7 +73,7 @@ export async function PATCH(
       return Response.json({ error: 'Session not found' }, { status: 404 });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const updateData: Record<string, any> = {
       status,
       updatedAt: new Date(),

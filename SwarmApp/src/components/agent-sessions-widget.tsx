@@ -31,7 +31,7 @@ export default function AgentSessionsWidget({ agentId, orgId }: AgentSessionsWid
   const [statusFilter, setStatusFilter] = useState<'active' | 'completed' | 'all'>('active');
 
   useEffect(() => {
-    let q = query(
+    const q = query(
       collection(db, 'agentSessions'),
       where('orgId', '==', orgId),
       where('participants', 'array-contains', agentId),

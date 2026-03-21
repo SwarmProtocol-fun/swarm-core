@@ -315,7 +315,7 @@ export function extractMessageContent(message: TelegramMessage): {
   text: string;
   attachments: Array<{ url: string; type: string; name: string }>;
 } {
-  let text = message.text || message.caption || "";
+  const text = message.text || message.caption || "";
   const attachments: Array<{ url: string; type: string; name: string }> = [];
 
   // Photo

@@ -136,8 +136,8 @@ export default function DebugAuthPage() {
             <li className={session.authenticated ? "text-green-400" : "text-red-400"}>
               {session.authenticated ? "✅" : "❌"} SessionContext.authenticated
             </li>
-            <li className={!!account ? "text-green-400" : "text-red-400"}>
-              {!!account ? "✅" : "❌"} Wallet connected
+            <li className={account ? "text-green-400" : "text-red-400"}>
+              {account ? "✅" : "❌"} Wallet connected
             </li>
             <li className={sessionCheck?.authenticated ? "text-green-400" : "text-red-400"}>
               {sessionCheck?.authenticated ? "✅" : "❌"} /api/auth/session returns authenticated

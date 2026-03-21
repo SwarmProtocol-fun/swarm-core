@@ -215,7 +215,7 @@ const getMapNodeId = () => `map_wf_${mapNodeId++}`;
 
 function AgentMapInner({ agents, tasks, jobs = [], onAssign, onDispatch, executing = false, currencySymbol = "$" }: AgentMapProps) {
   const [assignmentEdges, setAssignmentEdges] = useState<Edge[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [reactFlowInstance, setReactFlowInstance] = useState<any>(null);
   const [showPalette, setShowPalette] = useState(true);
   const [dockPosition, setDockPosition] = useState<DockPosition>("left");

@@ -184,7 +184,7 @@ function aggregateSummaryData(
 
   let tasksCompleted = 0;
   let tasksFailed = 0;
-  let messagesPosted = 0;
+  const messagesPosted = 0;
 
   // Aggregate activities
   for (const activity of activities) {

@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         fileStats.sort((a, b) => b.mtime - a.mtime);
         const recentFiles = fileStats.slice(0, 5);
 
-        let allEvents: any[] = [];
+        const allEvents: any[] = [];
 
         for (const { path: p } of recentFiles) {
             try {

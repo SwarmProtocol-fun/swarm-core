@@ -63,7 +63,7 @@ function SwarmCanvasInner({ agents }: SwarmCanvasProps) {
 
       if (!type || !reactFlowInstance) return;
 
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const position = (reactFlowInstance as any).screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,

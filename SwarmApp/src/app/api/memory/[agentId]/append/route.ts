@@ -39,7 +39,7 @@ export async function POST(
   try {
     // Find MEMORY.md
     const memories = await getMemoryEntries(orgId as string, agentId, "long_term");
-    let memoryMd = memories.find((m) => m.subtype === "memory_md");
+    const memoryMd = memories.find((m) => m.subtype === "memory_md");
 
     let content: string;
     let memoryId: string;

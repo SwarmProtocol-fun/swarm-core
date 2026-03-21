@@ -365,7 +365,7 @@ export async function semanticRetrieve(
     );
 
     // Filter by spaceId if specified
-    let candidates = params.spaceIds?.length
+    const candidates = params.spaceIds?.length
         ? entries.filter((e) => e.spaceId && params.spaceIds!.includes(e.spaceId))
         : entries;
 

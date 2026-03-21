@@ -23,7 +23,7 @@ export default function AgentMessagesWidget({ agentId, orgId }: AgentMessagesWid
   const [filter, setFilter] = useState<'all' | 'a2a' | 'coord' | 'session'>('all');
 
   useEffect(() => {
-    let q = query(
+    const q = query(
       collection(db, 'agentMessages'),
       where('orgId', '==', orgId),
       where('to', '==', agentId),

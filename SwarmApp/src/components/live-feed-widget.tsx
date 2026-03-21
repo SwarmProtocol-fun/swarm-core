@@ -110,7 +110,7 @@ export function LiveFeedWidget() {
                             const isMsg = ev.type === 'message' && ev.message;
                             const hasTools = isMsg && ev.message?.tool_calls && ev.message.tool_calls.length > 0;
 
-                            let roleStr = isMsg ? ev.message?.role : ev.type;
+                            const roleStr = isMsg ? ev.message?.role : ev.type;
                             let content = "";
                             let color = "text-muted-foreground";
 

@@ -24,7 +24,7 @@ import { getMarketplaceSettings } from "@/lib/marketplace-settings";
 // Only loaded if STRIPE_SECRET_KEY is configured. This avoids hard
 // build failures in environments that don't need billing.
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type StripeEvent = { type: string; data: { object: Record<string, unknown> } };
 
 async function verifyWebhook(req: NextRequest): Promise<{ error: string | null; event: StripeEvent | null }> {
