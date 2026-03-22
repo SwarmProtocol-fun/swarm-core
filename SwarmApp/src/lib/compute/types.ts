@@ -102,12 +102,12 @@ export const REGION_LABELS: Record<Region, string> = {
   "ap-southeast": "Asia Pacific (Singapore)",
 };
 
-export const PROVIDER_LABELS: Record<ProviderKey, { label: string; description: string }> = {
-  e2b:   { label: "E2B Desktop",       description: "Managed cloud sandbox — fastest setup, built-in VNC" },
-  aws:   { label: "AWS EC2",           description: "Amazon EC2 — widest region coverage, SSM integration" },
-  gcp:   { label: "GCP Compute Engine", description: "Google Compute Engine — strong ML/data tooling" },
-  azure: { label: "Azure VMs",         description: "Azure Virtual Machines — enterprise & hybrid cloud" },
-  stub:  { label: "Development",        description: "Local stub provider for development" },
+export const PROVIDER_LABELS: Record<ProviderKey, { label: string; description: string; comingSoon?: boolean }> = {
+  azure: { label: "Azure VMs",          description: "Azure Virtual Machines — enterprise-grade cloud compute" },
+  e2b:   { label: "E2B Desktop",        description: "Managed cloud sandbox — fastest setup, built-in VNC" },
+  aws:   { label: "AWS EC2",            description: "Amazon EC2 — widest region coverage, SSM integration", comingSoon: true },
+  gcp:   { label: "GCP Compute Engine", description: "Google Compute Engine — strong ML/data tooling", comingSoon: true },
+  stub:  { label: "Development",         description: "Local stub provider for development" },
 };
 
 /** Maps Swarm regions to provider-native region identifiers */

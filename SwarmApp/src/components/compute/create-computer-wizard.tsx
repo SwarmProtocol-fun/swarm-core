@@ -41,7 +41,7 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
   const [mode, setMode] = useState<ComputerMode>("blank");
   const [sizeKey, setSizeKey] = useState<SizeKey>("medium");
   const [region, setRegion] = useState<Region>("us-east");
-  const [provider, setProvider] = useState<ProviderKey>("e2b");
+  const [provider, setProvider] = useState<ProviderKey>("azure");
   const [autoStopMinutes, setAutoStopMinutes] = useState(DEFAULT_AUTO_STOP_MINUTES);
   const [persistenceEnabled, setPersistenceEnabled] = useState(true);
   const [controllerType, setControllerType] = useState<ControllerType>("human");

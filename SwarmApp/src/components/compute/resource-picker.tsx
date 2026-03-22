@@ -16,8 +16,8 @@ interface ResourcePickerProps {
   onPersistenceChange: (enabled: boolean) => void;
 }
 
-/** Providers exposed in the UI (excludes stub) */
-const UI_PROVIDERS: ProviderKey[] = ["e2b", "aws", "gcp", "azure"];
+/** Providers exposed in the UI (excludes stub) — Azure first */
+const UI_PROVIDERS: ProviderKey[] = ["azure", "e2b", "aws", "gcp"];
 
 export function ResourcePicker({
   provider,
@@ -39,17 +39,27 @@ export function ResourcePicker({
         <div className="grid grid-cols-2 gap-3">
           {UI_PROVIDERS.map((key) => {
             const cfg = PROVIDER_LABELS[key];
+            const isComingSoon = cfg.comingSoon === true;
+            const isSelected = provider === key;
             return (
               <button
                 key={key}
                 type="button"
-                onClick={() => onProviderChange(key)}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  provider === key
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50"
+                disabled={isComingSoon}
+                onClick={() => !isComingSoon && onProviderChange(key)}
+                className={`relative rounded-lg border p-3 text-left transition-colors ${
+                  isComingSoon
+                    ? "border-border/50 opacity-50 cursor-not-allowed"
+                    : isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:border-muted-foreground/50"
                 }`}
               >
+                {isComingSoon && (
+                  <span className="absolute top-2 right-2 text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                    Coming Soon
+                  </span>
+                )}
                 <div className="font-medium text-sm">{cfg.label}</div>
                 <p className="text-xs text-muted-foreground mt-1">{cfg.description}</p>
               </button>
