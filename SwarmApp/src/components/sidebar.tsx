@@ -110,6 +110,7 @@ const DEFAULT_SECTIONS: NavSection[] = [
       { id: "approvals", href: "/approvals", label: "Approvals", icon: Shield },
       { id: "operators", href: "/operators", label: "Operators", icon: UserCog },
       { id: "cron", href: "/cron", label: "Scheduler", icon: Clock },
+      { id: "workflows", href: "/workflows", label: "Workflows", icon: Zap },
       { id: "market", href: "/market", label: "Market", icon: Store },
       { id: "publisher", href: "/market/publisher", label: "Publisher", icon: TrendingUp },
     ],

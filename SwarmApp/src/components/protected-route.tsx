@@ -13,13 +13,13 @@ import { AuthState, ReconnectionBanner, type AuthPhase } from './auth-state';
 
 // Grace period (ms) after first app load before allowing redirects.
 // Must be long enough for session check to complete.
-const AUTH_GRACE_MS = 4_000;
+const AUTH_GRACE_MS = 1_500;
 
 // Delay before redirecting to onboarding when no orgs found.
-const ONBOARDING_REDIRECT_DELAY = 2_000;
+const ONBOARDING_REDIRECT_DELAY = 800;
 
 // Delay before redirecting to landing page when session is invalid.
-const DISCONNECT_REDIRECT_MS = 2_500;
+const DISCONNECT_REDIRECT_MS = 1_500;
 
 // Module-level flags — survive across ProtectedRoute re-mounts (sidebar navigation).
 let appAuthSettled = false;
@@ -75,8 +75,10 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const isReconnecting = connectionStatus === 'connecting' || connectionStatus === 'unknown';
 
   useEffect(() => {
-    // Don't redirect during grace period, session loading, or wallet reconnecting
-    if (!graceOver || sessionLoading || isReconnecting) return;
+    // Don't redirect during grace period or session loading.
+    // Allow redirect even during wallet reconnection if session is already valid.
+    if (!graceOver || sessionLoading) return;
+    if (isReconnecting && !isAuthenticated) return;
 
     // No valid session — redirect to landing
     if (!isAuthenticated) {
