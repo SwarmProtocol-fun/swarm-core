@@ -1,13 +1,30 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { CLAWFLOW_CATEGORIES, TOTAL_FLOWS, type ClawFlowCategory, type ClawFlow } from "@/lib/clawflows";
-import { Search, ExternalLink, Clock, Zap, Play, ChevronDown } from "lucide-react";
+import { Search, ExternalLink, Clock, Zap, Play, ChevronDown, CheckCircle2, Loader2 } from "lucide-react";
+import { useOrg } from "@/contexts/OrgContext";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { type Agent, createTask } from "@/lib/firestore";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function WorkflowsPage() {
+  const { currentOrg } = useOrg();
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [search, setSearch] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [expandedFlows, setExpandedFlows] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!currentOrg) return;
+    const q = query(collection(db, "agents"), where("orgId", "==", currentOrg.id));
+    const unsub = onSnapshot(q, (snap) => {
+      setAgents(snap.docs.map(d => ({ id: d.id, ...d.data() } as Agent)));
+    });
+    return () => unsub();
+  }, [currentOrg]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
@@ -129,6 +146,8 @@ export default function WorkflowsPage() {
               category={cat}
               expandedFlows={expandedFlows}
               onToggleExpand={toggleExpanded}
+              agents={agents}
+              orgId={currentOrg?.id}
             />
           ))}
         </div>
@@ -141,10 +160,14 @@ function CategorySection({
   category,
   expandedFlows,
   onToggleExpand,
+  agents,
+  orgId,
 }: {
   category: ClawFlowCategory;
   expandedFlows: Set<string>;
   onToggleExpand: (slug: string) => void;
+  agents: Agent[];
+  orgId?: string;
 }) {
   return (
     <div>
@@ -160,6 +183,8 @@ function CategorySection({
             flow={flow}
             expanded={expandedFlows.has(flow.slug)}
             onToggle={() => onToggleExpand(flow.slug)}
+            agents={agents}
+            orgId={orgId}
           />
         ))}
       </div>
@@ -171,12 +196,44 @@ function FlowCard({
   flow,
   expanded,
   onToggle,
+  agents,
+  orgId,
 }: {
   flow: ClawFlow;
   expanded: boolean;
   onToggle: () => void;
+  agents: Agent[];
+  orgId?: string;
 }) {
   const isScheduled = flow.schedule && flow.schedule !== "on-demand";
+  const [selectedAgentId, setSelectedAgentId] = useState<string>("");
+  const [isActivating, setIsActivating] = useState(false);
+  const [didActivate, setDidActivate] = useState(false);
+
+  const handleActivate = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!orgId || !selectedAgentId || isActivating) return;
+    
+    setIsActivating(true);
+    try {
+      await createTask({
+        orgId,
+        projectId: "default",
+        title: `Execute Workflow: ${flow.label}`,
+        description: `Please execute the following standard workflow.\n\nWorkflow: ${flow.label} (${flow.slug})\nDescription: ${flow.description}`,
+        assigneeAgentId: selectedAgentId,
+        status: "todo",
+        priority: "high",
+        createdAt: new Date(),
+      });
+      setDidActivate(true);
+      setTimeout(() => setDidActivate(false), 3000);
+    } catch (err) {
+      console.error("Failed to activate workflow:", err);
+    } finally {
+      setIsActivating(false);
+    }
+  };
 
   return (
     <div
@@ -223,16 +280,50 @@ function FlowCard({
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Workflow ID</span>
             <code className="text-[11px] bg-muted px-1.5 py-0.5 rounded font-mono">{flow.slug}</code>
           </div>
-          <a
-            href={flow.sourceUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 text-xs text-primary hover:underline"
-          >
-            View source on GitHub
-            <ExternalLink className="h-3 w-3" />
-          </a>
+          
+          <div className="pt-2 mt-2 border-t border-border/50" onClick={(e) => e.stopPropagation()}>
+            <label className="text-xs font-medium mb-1.5 block">Target Agent</label>
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select an agent..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {agents.map(a => (
+                      <SelectItem key={a.id} value={a.id} className="text-xs">
+                        {a.name}
+                      </SelectItem>
+                    ))}
+                    {agents.length === 0 && (
+                      <SelectItem value="none" disabled className="text-xs">
+                        No agents available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <Button 
+                size="sm" 
+                className="h-8 px-3 text-xs w-24 shrink-0 transition-all"
+                disabled={!selectedAgentId || isActivating || agents.length === 0 || didActivate}
+                onClick={handleActivate}
+                variant={didActivate ? "outline" : "default"}
+              >
+                {isActivating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : didActivate ? (
+                  <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Assigned
+                  </span>
+                ) : (
+                  "Activate"
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
