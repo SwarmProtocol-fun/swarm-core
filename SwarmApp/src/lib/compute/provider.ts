@@ -317,9 +317,15 @@ const providerCache = new Map<string, ComputeProvider>();
  * @param providerKey — Explicit provider key. Falls back to env detection.
  */
 export function getComputeProvider(providerKey?: ProviderKey | string): ComputeProvider {
-  const key = providerKey
+  let key = providerKey
     || process.env.COMPUTE_PROVIDER
     || (process.env.E2B_API_KEY ? "e2b" : "stub");
+
+  // Fallback to stub if E2B is requested but no API key is present
+  if (key === "e2b" && !process.env.E2B_API_KEY) {
+    console.warn("E2B_API_KEY is missing. Falling back from 'e2b' to 'stub' provider.");
+    key = "stub";
+  }
 
   const cached = providerCache.get(key);
   if (cached) return cached;

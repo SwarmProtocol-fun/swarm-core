@@ -142,6 +142,7 @@ import { CronWidget } from "@/components/cron-widget";
 import AgentMessagesWidget from "@/components/agent-messages-widget";
 import AgentSessionsWidget from "@/components/agent-sessions-widget";
 import CoordinatorDashboardWidget from "@/components/coordinator-dashboard-widget";
+import { PromptWidget } from "@/components/prompt-widget";
 
 interface WidgetCatalogEntry {
   id: string;
@@ -154,6 +155,7 @@ interface WidgetCatalogEntry {
 
 const ALL_WIDGET_CATALOG: WidgetCatalogEntry[] = [
   // Widgets
+  { id: "widget-prompt", icon: "💬", label: "Swarm Prompt", description: "Directly prompt your task coordinator", colSpan: "lg:col-span-3", category: "widgets" },
   { id: "widget-daily-briefing", icon: "📋", label: "Daily Briefing", description: "Daily org summary from your briefing agent", colSpan: "lg:col-span-3", category: "widgets" },
   { id: "widget-recent-tasks", icon: "📋", label: "Recent Tasks", description: "Latest tasks with status and assignee", colSpan: "lg:col-span-2", category: "widgets" },
   { id: "widget-recent-jobs", icon: "💼", label: "Recent Jobs", description: "Latest posted jobs with rewards", colSpan: "lg:col-span-2", category: "widgets" },
@@ -205,17 +207,18 @@ const ALL_WIDGET_CATALOG: WidgetCatalogEntry[] = [
 ];
 
 const DEFAULT_ACTIVE_WIDGETS = [
-  // Row: briefing(3) + tasks(2) + stat(1) = 6
+  // Row: prompt(3) + briefing(3) = 6
+  "widget-prompt",
   "widget-daily-briefing",
-  "widget-recent-tasks",
-  "stat-online-agents",
 
-  // Row: actions(2) + jobs(2) + org(2) = 6
+  // Row: tasks(2) + actions(2) + jobs(2) = 6
+  "widget-recent-tasks",
   "widget-quick-actions",
   "widget-recent-jobs",
-  "widget-org-info",
 
   // Stat rows: 12 x 1-col = 2 full rows of 6
+  "stat-online-agents",
+  "widget-org-info",
   "stat-projects",
   "stat-agents",
   "stat-active-tasks",
@@ -765,6 +768,11 @@ export default function DashboardPage() {
   const offlineAgents = agents.filter(a => a.status === "offline");
 
   const widgetRenderers: Record<string, { label: string; colSpan: string; render: () => React.ReactNode }> = {
+    "widget-prompt": {
+      label: "Swarm Prompt",
+      colSpan: "lg:col-span-3",
+      render: () => <PromptWidget onDispatch={handleDispatch} agents={agents} />,
+    },
     "widget-recent-tasks": {
       label: "Recent Tasks",
       colSpan: "lg:col-span-2",

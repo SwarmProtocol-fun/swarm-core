@@ -30,8 +30,8 @@ interface CreateComputerWizardProps {
   onCancel: () => void;
 }
 
-type Step = "workspace" | "mode" | "variant" | "resources" | "controller" | "model" | "review";
-const BASE_STEPS: Step[] = ["workspace", "mode", "resources", "controller", "model", "review"];
+type Step = "workspace" | "mode" | "variant" | "resources" | "controller" | "review";
+const BASE_STEPS: Step[] = ["workspace", "mode", "resources", "controller", "review"];
 
 export function CreateComputerWizard({ workspaces, onCreated, onCancel }: CreateComputerWizardProps) {
   const [step, setStep] = useState<Step>("workspace");
@@ -52,7 +52,7 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
 
   // Add variant step when openclaw mode is selected
   const STEPS = mode === "openclaw"
-    ? ["workspace", "mode", "variant", "resources", "controller", "model", "review"] as Step[]
+    ? ["workspace", "mode", "variant", "resources", "controller", "review"] as Step[]
     : BASE_STEPS;
 
   const currentIdx = STEPS.indexOf(step);
@@ -62,11 +62,6 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
   const goBack = () => { if (canGoBack) setStep(STEPS[currentIdx - 1]); };
   const goNext = () => {
     trackComputeEvent("wizard_step", { from: step, to: STEPS[currentIdx + 1] || "review" });
-    // Skip model step if controller is human
-    if (step === "controller" && controllerType === "human") {
-      setStep("review");
-      return;
-    }
     if (canGoNext) setStep(STEPS[currentIdx + 1]);
   };
 
@@ -153,14 +148,17 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
                   key={key}
                   type="button"
                   onClick={() => { setMode(key); setSizeKey(cfg.defaultSize); }}
-                  className={`rounded-lg border p-4 text-left transition-colors ${
+                  className={`relative rounded-xl border-2 p-4 text-left transition-all duration-200 ${
                     mode === key
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20 scale-[1.02]"
+                      : "border-border hover:border-primary/40 bg-card hover:bg-muted/50"
                   }`}
                 >
-                  <div className="font-medium text-sm">{cfg.label}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{cfg.description}</p>
+                  {mode === key && (
+                    <div className="absolute top-3 right-3 h-2.5 w-2.5 rounded-full bg-primary" />
+                  )}
+                  <div className={`font-semibold text-sm ${mode === key ? "text-primary dark:text-primary" : "text-foreground"}`}>{cfg.label}</div>
+                  <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{cfg.description}</p>
                 </button>
               ),
             )}
@@ -203,43 +201,19 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
                 key={key}
                 type="button"
                 onClick={() => setControllerType(key)}
-                className={`w-full rounded-lg border p-4 text-left transition-colors ${
+                className={`relative w-full rounded-xl border-2 p-4 text-left transition-all duration-200 ${
                   controllerType === key
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50"
+                    ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20 scale-[1.02]"
+                    : "border-border hover:border-primary/40 bg-card hover:bg-muted/50"
                 }`}
               >
-                <div className="font-medium text-sm">{label}</div>
-                <p className="text-xs text-muted-foreground mt-1">{desc}</p>
+                {controllerType === key && (
+                  <div className="absolute top-3 right-3 h-2.5 w-2.5 rounded-full bg-primary" />
+                )}
+                <div className={`font-semibold text-sm ${controllerType === key ? "text-primary dark:text-primary" : "text-foreground"}`}>{label}</div>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{desc}</p>
               </button>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Step: Model */}
-      {step === "model" && (
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Choose Model</h2>
-          <p className="text-sm text-muted-foreground">Select which AI model will drive actions.</p>
-          <div className="space-y-3">
-            {(Object.entries(MODEL_LABELS) as [ModelKey, typeof MODEL_LABELS[ModelKey]][]).map(
-              ([key, cfg]) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setModelKey(key)}
-                  className={`w-full rounded-lg border p-4 text-left transition-colors ${
-                    modelKey === key
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/50"
-                  }`}
-                >
-                  <div className="font-medium text-sm">{cfg.label}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{cfg.description}</p>
-                </button>
-              ),
-            )}
           </div>
         </div>
       )}
@@ -253,15 +227,15 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
               <span className="text-sm text-muted-foreground">Name</span>
               <span className="text-sm font-medium">{name || `${MODE_PRESETS[mode].label} Computer`}</span>
             </div>
-            <div className="flex justify-between px-4 py-2.5">
+            <div className="flex justify-between px-4 py-3">
               <span className="text-sm text-muted-foreground">Mode</span>
               <span className="text-sm font-medium">{MODE_PRESETS[mode].label}</span>
             </div>
-            <div className="flex justify-between px-4 py-2.5">
+            <div className="flex justify-between px-4 py-3 bg-muted/20">
               <span className="text-sm text-muted-foreground">Provider</span>
               <span className="text-sm font-medium">{PROVIDER_LABELS[provider].label}</span>
             </div>
-            <div className="flex justify-between px-4 py-2.5">
+            <div className="flex justify-between px-4 py-3">
               <span className="text-sm text-muted-foreground">Size</span>
               <span className="text-sm font-medium">{preset.label}</span>
             </div>
@@ -273,12 +247,6 @@ export function CreateComputerWizard({ workspaces, onCreated, onCancel }: Create
               <span className="text-sm text-muted-foreground">Controller</span>
               <span className="text-sm font-medium capitalize">{controllerType}</span>
             </div>
-            {modelKey && (
-              <div className="flex justify-between px-4 py-2.5">
-                <span className="text-sm text-muted-foreground">Model</span>
-                <span className="text-sm font-medium">{MODEL_LABELS[modelKey].label}</span>
-              </div>
-            )}
             <div className="flex justify-between px-4 py-2.5">
               <span className="text-sm text-muted-foreground">Hourly Rate</span>
               <span className="text-sm font-medium">${(costPerHour / 100).toFixed(2)}/hr</span>

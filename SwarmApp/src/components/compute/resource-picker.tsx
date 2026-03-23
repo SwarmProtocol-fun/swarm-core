@@ -47,21 +47,26 @@ export function ResourcePicker({
                 type="button"
                 disabled={isComingSoon}
                 onClick={() => !isComingSoon && onProviderChange(key)}
-                className={`relative rounded-lg border p-3 text-left transition-colors ${
+                className={`relative rounded-xl border-2 p-4 text-left transition-all duration-200 ${
                   isComingSoon
-                    ? "border-border/50 opacity-50 cursor-not-allowed"
+                    ? "border-border/50 opacity-50 cursor-not-allowed bg-muted/20"
                     : isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-border hover:border-muted-foreground/50"
+                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20 scale-[1.02]"
+                      : "border-border hover:border-primary/40 bg-card hover:bg-muted/50"
                 }`}
               >
                 {isComingSoon && (
-                  <span className="absolute top-2 right-2 text-[10px] bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
+                  <span className="absolute top-2 right-2 text-[10px] bg-muted title-muted-foreground px-1.5 py-0.5 rounded-full font-medium">
                     Coming Soon
                   </span>
                 )}
-                <div className="font-medium text-sm">{cfg.label}</div>
-                <p className="text-xs text-muted-foreground mt-1">{cfg.description}</p>
+                {isSelected && (
+                  <div className="absolute top-3 right-3 h-2.5 w-2.5 rounded-full bg-primary" />
+                )}
+                <div className={`font-semibold text-sm ${isSelected ? "text-primary dark:text-primary" : "text-foreground"}`}>
+                  {cfg.label}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{cfg.description}</p>
               </button>
             );
           })}
@@ -73,26 +78,36 @@ export function ResourcePicker({
         <label className="text-sm font-medium text-muted-foreground mb-2 block">Instance Size</label>
         <div className="grid grid-cols-2 gap-3">
           {(Object.entries(SIZE_PRESETS) as [SizeKey, typeof SIZE_PRESETS[SizeKey]][]).map(
-            ([key, preset]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => onSizeChange(key)}
-                className={`rounded-lg border p-3 text-left transition-colors ${
-                  sizeKey === key
-                    ? "border-primary bg-primary/5"
-                    : "border-border hover:border-muted-foreground/50"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{preset.label}</span>
-                  <span className="text-xs font-medium text-primary">${(estimateHourlyCost(key, undefined, provider) / 100).toFixed(2)}/hr</span>
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {preset.disk} GB disk
-                </div>
-              </button>
-            ),
+            ([key, preset]) => {
+              const isSelected = sizeKey === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => onSizeChange(key)}
+                  className={`relative rounded-xl border-2 p-4 text-left transition-all duration-200 ${
+                    isSelected
+                      ? "border-primary bg-primary/10 shadow-sm ring-2 ring-primary/20 scale-[1.02]"
+                      : "border-border hover:border-primary/40 bg-card hover:bg-muted/50"
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="absolute top-3 right-3 h-2 w-2 rounded-full bg-primary" />
+                  )}
+                  <div className="flex items-center justify-between pointer-events-none">
+                    <span className={`font-semibold text-sm ${isSelected ? "text-primary dark:text-primary" : "text-foreground"}`}>
+                      {preset.label}
+                    </span>
+                    <span className={`text-xs font-bold ${isSelected ? "text-primary/80" : "text-primary"}`}>
+                      ${(estimateHourlyCost(key, undefined, provider) / 100).toFixed(2)}/hr
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-1.5">
+                    {preset.disk} GB disk • {preset.cpu} vCPU • {preset.ram / 1024}GB RAM
+                  </div>
+                </button>
+              );
+            }
           )}
         </div>
       </div>
@@ -103,7 +118,7 @@ export function ResourcePicker({
         <select
           value={region}
           onChange={(e) => onRegionChange(e.target.value as Region)}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"
         >
           {Object.entries(REGION_LABELS).map(([key, label]) => (
             <option key={key} value={key}>
@@ -114,17 +129,17 @@ export function ResourcePicker({
       </div>
 
       {/* Auto-stop */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-lg border border-border p-4 bg-muted/10">
         <div>
-          <label className="text-sm font-medium">Auto-stop after idle</label>
-          <p className="text-xs text-muted-foreground">
+          <label className="text-sm font-semibold">Auto-stop after idle</label>
+          <p className="text-xs text-muted-foreground mt-1">
             Automatically stop when no activity detected
           </p>
         </div>
         <select
           value={autoStopMinutes}
           onChange={(e) => onAutoStopChange(Number(e.target.value))}
-          className="rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          className="rounded-md border border-border bg-background px-3 py-2 text-sm font-medium focus:ring-2 focus:ring-primary/50 outline-none cursor-pointer"
         >
           <option value={15}>15 min</option>
           <option value={30}>30 min</option>
@@ -135,18 +150,18 @@ export function ResourcePicker({
       </div>
 
       {/* Persistence */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between rounded-lg border border-border p-4 bg-muted/10">
         <div>
-          <label className="text-sm font-medium">Persistence</label>
-          <p className="text-xs text-muted-foreground">
+          <label className="text-sm font-semibold">Persistence</label>
+          <p className="text-xs text-muted-foreground mt-1">
             Keep disk state between stops
           </p>
         </div>
         <button
           type="button"
           onClick={() => onPersistenceChange(!persistenceEnabled)}
-          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-            persistenceEnabled ? "bg-primary" : "bg-muted"
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary/50 ${
+            persistenceEnabled ? "bg-primary" : "bg-muted hover:bg-muted/80"
           }`}
         >
           <span
