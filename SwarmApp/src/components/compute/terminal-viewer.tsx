@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Maximize2, Minimize2, Terminal as TerminalIcon, Loader2, Power, AlertCircle } from "lucide-react";
-import type { ComputeStatus } from "@/lib/compute/types";
+import type { ComputerStatus } from "@/lib/compute/types";
 
 interface TerminalViewerProps {
   computerId: string;
   terminalUrl: string;
-  status?: ComputeStatus;
+  status?: ComputerStatus;
 }
 
 export function TerminalViewer({ computerId, terminalUrl, status }: TerminalViewerProps) {

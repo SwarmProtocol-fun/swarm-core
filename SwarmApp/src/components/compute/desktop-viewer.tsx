@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { Maximize2, Minimize2, RefreshCw, Loader2, Power, AlertCircle, CheckCircle2, Play } from "lucide-react";
-import type { ComputeStatus } from "@/lib/compute/types";
+import type { ComputerStatus } from "@/lib/compute/types";
 
 interface DesktopViewerProps {
   computerId: string;
   vncUrl: string;
-  status?: ComputeStatus;
+  status?: ComputerStatus;
   provider?: string;
 }
 

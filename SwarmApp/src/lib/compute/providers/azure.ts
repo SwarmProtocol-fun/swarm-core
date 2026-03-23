@@ -127,7 +127,7 @@ export class AzureComputeProvider implements ComputeProvider {
       publicIpName,
       {
         location,
-        publicIPAllocationMethod: config.staticIpEnabled ? "Static" : "Dynamic",
+        publicIPAllocationMethod: "Dynamic", // Static IPs require reserved IP addresses
         sku: { name: "Standard" },
         tags: { "swarm:managed": "true", "swarm:vm": vmName },
       }
