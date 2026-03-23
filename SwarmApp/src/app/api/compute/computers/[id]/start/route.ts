@@ -26,9 +26,48 @@ export async function POST(
   const auth = await requireOrgMember(req, computer.orgId);
   if (!auth.ok) return Response.json({ error: auth.error }, { status: auth.status || 401 });
 
+  // Check if already running
+  if (computer.status === "running") {
+    return Response.json(
+      {
+        error: "Computer is already running",
+        currentStatus: computer.status,
+        message: "The instance is already active. Refresh the page to see current status."
+      },
+      { status: 409 },
+    );
+  }
+
+  // Auto-recover from stuck "starting" state (> 10 minutes old)
+  if (computer.status === "starting") {
+    const startingDuration = computer.lastActiveAt
+      ? Date.now() - new Date(computer.lastActiveAt).getTime()
+      : 0;
+
+    if (startingDuration > 10 * 60 * 1000) {
+      console.warn(`[compute/start] Recovering from stuck "starting" state for ${id} (stuck for ${Math.round(startingDuration / 1000)}s)`);
+      await updateComputer(id, { status: "error" });
+      // Allow retry immediately
+    } else {
+      return Response.json(
+        {
+          error: "Computer is currently starting",
+          currentStatus: computer.status,
+          message: "Please wait for the current startup to complete (usually 2-5 minutes)."
+        },
+        { status: 409 },
+      );
+    }
+  }
+
+  // Reject other transitional states
   if (computer.status !== "stopped" && computer.status !== "error") {
     return Response.json(
-      { error: `Cannot start computer in "${computer.status}" state` },
+      {
+        error: `Cannot start computer in "${computer.status}" state`,
+        currentStatus: computer.status,
+        message: `The instance is ${computer.status}. Wait for it to reach a stable state.`
+      },
       { status: 409 },
     );
   }
