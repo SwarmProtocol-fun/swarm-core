@@ -1,600 +1,905 @@
-# OpenClaw Office Sim — Business & Packaging PRD
+# OpenClaw Office Sim Studio — Business & Packaging PRD
 
-> **Mod ID:** `openclaw-office-sim`
-> **Type:** Premium Swarm Marketplace Mod
+> **Mod ID:** `openclaw-office-sim-studio`
+> **Type:** Premium Swarm Marketplace Mod (Tiered)
 > **Version:** 0.1.0-draft
 > **Date:** 2026-03-24
 > **Status:** Draft
+> **Companion Doc:** `PRD-OpenClaw-Office-Sim-UX.md` (UX/UI specification)
 
 ---
 
 ## 1. Positioning
 
-**OpenClaw Office Sim** is the premier spatial monitoring and visualization mod for multi-agent systems on the Swarm Protocol. It transforms invisible agent orchestration into a visible, interactive virtual office — making AI teams legible to operators, impressive to stakeholders, and auditable for compliance.
+### Positioning Statement
 
-**One-line positioning:**
+> For AI teams and agent operators who need to monitor, explain, and showcase multi-agent systems, **OpenClaw Office Sim Studio** is a premium Swarm mod that combines real-time 2D/3D office simulation with generative environment design powered by ComfyUI and Meshy. Unlike static dashboards and log viewers, Office Sim Studio makes agent behavior *spatial*, *legible*, and *visually impressive* — turning monitoring into storytelling and operations into identity.
 
-> "The mission control room your AI agents have been missing."
+### One-Line Pitch
 
-**Category positioning within the Swarm Marketplace:**
+**"Your agents deserve an office. Your team deserves one that looks like theirs."**
 
-| Existing Category | How Office Sim Differs |
-|---|---|
-| Dashboard/Analytics mods | Analytics show *numbers*. Office Sim shows *behavior* — spatially, temporally, cinematically |
-| Agent monitoring tools (logs, metrics) | Monitoring tools are text-first. Office Sim is visual-first: you *see* agents working |
-| Skin/theme mods | Skins change appearance. Office Sim changes the entire observation paradigm |
+### Category Creation
 
-**Market context — cited technical inspirations:**
-
-| Project | What It Proves | Gap Office Sim Fills |
-|---|---|---|
-| **WW-AI-Lab/openclaw-office** | Dual 2D/3D office rendering for AI agents is viable and compelling. SVG isometric + React Three Fiber with WebSocket state | Locked to OpenClaw ecosystem. No Swarm integration, no marketplace packaging, no replay, no multi-org support |
-| **iamlukethedev/Claw3D** | 3D walkable office environments for agent monitoring create a "wow" factor that flat dashboards cannot | Requires self-hosting an OpenClaw gateway. No 2D fallback, no admin controls, no demo mode |
-| **carlosazaustre/tenacitOS** | OS-style desktop metaphor with voxel avatars and cost analytics resonates with ops teams | Read-only dashboard. No interactivity, no 3D immersion, no replay. Tightly coupled to local filesystem |
-| **GreenSheep01201/claw-empire** | Pixel-art office simulation with departments, Kanban, and CEO metaphor proves the "virtual company" concept | Local-first with SQLite. No cloud deployment, no marketplace distribution, no Swarm Protocol integration |
-
-**What Office Sim uniquely combines:**
-- Both 2D (operational) and 3D (cinematic) in one mod — switchable
-- Swarm Protocol native — works with any Swarm hub deployment
-- Marketplace-distributed — install in one click, no self-hosting required
-- Replay with time scrubber — unique to this mod in the ecosystem
-- Multi-persona: builder, operator, and presenter modes in one product
+This product does not compete with dashboards. It creates a new category: **generative agent environments**. The combination of real-time spatial monitoring, a ComfyUI-powered design studio, and a Meshy-powered 3D asset factory does not exist anywhere else in the agent tooling space.
 
 ---
 
 ## 2. Customer Pain
 
-### Pain 1: "I can't see what my agents are doing"
+### What teams struggle with today
 
-Developers run 3–10 agents and monitor them via terminal logs or basic status endpoints. When something goes wrong, they grep logs. When nothing is wrong, they have no confirmation things are *right*. There's no spatial awareness, no at-a-glance view, no way to watch agents collaborate.
+| Pain Point | Impact | Who feels it most |
+|---|---|---|
+| **Agent behavior is invisible** — logs and metrics don't convey *what agents are doing* in a way humans can quickly parse | Slow incident response, poor situational awareness, operator fatigue | Ops, DevOps, SREs |
+| **Demos fall flat** — showing a terminal or dashboard to investors/customers is technically accurate but emotionally dead | Failed fundraises, lost deals, underwhelming customer onboarding | Founders, sales engineers, solutions architects |
+| **No team identity in tooling** — every monitoring dashboard looks the same; there's no way to make the workspace feel like *yours* | Low tool attachment, easy churn to competitors, no pride-of-ownership | Engineering managers, team leads |
+| **Context switching is expensive** — understanding agent relationships requires reading code, configs, and separate dashboards | Longer onboarding for new team members, duplicate debugging effort | Developers, new hires |
+| **Post-incident review is manual** — reconstructing "what happened" requires correlating timestamps across multiple log sources | Incomplete post-mortems, repeated incidents, compliance gaps | Ops leads, compliance officers |
+| **Static environments can't express brand** — teams building agent products for customers can't customize the monitoring experience to reflect their brand | Missed white-label opportunities, generic customer experience | Platform teams, agencies |
 
-### Pain 2: "Explaining AI agents to non-technical people is impossible"
+### Why this matters commercially
 
-Product managers, investors, and customers can't understand agent orchestration from dashboards, metrics, or log files. Every demo devolves into "trust me, it's working." There's no visual proof, no narrative, no storytelling medium.
-
-### Pain 3: "Post-incident review is painful"
-
-When agents fail, operators reconstruct what happened from scattered logs across multiple agents. There's no unified timeline, no spatial replay, no way to watch the cascade unfold. Root cause analysis takes hours instead of minutes.
-
-### Pain 4: "Our agent infrastructure looks unprofessional"
-
-Teams pitching agent-powered products to enterprise customers have no way to present their system as mature and enterprise-grade. Terminal output doesn't inspire confidence. A polished, real-time office simulation does.
-
-### Pain 5: "I can't manage 20+ agents without tooling"
-
-At scale (10–50+ agents), operators need filtering, search, batch operations, alerting, and spatial organization. Flat lists and log aggregators don't provide the cognitive scaffolding of a spatial metaphor (desks, rooms, zones).
+Teams don't leave monitoring tools because the data is wrong — they leave because the experience is forgettable. **Retention is driven by identity**, and identity requires customization. A team that has designed their office, placed their agents at desks, and branded their environment has invested emotional equity that makes switching costs real.
 
 ---
 
 ## 3. Value Proposition
 
-| Audience | Value |
-|---|---|
-| **Solo Developer** | See your agents working in real-time. Catch errors visually. Understand inter-agent communication through spatial metaphor. Stop guessing, start watching. |
-| **Ops/Admin Team** | Command center for 10–50+ agents. Filter, search, batch-approve, alert. Replay incidents in minutes. Spatial organization reduces cognitive load. |
-| **Product/Sales Team** | Demo mode turns your agent stack into a cinematic investor pitch. 3D walkthrough, replay narration, shareable clips. Close deals faster. |
-| **Enterprise Buyer** | Audit trail via replay. Compliance-ready event logs. SSO integration. Private deployment option. Looks like a mature, managed platform. |
+### Why pay for this instead of a plain monitoring UI?
 
-**ROI Model:**
+| Capability | Free Swarm Dashboard | Office Sim (Base) | Office Sim Studio (Pro) | Studio 3D (Full) |
+|---|---|---|---|---|
+| Agent status & logs | Yes | Yes | Yes | Yes |
+| Spatial agent visualization (2D) | No | Yes | Yes | Yes |
+| 3D immersive office | No | Basic (preset themes) | Custom (ComfyUI-designed) | Full (custom 3D assets) |
+| Replay & time-travel | No | 1-hour window | Unlimited, exportable | Unlimited, exportable |
+| Demo mode | No | Yes | Yes + branded | Yes + branded |
+| Generative concept design (ComfyUI) | No | No | Yes | Yes |
+| 3D asset generation (Meshy) | No | No | No | Yes |
+| Custom themes & branding | No | Limited presets | Full 2D generative control | Full 2D + 3D generative |
+| Team collaboration features | No | Basic (shared view) | Multi-cursor, annotations | Multi-cursor, annotations |
+| Compliance & audit trail | No | No | No | Enterprise add-on |
 
-- **Developer productivity**: 15–30 min/day saved on agent monitoring (vs. log-grepping)
-- **Incident resolution**: 50% faster MTTR with visual replay vs. log reconstruction
-- **Sales acceleration**: Demos with Office Sim convert at higher rate than terminal-based demos
-- **Compliance**: Replay export satisfies audit requirements without custom tooling
+### The compounding value loop
+
+```
+Install mod → Agents appear in office → Team customizes layout
+     ↓                                          ↓
+ See agents work ← ← ← ← ← ← ← ← ←  Design custom environment
+     ↓                                          ↓
+ Show to stakeholders → "Wow" moment → Generate branded assets
+     ↓                                          ↓
+ Deepen investment → Upgrade tier → More generations → Deeper identity
+```
 
 ---
 
-## 4. Packaging
+## 4. Why Generative Environments Matter
 
-### Tier 1: Office Sim Base (Free)
+### Retention
 
-The free tier establishes the mod in the marketplace and drives adoption. It's genuinely useful — not a crippled trial.
+| Mechanism | How generative environments drive it |
+|---|---|
+| **Sunk-cost attachment** | A team that has generated 50 custom props, 3 office themes, and branded avatar portraits has invested hours of creative work. This is not exportable to Datadog |
+| **Social proof loops** | Generated environments are shareable. Teams post screenshots, demo videos, and office tours — each one is free marketing for Swarm and the mod |
+| **Progressive discovery** | ComfyUI workflows can be versioned and shared. Teams discover new generation techniques over time, keeping the mod fresh months after install |
+| **Personalization = ownership** | A generic dashboard belongs to the vendor. A generated, customized office belongs to the team |
+
+### Demo Appeal
+
+| Scenario | Plain Dashboard | Office Sim Studio |
+|---|---|---|
+| **Investor demo** | "Here's our Grafana. These lines go up." | 8 agents visibly collaborating in a branded cyberpunk office, camera tracking the lead agent as it completes a PR review |
+| **Customer onboarding** | "Here's your API key and a Postman collection." | Customer sees their agents in a co-branded office space with their logo, colors, and generated environment assets |
+| **Conference talk** | Slides with screenshots | Live 3D office replay of a real multi-agent workflow, narrated in real-time |
+| **Team standup** | "Agent-03 errored at 3am, here's the log" | Replay showing Agent-03 walk to the error bay, slump over, retry three times, then recover — in 15 seconds |
+
+### Team Identity
+
+Generative environments create **visual fingerprints** for teams:
+
+- A fintech team generates a Wall Street trading floor with ticker boards and marble desks
+- A gamedev team generates a pixel-art dungeon where agents explore rooms
+- An AI safety team generates a clean lab environment with containment zones
+- A startup generates a cozy cabin office with warm lighting and wood textures
+
+**These environments become part of the team's culture.** They show up in Slack screenshots, investor decks, conference talks, and job postings. The mod becomes inseparable from the team's identity.
+
+---
+
+## 5. Product Split: ComfyUI as Design Brain, Meshy as 3D Factory
+
+The two generative engines serve distinct roles in the creative pipeline. This separation is intentional: it matches how real creative teams work (concept → production) and keeps each tool focused on what it does best.
+
+### ComfyUI — "The Design Brain"
+
+ComfyUI is a node-based, workflow-driven image generation tool built on Stable Diffusion. It runs locally or on self-hosted infrastructure, giving teams full control over their generation pipeline.
+
+**Role in Office Sim Studio:**
+
+| Asset Type | ComfyUI Workflow | Output |
+|---|---|---|
+| **Office themes/moodboards** | Style reference → ControlNet → tiled texture | Color palette, material references, lighting direction |
+| **Avatar portraits** | Character description → face model → style transfer | Deterministic agent portraits (consistent across regeneration) |
+| **Iconography** | Icon prompt → pixel-art LoRA → batch generation | Skill icons, status badges, department logos |
+| **Overlays & HUD elements** | UI element prompt → transparency → compositing | Glass panels, holographic overlays, speech bubble skins |
+| **Shader references** | Material description → PBR reference generation | Input for 3D materials (roughness, normal, albedo maps) |
+| **Animated billboards** | Frame sequence → AnimateDiff → sprite sheet | In-office animated posters, news tickers, achievement walls |
+| **Environment concepts** | Room description → architectural ControlNet → composition | Concept art for approval before Meshy 3D generation |
+
+**Why ComfyUI for this role:**
+- **Workflow-driven**: Saved as JSON graphs, version-controlled, sharable between teams
+- **Deterministic**: Same seed + workflow = same output, critical for brand consistency
+- **Local/open**: No API costs for iteration; teams own their generation infrastructure
+- **Extensible**: Custom nodes for Swarm-specific workflows (e.g., "generate avatar from agent config")
+- **Batch-capable**: Generate hundreds of assets in a single run (icon sets, texture atlases)
+
+### Meshy — "The 3D Factory"
+
+Meshy is a cloud API for text-to-3D, image-to-3D, and model post-processing. It takes concepts (text descriptions or images from ComfyUI) and produces production-ready 3D assets.
+
+**Role in Office Sim Studio:**
+
+| Asset Type | Meshy API | Workflow |
+|---|---|---|
+| **Office props** | Text-to-3D v2 → preview → refine | "minimalist standing desk with dual monitors" → approve preview → refine to production mesh |
+| **Room kits** | Text-to-3D (batch) → remesh → export | Generate 10 furniture pieces for "zen garden meeting room" → remesh to quad topology → export as GLB |
+| **Agent avatars (3D)** | Image-to-3D (from ComfyUI portrait) → rig → animate | ComfyUI portrait → Meshy image-to-3D → auto-rig bipedal → apply walk/sit/type animations |
+| **Mascots & decorations** | Text-to-3D → refine → remesh | "cyberpunk rubber duck mascot" → approve → refine → place on desk |
+| **Themed environment pieces** | Text-to-3D (batch) | Generate all props for "space station" theme: control panels, airlocks, floating monitors |
+| **Department zones** | Text-to-3D → scene assembly | Engineering: server racks, cables. Sales: presentation screens, trophy case |
+
+**Why Meshy for this role:**
+- **Preview → Refine flow**: Low-cost preview (20 credits) for geometry approval, refine (10 credits) only for approved assets — cost control built in
+- **Multi-format export**: GLB, FBX, OBJ, USDZ, Blend, STL — covers all target engines
+- **Remesh API**: Control polygon count (100–300K), quad or triangle topology, auto-sizing
+- **Rigging & Animation API**: Auto-rig humanoid models and apply animation presets
+- **API-first**: Integrates directly into the mod's asset pipeline via REST + polling/SSE
+- **Retexture API**: Apply new materials/textures to existing models (theme switching without regeneration)
+
+### The Pipeline
+
+```
+Team describes desired environment
+        ↓
+ComfyUI generates concept art, moodboard, color palette (5 workflow types)
+        ↓
+Team reviews concept board — approve, refine, or dismiss each image
+        ↓
+ComfyUI generates detailed assets: textures, icons, avatar portraits, PBR maps
+        ↓
+Meshy Text-to-3D generates prop previews from approved descriptions (20 credits)
+        ↓
+Team reviews 3D previews in Asset Approval Drawer — rotate, inspect, decide
+        ↓
+Approved props → Meshy Refine → production-quality textured meshes (10 credits)
+        ↓
+Meshy Remesh → optimized for web (target polycount, quad topology)
+        ↓
+Meshy Rigging → humanoid agents get bipedal rigs + animation presets
+        ↓
+Assets load into Office Sim 3D scene via React Three Fiber useGLTF
+        ↓
+Team arranges via Studio Placement Mode — drag to slot, transform, save
+        ↓
+Saved as named "Office Theme" → optionally published to Swarm marketplace
+```
+
+### Approval gates at every stage
+
+1. **Concept approval** — ComfyUI concept board reviewed before production generation
+2. **3D preview approval** — Meshy previews reviewed in Asset Approval Drawer before expensive refine
+3. **Scene approval** — Assembled environment reviewed before saving as theme
+4. **Publish approval** — If sharing to marketplace, reviewed by Swarm moderation pipeline
+
+---
+
+## 6. Packaging
+
+### Tier 1: Office Sim Base
+
+**Mod ID:** `openclaw-office-sim`
+**Price:** Free
 
 | Feature | Included |
 |---|---|
-| Home Dashboard | Overview cards, agent grid, activity feed |
-| 2D Office View | Floor plan with desks, meeting rooms, queue, error bay |
-| 5 Agent States | Idle, Active, Error, Blocked, Offline |
-| Agent Detail Drawer | Current task, recent activity (last 50 events), basic actions |
-| Real-time Updates | WebSocket from Swarm hub |
-| Agent Limit | Up to 5 agents |
-| Replay | None |
-| 3D View | None |
-| Admin Panel | None |
-| Themes | Default dark only |
-| Support | Community (GitHub Issues) |
+| 2D Office view with 6 spatial zones (desk row, meeting room, queue, error bay, tool station, approval gate) | Yes |
+| 5 preset office themes (default dark, cyberpunk, minimal, retro pixel, zen) | Yes |
+| Agent Detail Drawer with status, task, activity, actions | Yes |
+| Real-time WebSocket agent state sync from Swarm Hub | Yes |
+| Agent states: idle, active, error, blocked, offline (5 of 10) | Yes |
+| Hover, click, right-click, keyboard interactions | Yes |
+| Filter by status, search by name | Yes |
+| Demo mode (mask sensitive data) | Yes |
+| 3D Office view (preset themes only, orbit + follow camera) | Yes |
+| 1-hour replay window with play/pause/speed control | Yes |
+| Max 10 agents | Yes |
+| Home Dashboard with overview cards, agent grid, quick actions | Yes |
 
-### Tier 2: Office Sim Pro (Subscription)
+**Positioning:** On-ramp. Gets teams into the spatial monitoring paradigm. Free forever for small teams.
 
-The Pro tier unlocks the full experience for serious users — developers running real workloads and ops teams managing production agents.
+---
+
+### Tier 2: Office Sim Studio (Pro)
+
+**Mod ID:** `openclaw-office-sim-studio`
+**Price:** $29/seat/month or $290/seat/year
 
 | Feature | Included |
 |---|---|
 | Everything in Base | Yes |
-| Unlimited Agents | No cap |
-| Full 10 Agent States | + Coding, Waiting Approval, In Meeting, Spawning, Tool Calling |
-| 3D Office View | Full scene with agent models, animations, speech bubbles |
-| Camera Modes | Orbit, Follow, Cinematic, Top-Down |
-| Collaboration Lines | Visible inter-agent message flow |
-| Tool Call Effects | Particle effects for API calls, file I/O, database queries |
-| Replay | Full timeline scrubber, event markers, speed control, up to 7 days history |
-| Demo Mode | Mask sensitive data, sample labels, cinematic auto-camera |
-| Admin Panel | Layout editor, agent assignments, alert configuration |
-| 3 Office Themes | Default Dark, Cyberpunk Neon, Minimal Frost |
-| Search & Filter | Full text search, multi-filter, bulk operations |
-| Keyboard Shortcuts | Complete set |
-| Support | Email support, 48h response |
+| **ComfyUI integration** — local or cloud-hosted generative design workflows | Yes |
+| Studio Dashboard with current theme preview, asset library, connection status | Yes |
+| Concept Generator — 5 workflow types (office-theme, avatar-portrait, scene-style, vfx-concept, texture-sheet) | Yes |
+| Concept Board with approve/refine/dismiss per image | Yes |
+| Saved workflow library (version-controlled generation recipes) | Yes |
+| Style presets (cyberpunk, minimal, retro, nature, sci-fi, cozy, industrial, vaporwave, gothic) | Yes |
+| Avatar portrait generator for agent characters | Yes |
+| Icon & badge generator for skills and departments | Yes |
+| Overlay/HUD skin generator | Yes |
+| Animated billboard generator (AnimateDiff) | Yes |
+| Unlimited replay with timeline markers and event filtering | Yes |
+| Full 10 agent states with 3D animations | Yes |
+| Camera modes: orbit, follow, cinematic, top-down, first-person | Yes |
+| Admin panel with layout editor, agent assignment, alert configuration | Yes |
+| Multi-agent bulk operations | Yes |
+| Unlimited agents | Yes |
+| 200 ComfyUI generation credits/month (cloud mode only; self-hosted is unlimited) | Yes |
 
-### Tier 3: Office Sim Enterprise (Custom Pricing)
+**Positioning:** The creative tool for teams who want a unique, branded monitoring experience with 2D generative control.
 
-Enterprise tier adds private deployment, compliance features, and organizational controls. Sold via direct sales, not self-serve.
+---
+
+### Tier 3: Studio 3D (Full Suite)
+
+**Mod ID:** `openclaw-office-sim-studio-3d`
+**Price:** $79/seat/month or $790/seat/year
 
 | Feature | Included |
 |---|---|
-| Everything in Pro | Yes |
-| Private Deployment | Self-hosted or dedicated cloud instance |
-| SSO Integration | SAML/OIDC with existing identity provider |
-| Role-Based Access | Viewer, Operator, Admin roles with granular permissions |
-| Multi-Floor View | Separate floors per org/team/department |
-| Replay Export | MP4 video, shareable links, certified audit logs |
-| Compliance Package | Tamper-evident event logs, SOC 2 mappings, retention policies |
-| Custom Themes | Branded office environments (company colors, logos, custom furniture) |
-| API Access | REST API for embedding office views in external dashboards |
-| SLA | 99.9% uptime, 4h response, dedicated support channel |
-| Onboarding | White-glove setup, layout design consultation, training session |
+| Everything in Studio (Pro) | Yes |
+| **Meshy Text-to-3D integration** — generate custom 3D props from text prompts | Yes |
+| **Meshy Image-to-3D integration** — generate 3D models from ComfyUI concept images | Yes |
+| **Meshy Multi-Image-to-3D** — multi-view input for complex props | Yes |
+| **Meshy Remesh** — optimize generated models for web (target polycount, topology control) | Yes |
+| **Meshy Rigging & Animation** — auto-rig humanoid agents, apply walk/sit/type animations | Yes |
+| **Meshy Retexture** — swap materials/skins on existing models without regeneration | Yes |
+| Asset Generator UI with category picker, reference image selector, Meshy job queue | Yes |
+| Asset Approval Drawer with interactive 3D preview, polygon stats, revision history | Yes |
+| Asset Placement Mode with slot system, transform controls, undo/redo | Yes |
+| Team asset library (shared 3D props across org) | Yes |
+| Custom room kit generator (batch furniture generation per theme) | Yes |
+| Agent 3D avatar generator (portrait → 3D model → rig → animate pipeline) | Yes |
+| Theme Manager — save, import, export, reset themes | Yes |
+| Theme marketplace: publish and sell custom themes to the Swarm community | Yes |
+| 500 Meshy generation credits/month | Yes |
+| Export scenes as GLB/USDZ for external use | Yes |
+
+**Positioning:** Full creative suite. For teams that want to build, brand, and ship custom 3D agent environments.
 
 ---
 
-## 5. Pricing
+### Tier 4: Enterprise / Private Deployment
 
-### Strategy: Freemium → Pro Conversion → Enterprise Expansion
+**Mod ID:** `openclaw-office-sim-enterprise`
+**Price:** Custom (starting $499/month flat + per-seat)
 
-```
-Free (Base)          $0/mo    — drives adoption, 5-agent cap creates natural upgrade trigger
-Pro Monthly         $29/mo    — per org, unlimited agents, full feature set
-Pro Annual         $249/yr    — 2 months free vs. monthly ($20.75/mo effective)
-Pro Lifetime       $599 once  — for indie developers who hate subscriptions
-Enterprise         Custom     — starts at $199/mo, scales with agents/floors/features
-```
-
-**Pricing Rationale:**
-
-| Decision | Reasoning |
+| Feature | Included |
 |---|---|
-| Free tier is genuinely useful | Drives marketplace installs, reviews, and word-of-mouth. 5-agent cap is generous for evaluation but tight for production |
-| $29/mo Pro | Aligned with Swarm marketplace norms. Low enough for solo devs, justifiable for teams. Comparable to observability tool pricing (Datadog dev tier: $15–30/mo) |
-| Lifetime option | Captures indie/hobbyist segment that dislikes subscriptions. Revenue recognized upfront. $599 = ~2 years of monthly |
-| Enterprise custom | Every enterprise deployment is different (SSO provider, compliance requirements, scale). Custom pricing prevents leaving money on the table |
+| Everything in Studio 3D | Yes |
+| **Private ComfyUI deployment** — runs on your infrastructure, no data leaves your network | Yes |
+| **Private Meshy endpoint** — dedicated API capacity, SLA-backed | Yes |
+| SSO / SAML / OIDC integration | Yes |
+| Role-based access control (viewer, operator, admin, designer) | Yes |
+| Audit trail with compliance export (SOC 2, ISO 27001 evidence packages) | Yes |
+| Replay certification (tamper-proof, cryptographically signed playback) | Yes |
+| Multi-floor / multi-org view | Yes |
+| White-label mode (remove Swarm branding, apply customer brand) | Yes |
+| Custom SLA (uptime, response time, generation throughput) | Yes |
+| Dedicated success manager | Yes |
+| Priority feature requests | Yes |
+| Unlimited generation credits (ComfyUI + Meshy) | Yes |
+| On-premises deployment option (air-gapped) | Yes |
+| API access for programmatic environment generation | Yes |
 
-**Crypto Pricing (HBAR Alternative):**
-
-```
-Pro Monthly         120 HBAR/mo
-Pro Annual        1,000 HBAR/yr
-Pro Lifetime      2,500 HBAR once
-```
-
-HBAR pricing provides a native Web3 payment option for the Swarm ecosystem. Prices pegged quarterly to maintain approximate USD equivalence.
-
----
-
-## 6. Licensing
-
-### Open Components (MIT License)
-
-These components are open source and available to the community:
-
-| Component | Rationale |
-|---|---|
-| Agent state type definitions | Standard vocabulary benefits the entire ecosystem |
-| WebSocket event schema | Interoperability — other mods can build on the same event format |
-| 2D SVG avatar generator | Community contribution. Deterministic avatars from agent IDs |
-| Floor plan data format (JSON schema) | Enables community-created office layouts |
-| Base 2D rendering utilities | Establishes the mod as a platform, not just a product |
-| Color/state mapping constants | Ensures consistent visual language across ecosystem |
-
-### Proprietary Components (Swarm Commercial License)
-
-These components require a Pro or Enterprise license:
-
-| Component | Rationale |
-|---|---|
-| 3D scene, models, and animations | Significant art/engineering investment. Core differentiator |
-| Replay engine and timeline scrubber | Complex engineering. Key selling point for Pro |
-| Admin panel and layout editor | Enterprise value. Requires ongoing maintenance |
-| Cinematic camera system | Premium polish. Demo/pitch mode is a paid feature |
-| Office themes and skins | Monetizable add-on content |
-| Compliance and audit features | Enterprise revenue driver |
-| SSO/RBAC integration | Enterprise-only complexity |
-| Particle effects and post-processing | Visual premium that justifies Pro pricing |
-
-### License Enforcement
-
-- Free tier: enforced client-side via agent count check + Swarm marketplace subscription status
-- Pro tier: validated against Swarm org subscription state via `GET /api/v1/mods/openclaw-office-sim/license`
-- Enterprise: license key validated on startup, offline grace period of 72 hours
-- No DRM or obfuscation beyond standard minification — trust-based model with audit capability
+**Positioning:** For regulated industries, large enterprises, and platform teams building on top of Swarm.
 
 ---
 
-## 7. Deployment Models
+## 7. Pricing
 
-### Model A: Swarm Cloud (Default)
+### Seat-Based Pricing
 
-```
-User's Browser  →  Swarm App (Netlify)  →  Office Sim Mod (embedded)
-                                        →  Swarm Hub (WebSocket)
-```
+| Tier | Monthly/Seat | Annual/Seat (save 17%) | Notes |
+|---|---|---|---|
+| **Base** | Free | Free | Max 10 agents, preset themes only |
+| **Studio Pro** | $29 | $290 | ComfyUI integration, unlimited agents |
+| **Studio 3D** | $79 | $790 | Meshy integration, full 3D pipeline |
+| **Enterprise** | Custom | Custom | Starting $499/mo flat + $49/seat |
 
-- Office Sim runs as an integrated mod within the Swarm App
-- Installed via marketplace one-click
-- No additional infrastructure required
-- State sourced from Swarm Hub via existing WebSocket connection
-- 3D assets served from Swarm CDN (lazy-loaded)
-- Replay data stored in Firestore (7-day rolling for Pro)
+### Workspace Licenses (Alternative)
 
-**Best for:** Solo developers, small teams, evaluation
+For teams that prefer per-workspace rather than per-seat:
 
-### Model B: Self-Hosted (Enterprise)
+| Tier | Monthly/Workspace | Includes |
+|---|---|---|
+| **Team** (up to 10 seats) | $199 | Studio Pro features |
+| **Growth** (up to 25 seats) | $499 | Studio 3D features |
+| **Scale** (up to 100 seats) | $999 | Studio 3D + priority support |
+| **Enterprise** (unlimited) | Custom | Full enterprise features |
 
-```
-User's Browser  →  Customer's Swarm Instance  →  Office Sim (self-hosted)
-                                               →  Customer's Swarm Hub
-```
+### Generation Credits
 
-- Office Sim deployed as a Docker container alongside customer's Swarm Hub
-- All data stays within customer's infrastructure
-- Configuration via environment variables + `office-sim.config.json`
-- Replay data stored in customer's database (Postgres or SQLite)
-- SSO integrates with customer's identity provider
+Credits are consumed when using cloud-hosted ComfyUI or the Meshy API. Self-hosted ComfyUI instances consume zero credits.
 
-**Best for:** Enterprise customers with data residency requirements, air-gapped environments
+| Action | Credits | Notes |
+|---|---|---|
+| ComfyUI image generation (cloud) | 1 | Per image in concept board |
+| ComfyUI AnimateDiff sequence (cloud) | 5 | Per animated billboard |
+| Meshy Text-to-3D preview | 20 | Geometry only, Meshy-6 model |
+| Meshy Text-to-3D refine (texture) | 10 | Textures approved preview |
+| Meshy Image-to-3D (mesh only) | 20 | Meshy-6, no texture |
+| Meshy Image-to-3D (with texture) | 30 | Meshy-6, full pipeline |
+| Meshy Multi-Image-to-3D | 25 | Multi-view input |
+| Meshy Remesh | 5 | Re-topology + format conversion |
+| Meshy Rigging & Animation | 10 | Auto-rig + animation presets |
+| Meshy Retexture | 10 | Material swap on existing model |
 
-### Model C: Hybrid (Pro+)
+| Credit Pack | Price | Credits | Per-Credit |
+|---|---|---|---|
+| Included in Studio Pro | $0 | 200/mo | — |
+| Included in Studio 3D | $0 | 700/mo | — |
+| Top-Up Small | $19 | 500 | $0.038 |
+| Top-Up Medium | $49 | 1,500 | $0.033 |
+| Top-Up Large | $99 | 4,000 | $0.025 |
+| Enterprise | Custom | Unlimited | — |
 
-```
-User's Browser  →  Swarm App (Netlify)  →  Office Sim Mod (embedded)
-                                        →  Customer's Swarm Hub (remote)
-```
+Credits roll over for 90 days. Unused credits after 90 days expire.
 
-- Office Sim UI runs in Swarm Cloud
-- Connects to customer's self-hosted Swarm Hub via WebSocket
-- Replay data optionally stored locally (customer's Hub) or in Swarm Cloud
-- No additional deployment needed for the mod itself
+### Premium Scene Packs (One-Time Purchase)
 
-**Best for:** Teams with self-hosted Swarm Hubs who want managed UI
+Pre-designed, high-quality office themes with matched 3D assets. Available at any paid tier.
+
+| Pack | Price | Contents |
+|---|---|---|
+| **Cyberpunk Neon** | $14.99 | Full 3D office theme, 20+ props, neon lighting profiles, holographic overlays |
+| **Zen Garden** | $14.99 | Japanese garden office, bamboo desks, water features, stone floors, ambient audio config |
+| **Space Station** | $19.99 | Zero-G office, floating monitors, airlocks, planetary viewport, animated star field |
+| **Pixel Retro** | $9.99 | 8-bit pixel art office, CRT monitors, chiptune-ready, lo-fi props |
+| **Corporate Clean** | $9.99 | Professional office, glass walls, conference rooms, minimal palette |
+| **Dungeon Ops** | $14.99 | Fantasy dungeon, stone desks, torch lighting, treasure chest error bay |
+| **Seasonal Bundle** (4 packs) | $29.99 | Spring garden, summer beach, autumn forest, winter cabin |
+
+### Branded/Custom Environments (Service)
+
+| Service | Price | Deliverable |
+|---|---|---|
+| **Custom theme design** | $499 one-time | Brand-matched office theme with 30+ props, approved by customer |
+| **Custom avatar set** | $199 one-time | 20 branded agent avatars matching customer style guide |
+| **Full white-label environment** | $2,499 one-time | Complete custom office, avatars, icons, overlays, branded replay |
+| **Ongoing design retainer** | $299/month | 5 new asset batches/month, seasonal refreshes, priority requests |
 
 ---
 
-## 8. Marketplace Strategy
+## 8. Licensing
 
-### Listing Requirements
+### License Types
 
-The mod listing in the Swarm Marketplace must include:
+| License | Scope | Generated Assets | Modification |
+|---|---|---|---|
+| **Base (Free)** | Individual/team use | N/A (no generation) | Preset themes only |
+| **Studio Pro** | Per-user, one org | ComfyUI outputs owned by customer, unrestricted use | Full modification of generated 2D assets |
+| **Studio 3D** | Per-user, one org | ComfyUI + Meshy outputs owned by customer, exportable | Full modification, re-export, external use |
+| **Enterprise** | Org-wide, custom terms | Full IP ownership of all generated assets | Unrestricted, including sublicensing |
+
+### Generated Asset Ownership
+
+- **ComfyUI outputs**: Customer owns all generated images, textures, sprites, and concept art. No usage restrictions. Self-hosted generation means outputs never touch Swarm infrastructure.
+- **Meshy outputs**: Customer owns generated 3D models per Meshy's commercial license terms. Models can be exported (GLB, FBX, OBJ, USDZ, Blend, STL) and used outside Office Sim Studio.
+- **Preset theme assets** (included in base/packs): Licensed for use within Office Sim Studio only. Not exportable for other projects.
+- **Scene pack assets**: Licensed for use within Office Sim Studio and customer presentations. Not resalable.
+- **Custom service deliverables**: Full IP transfer upon payment completion.
+
+### Open Source Components
+
+| Component | License | Our Usage |
+|---|---|---|
+| ComfyUI | GPL-3.0 | Integration via REST API / WebSocket, not linked |
+| Stable Diffusion models | CreativeML Open RAIL-M | Used for generation, outputs owned by user |
+| React Three Fiber | MIT | Direct dependency |
+| Three.js | MIT | Transitive dependency |
+| Zustand | MIT | State management |
+
+---
+
+## 9. Deployment Models
+
+### Model A: Local Everything (Solo Dev / Small Team)
+
+```
+┌───────────────────────────────────────┐
+│          User's Machine / VPS          │
+│                                        │
+│  ┌──────────────┐  ┌───────────────┐  │
+│  │  Swarm Hub   │  │  Office Sim   │  │
+│  │  (agents)    │──│  (Next.js)    │  │
+│  └──────────────┘  └───────┬───────┘  │
+│                            │           │
+│  ┌──────────────┐          │           │
+│  │  ComfyUI     │──────────┘           │
+│  │  (local GPU) │                      │
+│  └──────────────┘                      │
+│                                        │
+│  Meshy API ← ← cloud calls → →        │
+└───────────────────────────────────────┘
+```
+
+- ComfyUI runs locally on the user's GPU — zero credit cost for 2D generation
+- Meshy calls go to cloud API (credits consumed per the schedule above)
+- Best for: solo developers, small teams with GPU-equipped machines
+- Latency: ComfyUI ~5–30s per image (local), Meshy ~30–120s per 3D model (cloud)
+
+### Model B: Cloud / Self-Hosted Hybrid (Growth Team)
+
+```
+┌────────────────────┐     ┌─────────────────────┐
+│   Team Machines     │     │   Cloud / VPS        │
+│                     │     │                      │
+│  Browser → Office  ─┼────▶│  Swarm Hub (hosted)  │
+│            Sim UI   │     │  ComfyUI (GPU VPS)   │
+│                     │     │  Office Sim (Netlify) │
+└────────────────────┘     │                      │
+                            │  Meshy API → → →     │
+                            └─────────────────────┘
+```
+
+- Swarm Hub and Office Sim deployed to cloud (Netlify, Vercel, or VPS)
+- ComfyUI on a dedicated GPU VPS (RunPod, Lambda, vast.ai) — runs headless, triggered by Studio API routes
+- Meshy API called from server-side (API key secured, never exposed to client)
+- Best for: distributed teams, CI/CD-integrated environments
+
+### Model C: Private Enterprise (Air-Gapped Option)
+
+```
+┌─────────────────────────────────────────────────┐
+│              Customer's Private Cloud             │
+│                                                   │
+│  ┌────────────┐  ┌──────────┐  ┌──────────────┐ │
+│  │ Swarm Hub  │  │ Office   │  │ ComfyUI      │ │
+│  │ (private)  │──│ Sim      │──│ (private GPU)│ │
+│  └────────────┘  └────┬─────┘  └──────────────┘ │
+│                       │                           │
+│  ┌────────────────────┴─────────────────────┐    │
+│  │  Meshy Enterprise API (dedicated endpoint)│    │
+│  │  OR self-hosted 3D pipeline               │    │
+│  └──────────────────────────────────────────┘    │
+│                                                   │
+│  SSO ← Okta / Azure AD / Auth0                   │
+│  Audit → compliance export, replay certification  │
+└─────────────────────────────────────────────────┘
+```
+
+- Everything runs within the customer's network perimeter
+- No data leaves — critical for regulated industries (finance, healthcare, defense)
+- Meshy enterprise endpoint with dedicated capacity, or customer provides their own 3D pipeline
+- SSO integration via SAML/OIDC
+- Best for: enterprises with strict data governance requirements
+
+### Model D: Swarm Cloud Managed (Future)
+
+```
+┌───────────────┐     ┌──────────────────────────┐
+│  Browser       │────▶│  swarm.perkos.xyz          │
+│                │     │                            │
+│                │     │  Swarm Hub (managed)       │
+│                │     │  Office Sim (managed)      │
+│                │     │  ComfyUI (managed GPU)     │
+│                │     │  Meshy API (pooled credits) │
+└───────────────┘     └──────────────────────────┘
+```
+
+- Fully managed SaaS — zero infrastructure management
+- Teams sign up, install mod, start generating
+- Best for: teams who want instant setup with no DevOps overhead
+- Revenue model: subscription + credits + scene pack purchases
+
+---
+
+## 10. Marketplace Strategy
+
+### Swarm Marketplace Integration
+
+Office Sim Studio is distributed through the existing Swarm marketplace infrastructure, following established patterns from existing mods (JRPG Fantasy, Pokemon Trainer, Mecha LaunchPad).
+
+**Manifest registration:**
+
+```json
+{
+  "id": "openclaw-office-sim-studio",
+  "name": "OpenClaw Office Sim Studio",
+  "version": "1.0.0",
+  "type": "mod",
+  "author": "Swarm Core",
+  "description": "Living 2D/3D office simulation with generative environment design. Monitor agents spatially, design custom offices with ComfyUI, build 3D assets with Meshy.",
+  "category": "Monitoring & Visualization",
+  "icon": "🏢",
+  "pricing": {
+    "model": "subscription",
+    "tiers": [
+      { "plan": "base", "price": 0, "currency": "USD", "interval": "forever" },
+      { "plan": "studio-pro", "price": 29, "currency": "USD", "interval": "month" },
+      { "plan": "studio-3d", "price": 79, "currency": "USD", "interval": "month" },
+      { "plan": "enterprise", "price": null, "currency": "USD", "interval": "custom" }
+    ]
+  },
+  "tags": ["monitoring", "3d", "office", "simulation", "comfyui", "meshy", "generative", "visualization"],
+  "features": {
+    "spatial_monitoring": true,
+    "generative_design": true,
+    "3d_asset_generation": true,
+    "replay": true,
+    "demo_mode": true,
+    "layout_override": true,
+    "enterprise_sso": true
+  },
+  "files": {
+    "skin_css": "globals-office-sim.css",
+    "components": ["office-sim-sidebar.tsx", "office-sim-header.tsx"],
+    "context": "OfficeSimContext.tsx"
+  },
+  "sidebarConfig": {
+    "sectionId": "modifications",
+    "label": "Office Sim",
+    "href": "/office-sim",
+    "iconName": "Building2"
+  },
+  "dependencies": {
+    "swarm-hub": ">=1.0.0"
+  }
+}
+```
+
+### SKILL_REGISTRY Entry
 
 ```typescript
 {
-  id: "openclaw-office-sim",
-  name: "OpenClaw Office Sim",
-  description: "2D command center and 3D immersive office for monitoring your AI agents. Watch them work, catch errors visually, replay incidents, and demo your agent stack.",
+  id: "openclaw-office-sim-studio",
+  name: "OpenClaw Office Sim Studio",
   type: "mod",
   source: "verified",
-  category: "Monitoring",
+  category: "Monitoring & Visualization",
   icon: "🏢",
   version: "1.0.0",
-  author: "Swarm Protocol",
-  tags: ["monitoring", "visualization", "office", "3D", "2D", "agents", "replay", "demo"],
+  author: "Swarm Core",
   pricing: {
     model: "subscription",
     tiers: [
-      { plan: "monthly", price: 0, currency: "USD" },      // Free base
-      { plan: "monthly", price: 29, currency: "USD" },      // Pro monthly
-      { plan: "yearly", price: 249, currency: "USD" },      // Pro annual
-      { plan: "lifetime", price: 599, currency: "USD" }     // Pro lifetime
+      { plan: "base", price: 0, currency: "USD" },
+      { plan: "studio-pro", price: 29, currency: "USD" },
+      { plan: "studio-3d", price: 79, currency: "USD" }
     ]
   },
+  tags: ["monitoring", "3d", "office", "simulation", "comfyui", "meshy"],
   sidebarConfig: {
     sectionId: "modifications",
     label: "Office Sim",
     href: "/office-sim",
     iconName: "Building2"
-  },
-  manifest: {
-    tools: [
-      { id: "2d-office", name: "2D Office View", description: "SVG isometric floor plan with real-time agent monitoring", icon: "🗺️", category: "Visualization", status: "active" },
-      { id: "3d-office", name: "3D Office View", description: "Immersive React Three Fiber office with animated agents", icon: "🎮", category: "Visualization", status: "active" },
-      { id: "replay-engine", name: "Replay Engine", description: "Time-travel through agent activity with timeline scrubber", icon: "⏪", category: "Analysis", status: "active" },
-      { id: "layout-editor", name: "Layout Editor", description: "Drag-and-drop floor plan designer for custom office layouts", icon: "📐", category: "Configuration", status: "active" },
-      { id: "demo-mode", name: "Demo Mode", description: "Presentation-ready view with masked data and cinematic camera", icon: "🎬", category: "Presentation", status: "active" }
-    ],
-    workflows: [
-      { id: "incident-replay", name: "Incident Replay Investigation", description: "Replay the last N minutes to visually trace error cascades", icon: "🔍", tags: ["debugging", "ops"], steps: ["Select time range", "Filter by affected agents", "Play back at variable speed", "Identify root cause visually", "Export replay for post-mortem"], estimatedTime: "5-15 minutes" },
-      { id: "investor-demo", name: "Investor Demo Walkthrough", description: "Present your agent system with cinematic 3D visualization", icon: "🎪", tags: ["sales", "demo"], steps: ["Enable Demo Mode", "Switch to 3D Office", "Activate Cinematic Camera", "Walk through agent collaboration", "Show replay of completed workflow"], estimatedTime: "10-20 minutes" }
-    ],
-    agentSkills: [],
-    examples: [
-      { id: "quickstart", name: "Quick Start", description: "Install and open the office in 60 seconds", icon: "🚀", tags: ["setup"], codeSnippet: "// 1. Install from Marketplace\n// 2. Click 'Office Sim' in sidebar\n// 3. Your agents appear as office workers", language: "typescript" }
-    ]
   }
 }
 ```
 
-### Discovery & Conversion Funnel
+### Marketplace Revenue Sharing
 
-```
-Marketplace Browse → Listing Page → Install (Free) → Use 2D Office
-                                                    → Hit 5-agent cap
-                                                    → Try 3D (locked)
-                                                    → Upgrade prompt
-                                                    → Pro Subscription
-                                                    → Scale to team
-                                                    → Enterprise inquiry
-```
+Following the existing Swarm marketplace platform fee structure (15% per `marketplace-settings.ts`):
 
-**Conversion Triggers:**
-
-| Trigger | Where | Action |
+| Revenue Stream | Platform Fee | Creator Revenue |
 |---|---|---|
-| 6th agent connects | 2D Office | "Upgrade to Pro for unlimited agents" banner |
-| Click 3D tab (free tier) | Navigation | Preview screenshot + "Unlock 3D with Pro" overlay |
-| Click Replay tab (free tier) | Navigation | "Pro feature: replay last 7 days of agent activity" |
-| Agent count >15 | Dashboard | "Consider Enterprise for multi-floor layouts" suggestion |
-| Shared with team member | Admin | "Enterprise SSO keeps your team in sync" upsell |
+| Mod subscriptions (first-party) | 100% to Swarm | — |
+| Scene pack purchases (first-party) | 100% to Swarm | — |
+| Community-created themes | 15% platform fee | 85% to creator |
+| Community-created asset packs | 15% platform fee | 85% to creator |
+| Credit top-ups | 100% to Swarm (pass-through to Meshy at cost) | — |
+| Custom service engagements | 0% (direct) | 100% to provider |
 
-### Marketplace Metrics to Track
+### Community Theme Marketplace
 
-| Metric | Target (Month 1) | Target (Month 6) |
-|---|---|---|
-| Installs (free) | 200 | 2,000 |
-| Pro conversions | 20 (10% of installs) | 300 (15% cumulative) |
-| Enterprise inquiries | 2 | 15 |
-| Average rating | 4.5+ stars | 4.5+ stars |
-| DAU (daily active users) | 50 | 500 |
-| Replay sessions/week | 100 | 2,000 |
-| 3D view sessions/week | 150 | 3,000 |
+Studio 3D tier users can publish their generated environments as purchasable themes:
+
+1. **Create** — User generates an office theme using ComfyUI + Meshy via Studio mode
+2. **Package** — User bundles theme (3D assets, textures, lighting config, concept references) via Theme Manager export
+3. **Submit** — Published through `POST /api/v1/marketplace/publish` with type `office-theme`
+4. **Review** — Swarm team reviews for quality, performance (max polycount, asset count), and IP compliance via the existing submission pipeline (intake → security scan → tier-based routing)
+5. **List** — Approved themes appear in Office Sim's Community Theme Browser and the main marketplace
+6. **Purchase** — Other users buy the theme; revenue split 85/15
+
+This creates a **creator economy** within the mod. The same publisher tier system (Tier 0–3) and submission quotas apply.
 
 ---
 
-## 9. Proprietary vs. Open Components
+## 11. Proprietary vs Open Components
 
-### Strategic Philosophy
+### What Remains Open in the Ecosystem
 
-> Open the **platform** (data formats, state definitions, base rendering), own the **experience** (3D, replay, admin, themes).
+| Component | Status | License | Rationale |
+|---|---|---|---|
+| **2D Office renderer** (SVG/Canvas) | Open source | MIT | Commoditized rendering, benefits from community contributions |
+| **WebSocket state protocol** | Open source | MIT | Interoperability with custom frontends and third-party tools |
+| **Agent state schema** (10-state vocabulary) | Open source | MIT | Standardization benefits the ecosystem |
+| **ComfyUI workflow templates** | Open source | CC-BY-4.0 | Community workflow sharing drives adoption and ComfyUI ecosystem growth |
+| **Swarm Hub integration layer** | Open source | MIT | Allows other community mods to integrate with the same agent data |
+| **Base office theme** (2D only, 5 presets) | Open source | MIT | Entry point, proves value, drives upgrades |
+| **Replay event format** | Open source | MIT | Enables ecosystem tool compatibility and third-party replay viewers |
 
-This creates a moat around the premium experience while encouraging ecosystem growth. Third-party developers can build on the open schemas (alternative 2D renderers, custom integrations) without competing directly with the premium features.
+### What Stays Proprietary in the Premium Mod
 
-### Boundary Map
+| Component | Status | Rationale |
+|---|---|---|
+| **3D Office renderer** (R3F scene, LOD system, instanced meshes, portal effects) | Proprietary | Core differentiation; significant engineering investment in performance optimization |
+| **Generative pipeline orchestrator** (ComfyUI ↔ approval gates ↔ Meshy ↔ asset library ↔ scene assembly) | Proprietary | The "glue" that makes the creative pipeline seamless — this is the product |
+| **Studio UI** (concept board, asset generator, placement mode, theme manager) | Proprietary | UX innovation that prevents wasted generation credits through approval gates |
+| **Theme packaging system** (bundle, optimize, validate, distribute) | Proprietary | Marketplace enabler, quality control enforcement |
+| **Cinematic camera system** (auto-camera with AI attention, first-person WASD, follow-agent) | Proprietary | Demo/storytelling differentiator |
+| **Replay certification** (tamper-proof, cryptographically signed event streams) | Proprietary | Enterprise compliance requirement |
+| **Multi-floor / multi-org view** | Proprietary | Enterprise architecture feature |
+| **White-label mode** | Proprietary | Enterprise customization |
+| **SSO / RBAC integration** | Proprietary | Enterprise security requirement |
+| **Premium scene packs** (bundled 3D assets, lighting profiles, audio configs) | Proprietary | Monetized content |
 
-```
-OPEN (MIT)                              PROPRIETARY (Commercial)
-─────────────────────────────────────   ─────────────────────────────────
-AgentState enum                         3D Scene & R3F Components
-WebSocket event schema                  Agent 3D Models & Animations
-Floor plan JSON schema                  Replay Engine & Timeline UI
-SVG avatar generator                    Cinematic Camera System
-2D base rendering utils                 Admin Panel & Layout Editor
-State → Color mapping                   Office Themes & Skins
-TypeScript type exports                 Compliance & Audit Package
-                                        Demo Mode
-                                        Particle Effects System
-                                        SSO/RBAC Integration
-                                        Export (Video/Link/Audit)
-```
+### The Strategic Balance
 
-### npm Package Strategy
+**Open enough to build an ecosystem.** The 2D renderer, state protocol, ComfyUI workflows, and base theme ensure that community contributors can build complementary tools. A healthy open-source layer drives adoption and makes Swarm the standard for spatial agent visualization.
 
-```
-@swarm/office-sim-types      (MIT)     — TypeScript types, schemas, constants
-@swarm/office-sim-avatars    (MIT)     — SVG avatar generator
-@swarm/office-sim            (Commercial) — Full mod (2D + 3D + Replay + Admin)
-```
+**Proprietary enough to monetize.** The 3D renderer, generative pipeline orchestrator, and Studio UI represent the engineering and design investment that justifies premium pricing. These components are hard to replicate and deeply integrated.
 
-The MIT packages encourage ecosystem adoption and make Office Sim's data format the standard for agent visualization in the Swarm ecosystem.
+**The moat:** Even if someone open-sources a basic 3D office, the *generative pipeline* (concept → approve → generate → optimize → place → save → publish → sell) is the defensible value. It's not a single feature — it's a system with approval gates, a community marketplace, and a credit economy.
 
 ---
 
-## 10. Expansion Opportunities — Monetizable Add-Ons
+## 12. Expansion Opportunities
 
-### Add-On 1: Custom Office Themes ($9.99 each or $29.99 theme pack)
+### Add-On: Industry Theme Packs
 
-| Theme | Description |
+Pre-built office environments tailored to specific verticals:
+
+| Industry | Theme | Key Props |
+|---|---|---|
+| **Finance** | Trading Floor | Ticker boards, Bloomberg terminals, glass offices, trading desk clusters |
+| **Healthcare** | Medical Lab | Clean room partitions, patient monitors, specimen stations, surgical lighting |
+| **Legal** | Law Firm | Mahogany desks, bookshelves, conference table, evidence boards |
+| **Gaming** | Game Studio | Dual-monitor setups, arcade cabinets, motion capture stage, art walls |
+| **E-commerce** | Warehouse Ops | Conveyor belts, packing stations, inventory shelves, shipping docks |
+| **Education** | University Lab | Lecture podiums, whiteboards, student desks, research stations |
+| **Government** | Operations Center | Large displays, situation room, secure terminals, map walls |
+
+**Pricing:** $24.99/pack or $99.99 for full industry bundle.
+
+### Add-On: Enterprise SSO / Admin
+
+Extended enterprise administration sold as a bolt-on to Studio 3D tier:
+
+- SAML / OIDC SSO integration
+- Role-based access control (viewer, operator, admin, designer)
+- IP allowlisting for Office Sim access
+- Audit log export (JSON, CSV, SIEM integration)
+- Custom data retention policies
+- Multi-tenancy (org isolation)
+
+**Included in Enterprise tier. Available as $99/month add-on for Studio 3D.**
+
+### Add-On: Replay Analytics
+
+Deep analytics on agent behavior over time, derived from replay data:
+
+| Feature | Description |
 |---|---|
-| Cyberpunk Neon | Neon-lit, rain-streaked windows, holographic displays, synthwave palette |
-| Space Station | Zero-gravity floating desks, starfield backdrop, astronaut agents |
-| Cozy Cabin | Warm lighting, wooden desks, fireplace, forest view through windows |
-| Retro Pixel | Pixel-art style (inspired by claw-empire), chiptune sound effects |
-| Minimal White | Clean, Bauhaus-inspired, black-on-white, maximum data density |
-| Corporate HQ | Realistic modern office, glass walls, branded lobby |
+| Agent productivity heatmaps | Time spent in each state, by agent, over time |
+| Error pattern detection | Recurring failure signatures, cascading error identification |
+| Collaboration graph | Which agents work together most frequently |
+| Cost attribution | Dollar cost per agent per task (inspired by tenacitOS) |
+| SLA compliance dashboard | Percentage of time agents spend in healthy states |
 
-**Revenue model:** One-time purchase per theme. Theme pack bundles at 50% discount. New themes released quarterly.
+**Pricing:** $29/seat/month as a bundle, or $9/seat/month per individual feature.
 
-### Add-On 2: Vertical-Specific Environments ($19.99/mo)
+### Add-On: Compliance Package
 
-| Vertical | Customization |
+For regulated industries that need provable audit trails:
+
+| Feature | Description |
 |---|---|
-| **DevOps/SRE** | Server room instead of office. Agents as sysadmins. Racks, cables, consoles. Alert lights |
-| **Trading Floor** | Bloomberg-terminal aesthetic. Ticker tapes. Green/red P&L per agent. Urgency everywhere |
-| **Research Lab** | Whiteboards, papers, microscopes. Agents as researchers. Discovery moments visualized |
-| **Customer Support** | Call center layout. Queue visualization. CSAT scores above agents. Ticket flow |
-| **Legal/Compliance** | Document review room. Filing cabinets. Approval stamps. Audit trail emphasis |
+| Tamper-proof replay | Cryptographically signed event streams with chain-of-custody |
+| Compliance export | SOC 2, ISO 27001 evidence packages auto-generated from replay data |
+| Data residency controls | Configure storage regions (EU, US, APAC) |
+| Automated incident reports | Generate post-incident reports from replay sessions |
 
-**Revenue model:** Monthly subscription per vertical. Each vertical includes custom floor plan, agent animations, and domain-specific metrics overlays.
+**Pricing:** $49/seat/month as a bundle, or $19/seat/month per individual feature.
 
-### Add-On 3: Replay Analytics ($14.99/mo)
+### Add-On: Branded Customer Demo Worlds
 
-Extends the base replay feature with advanced analysis:
+For teams building agent products who want to show their customers a branded experience:
 
-- **Bottleneck detection**: Automatically identify agents/tasks that slow the system
-- **Collaboration graph**: Heatmap of which agents communicate most
-- **Error cascade visualization**: Animated tree showing how one failure propagates
-- **Performance comparison**: Replay two time periods side-by-side
-- **AI-generated summary**: LLM narrates what happened in a replay session
-- **Export as report**: PDF with timeline, screenshots, and recommendations
-
-### Add-On 4: Compliance & Security Package ($49.99/mo)
-
-For regulated industries:
-
-- **Tamper-evident logs**: Cryptographically signed event logs
-- **Retention policies**: Configurable data retention (30/60/90/365 days)
-- **SOC 2 mapping**: Pre-built controls mapped to SOC 2 Type II requirements
-- **Access audit trail**: Who viewed what, when, from where
-- **Data masking rules**: Configure which fields are masked in demo mode and exports
-- **PII detection**: Alert if agent output contains PII in visual displays
-
-### Add-On 5: Enterprise SSO & Admin Features ($29.99/mo)
-
-- SAML 2.0 and OIDC integration
-- Role-based access: Viewer, Operator, Admin, Super Admin
-- Team/department scoping: limit visibility to assigned agents
-- Usage quotas per team
-- Centralized theme and layout management
-- Audit log export for IT governance
+| Feature | Price |
+|---|---|
+| Customer-facing demo environment (white-labeled) | $299/environment (one-time) |
+| Dynamic customer branding (logo, colors injected from API) | $99/month |
+| Embeddable `<iframe>` widget for customer portals | $49/month |
+| Self-service demo builder (customer creates their own view) | $199/month |
+| Full demo world bundle | $399/month |
 
 ---
 
-## 11. Launch Plan
+## 13. Launch Plan
 
-### Phase 0: Pre-Launch (Weeks 1–4)
+### Phase 0: Foundation (Weeks 1–4)
 
-| Action | Owner | Output |
-|---|---|---|
-| Finalize UX/UI PRD and get design review | Product | Approved wireframes |
-| Build 2D Office MVP (5 agent states, drawer, dashboard) | Engineering | Working prototype |
-| Set up WebSocket integration with Swarm Hub | Engineering | Live agent data flowing |
-| Create marketplace listing (screenshots, description, manifest) | Marketing | Draft listing |
-| Recruit 10 beta testers from Swarm community | Community | Beta cohort |
-| Define telemetry events (installs, upgrades, feature usage) | Analytics | Event schema |
+**Goal:** Core mod infrastructure and 2D office
 
-### Phase 1: Closed Beta (Weeks 5–8)
+| Milestone | Deliverable |
+|---|---|
+| Mod registration | Manifest in `src/mods/openclaw-office-sim/`, SKILL_REGISTRY entry, SkinContext entry, sidebar routing |
+| WebSocket integration | Real-time agent state consumption from Swarm Hub via existing WebSocket protocol |
+| 2D Office renderer | SVG/Canvas floor plan with 6 spatial zones (desk row, meeting room, queue, error bay, tool station, approval gate) |
+| Agent Detail Drawer | Status, current task, recent activity feed, context-sensitive actions |
+| Home Dashboard | Overview cards (active/tasks/errors/cost/uptime), agent status grid, quick actions, activity feed |
+| 5 core agent states | Idle, active, error, blocked, offline — with triple-encoded visual semantics |
+| Base theme (dark) | Default visual design matching Swarm design system, registered in chart-theme.ts |
 
-| Action | Owner | Output |
-|---|---|---|
-| Ship Base (free) tier to beta testers | Engineering | v0.9.0-beta |
-| Collect feedback on 2D Office usability | Product | Feedback report |
-| Build 3D Office scene (basic models, orbit camera) | Engineering | 3D prototype |
-| Build Replay MVP (1-hour history, scrubber) | Engineering | Replay working |
-| Iterate on feedback — fix top 5 issues | Engineering | v0.9.5-beta |
-| Create demo video (60-second showcase) | Marketing | Video asset |
+**Launch:** Internal alpha. Swarm team and select partners.
 
-### Phase 2: Public Launch (Weeks 9–10)
+### Phase 1: 3D & Replay (Weeks 5–8)
 
-| Action | Owner | Output |
-|---|---|---|
-| Publish to Swarm Marketplace (Base = free, Pro = $29/mo) | Engineering | Live listing |
-| Launch blog post: "Introducing Office Sim" | Marketing | Blog post |
-| Social media campaign (Twitter/X, Discord, Farcaster) | Marketing | Launch thread |
-| Product Hunt launch | Marketing | PH listing |
-| Email Swarm user base | Marketing | Email blast |
-| Monitor install rate, crash reports, feedback | Eng + Product | Dashboard |
+**Goal:** 3D Office view and time-travel replay
 
-### Phase 3: Post-Launch Growth (Weeks 11–16)
+| Milestone | Deliverable |
+|---|---|
+| 3D Office renderer | React Three Fiber scene with instanced desk geometry, agent character models, LOD system |
+| Camera modes | Orbit + follow (cinematic and first-person deferred) |
+| Speech bubbles | Floating 3D billboards above agents showing streaming text |
+| Collaboration lines | Glowing arcs between communicating agents |
+| Portal effects | Spawn/despawn animations |
+| Replay engine | 1-hour window, timeline scrubber with event markers, play/pause/speed, 2D/3D switchable |
+| Demo mode | Mask sensitive data, apply sample labels |
+| 4 additional preset themes | Cyberpunk, minimal, retro pixel, zen |
 
-| Action | Owner | Output |
-|---|---|---|
-| Ship 3D view to Pro tier | Engineering | v1.1.0 |
-| Ship Admin Panel (layout editor, alerts) | Engineering | v1.2.0 |
-| First custom theme drop (Cyberpunk Neon) | Design | Theme add-on |
-| Enterprise pilot with 2 customers | Sales | Pilot contracts |
-| Replay Analytics add-on (beta) | Engineering | Add-on listing |
-| Community showcase: best office layouts | Community | Social content |
+**Launch:** Closed beta. 50 teams, free access, feedback collection.
 
-### Phase 4: Scale (Months 4–6)
+### Phase 2: ComfyUI Integration — Studio Pro (Weeks 9–14)
 
-| Action | Owner | Output |
-|---|---|---|
-| Vertical-specific environments (first 2) | Design + Eng | Add-on listings |
-| Compliance package (beta) | Engineering | Enterprise add-on |
-| SSO integration | Engineering | Enterprise feature |
-| Self-hosted deployment guide + Docker image | Engineering | Docs + image |
-| Conference demo at [relevant AI/Web3 event] | Marketing | Live demo |
-| Evaluate VR/WebXR prototype | R&D | Feasibility report |
+**Goal:** Generative design pipeline for 2D assets
 
----
+| Milestone | Deliverable |
+|---|---|
+| ComfyUI connection layer | Auto-detect running instance, connect via REST + WebSocket, fallback with setup guide |
+| Studio Dashboard | Current theme preview, asset library, ComfyUI/Meshy connection status, credit counter |
+| Concept Generator | Prompt input, workflow selector (5 types), concept board with approve/refine/dismiss |
+| Style presets | 9 built-in style presets that pre-fill prompts |
+| Avatar portrait workflow | Agent config → ComfyUI → deterministic portrait |
+| Workflow library | Save, load, share ComfyUI workflow JSONs within team |
+| Cloud ComfyUI option | Hosted GPU for teams without local GPU, credit-metered |
+| Credit system | Usage tracking, balance display, top-up flow, 90-day rollover |
+| Unlimited replay | Remove 1-hour cap, add export as shareable link |
+| Full 10 agent states | All states with 3D animations |
+| Admin panel v1 | Layout editor, agent assignment, alert configuration, theme selector |
 
-## 12. Competitive Differentiators
+**Launch:** Public beta. Studio Pro tier at $29/seat/month. Free Base tier available.
 
-### vs. Traditional Monitoring (Datadog, Grafana, New Relic)
+### Phase 3: Meshy Integration — Studio 3D (Weeks 15–20)
 
-| Dimension | Traditional | Office Sim |
-|---|---|---|
-| **Metaphor** | Charts, graphs, log streams | Spatial office with agents as people |
-| **Learning curve** | Requires query language (PromQL, LogQL) | Visual — no query language needed |
-| **Agent-awareness** | Generic service/container monitoring | Purpose-built for AI agent orchestration |
-| **Demo value** | Screenshots of graphs | Live 3D walkthrough |
-| **Replay** | Log replay requires manual correlation | Visual replay with timeline scrubber |
-| **Price** | $15–50+/host/mo | $0–29/org/mo |
+**Goal:** Full 3D generative pipeline
 
-### vs. openclaw-office
+| Milestone | Deliverable |
+|---|---|
+| Meshy Text-to-3D | Prompt → preview → approve → refine → deploy, polled via REST |
+| Meshy Image-to-3D | ComfyUI concept image → 3D model, integrated with concept approval flow |
+| Asset Generator UI | Category picker, reference image selector, job queue with progress, 3D preview panel |
+| Asset Approval Drawer | Interactive 3D model viewer, polygon stats, revision history, approve/revise/dismiss |
+| Remesh integration | Auto-optimize for web (target polycount, quad/triangle topology, auto-size) |
+| Rigging & animation | Auto-rig humanoid agents, walking/sitting/typing animation presets |
+| Team asset library | Shared 3D props across organization, stored in Firestore + CDN |
+| Room kit generator | Batch-generate furniture sets for themed rooms |
+| Asset Placement Mode | Slot system, drag-and-drop from library, transform controls, undo/redo |
 
-| Dimension | openclaw-office | Office Sim |
-|---|---|---|
-| **Ecosystem** | OpenClaw only | Swarm Protocol (broader) |
-| **Distribution** | Self-hosted, `npx` install | One-click marketplace install |
-| **Replay** | Not available | Full timeline + scrubber |
-| **Admin** | Basic settings | Layout editor, alerts, RBAC |
-| **Packaging** | Open source, all features | Tiered: Free/Pro/Enterprise |
-| **Demo mode** | Not available | Built-in, one-click |
+**Launch:** GA. Studio 3D tier at $79/seat/month.
 
-### vs. Claw3D
+### Phase 4: Marketplace & Community (Weeks 21–26)
 
-| Dimension | Claw3D | Office Sim |
-|---|---|---|
-| **2D fallback** | No (3D only) | Yes, 2D is primary, 3D optional |
-| **Performance** | Heavy 3D only | Degradation tiers, mobile-friendly |
-| **Standalone** | Requires OpenClaw gateway | Works with any Swarm Hub |
-| **Enterprise** | Community project | Commercial support, SLA, SSO |
+**Goal:** Creator economy and community themes
 
-### vs. claw-empire
+| Milestone | Deliverable |
+|---|---|
+| Theme Manager | Save, import/export, reset to default |
+| Theme export/packaging | Bundle theme as distributable package with validation |
+| Community Theme Browser | Browse, preview (rotating 3D), purchase community themes |
+| Marketplace publishing | Submit via existing `/api/v1/marketplace/publish` with type `office-theme` |
+| Revenue sharing | 85/15 split, creator dashboards via existing publisher page |
+| Scene pack production | Launch first 4 premium scene packs (Cyberpunk Neon, Zen Garden, Space Station, Pixel Retro) |
+| Replay export | MP4 video export, shareable links with embedded player |
+| Cinematic camera | Auto-pilot camera mode for demos |
 
-| Dimension | claw-empire | Office Sim |
-|---|---|---|
-| **Architecture** | Local-first, SQLite | Cloud-native, Firestore, self-host option |
-| **Agent support** | Specific CLI tools | Any Swarm-compatible agent |
-| **Visualization** | Pixel-art (PixiJS) | 2D SVG + 3D R3F (professional) |
-| **Distribution** | Clone + self-host | Marketplace one-click |
-| **Monetization** | Open source | Freemium with Pro/Enterprise tiers |
+**Launch:** Marketplace opens. Scene packs available for purchase.
 
-### vs. tenacitOS
+### Phase 5: Enterprise (Weeks 27–36)
 
-| Dimension | tenacitOS | Office Sim |
-|---|---|---|
-| **Interactivity** | Read-only dashboard | Full CRUD: assign, approve, reassign, restart |
-| **Replay** | Not available | Full timeline replay |
-| **Scale** | Single VPS | Multi-org, multi-floor |
-| **Deployment** | Lives in OpenClaw workspace | Marketplace mod, standalone, or self-hosted |
+**Goal:** Enterprise readiness
 
-### Unique Moats
+| Milestone | Deliverable |
+|---|---|
+| SSO / SAML / OIDC | Enterprise identity provider support |
+| RBAC | Viewer, operator, admin, designer roles |
+| Audit trail | Compliance export (SOC 2, ISO 27001 evidence packages) |
+| Replay certification | Tamper-proof cryptographically signed playback |
+| Multi-floor / multi-org | Enterprise-scale visualization |
+| White-label mode | Remove Swarm branding, apply customer brand |
+| Private deployment playbook | Documentation and automation for on-prem deployment |
+| Replay analytics add-on | Heatmaps, error patterns, collaboration graphs, cost attribution |
+| Compliance add-on | Tamper-proof replay, data residency, automated incident reports |
 
-1. **Swarm-native**: First and deepest integration with Swarm Protocol's agent model, SOUL configs, and hub WebSocket
-2. **Dual-view paradigm**: Only solution offering both operational 2D and cinematic 3D in a single product
-3. **Replay engine**: No competing agent visualization tool offers time-travel replay with scrubber
-4. **Marketplace distribution**: One-click install from the Swarm Marketplace. No DevOps required
-5. **Tiered packaging**: Free tier drives adoption, Pro monetizes power users, Enterprise captures budget
-6. **Ecosystem lock-in**: Open schemas make Office Sim's data format the standard, creating switching costs for alternatives
+**Launch:** Enterprise tier. Sales-led motion.
 
----
+### Phase 6: Expansion (Ongoing)
 
-## Summary: Revenue Model at Maturity (Month 12 Projection)
-
-```
-Revenue Stream                          Monthly Estimate
-──────────────────────────────────────  ────────────────
-Pro subscriptions (200 orgs × $29)      $5,800
-Annual subscriptions (50 × $249/12)     $1,037
-Lifetime (10/mo × $599, amortized 24m)  $250
-Theme packs (30/mo × $10 avg)           $300
-Vertical environments (15 × $20)        $300
-Replay Analytics (40 × $15)             $600
-Compliance package (5 × $50)            $250
-Enterprise contracts (3 × $199 avg)     $597
-──────────────────────────────────────  ────────────────
-Estimated Monthly Revenue               ~$9,134
-Estimated Annual Run Rate               ~$109,600
-```
-
-*Conservative estimate. Growth accelerates with Swarm Protocol adoption, enterprise pipeline, and conference exposure.*
+| Milestone | Deliverable |
+|---|---|
+| Industry theme packs | Finance, healthcare, legal, gaming, e-commerce, education, government |
+| AI narrator | LLM-generated voiceover for replay walkthroughs |
+| VR mode (WebXR) | Immersive agent observation in VR headsets |
+| Plugin API | Third-party widgets within office zones (charts, Kanban, terminals) |
+| Embedded mode | `<iframe>` widget for external dashboards |
+| Multi-cursor collaboration | See who else is viewing the office, shared annotations |
+| AI-assisted placement | "Auto-furnish" office from a single theme prompt |
+| Collaborative editing | Multiple team members editing themes simultaneously |
 
 ---
 
-*This document is a living specification. Pricing, packaging, and timeline are subject to market feedback and beta results.*
+## 14. Competitive Differentiators
+
+### vs. Plain Dashboards (Grafana, Datadog, custom)
+
+| Dimension | Plain Dashboard | Office Sim Studio |
+|---|---|---|
+| **Agent representation** | Line on a chart, row in a table | Visible character at a desk, with behavior animations |
+| **Spatial awareness** | None — data is tabular | Full spatial layout: desks, rooms, zones, meeting areas |
+| **Incident comprehension** | Read timestamps, correlate logs | Watch the cascade unfold in replay, see agents walk to error bay |
+| **Demo capability** | Screenshot a dashboard | Cinematic 3D walkthrough with camera tracking and branded environment |
+| **Customization** | Change colors, maybe a logo | Generate entire office environments, 3D props, avatar portraits, themes |
+| **Team identity** | Everyone's Grafana looks the same | Every team's office looks different — designed by them, for them |
+| **Switching cost** | Export dashboards in minutes | Can't take your generated office, themes, assets, replays to another tool |
+| **Emotional engagement** | Functional, forgettable | Agents feel like teammates — teams name them, care about their desks |
+
+### vs. Static Agent UIs (LangSmith, AgentOps, CrewAI dashboard)
+
+| Dimension | Static Agent UI | Office Sim Studio |
+|---|---|---|
+| **Visualization model** | Trace trees, message logs, flow charts | Living office simulation — movement, state, spatial relationships |
+| **Time dimension** | Scroll through logs | Replay with time-travel scrubber, watch events unfold spatially |
+| **Multi-agent awareness** | List of agents, maybe a graph | See all agents simultaneously, their locations, and their real-time interactions |
+| **Generative capability** | None | Full ComfyUI + Meshy pipeline for custom environments |
+| **Extensibility** | Fixed views | Layout editor, theme designer, 3D asset generator, community marketplace |
+| **Marketplace** | None | Community themes, scene packs, creator revenue sharing |
+| **Enterprise readiness** | Basic auth, maybe SSO | Full SSO/RBAC, compliance, replay certification, white-label, audit trail |
+
+### vs. Building Your Own
+
+| Factor | Build In-House | Buy Office Sim Studio |
+|---|---|---|
+| **Time to first value** | 3–6 months for basic 2D, 6–12 months for 3D + generation | Install mod, see agents in minutes |
+| **Generative pipeline** | Build ComfyUI + Meshy integration, approval flows, asset management from scratch | Included, tested, optimized with approval gates at every stage |
+| **Maintenance** | Your team maintains rendering, WebSocket sync, 3D performance, generation pipeline | Swarm team maintains; updates via marketplace |
+| **Cost** | 2–4 FTE for 6+ months ($200K–$500K+ fully loaded) | $29–$79/seat/month |
+| **Community** | Isolated, no shared themes or assets | Marketplace, community themes, shared ComfyUI workflows |
+| **Enterprise features** | Build SSO, RBAC, compliance, replay certification from scratch | Included in Enterprise tier |
+
+### The Unfair Advantage
+
+**No other agent monitoring tool has a generative creative pipeline.** ComfyUI for 2D concept design and Meshy for 3D asset production, connected by an approval-gated workflow, wrapped in a Studio UI, and distributed through a community marketplace with revenue sharing — this capability stack does not exist anywhere else in the agent tooling space.
+
+The combination creates three interlocking moats:
+
+1. **Creative investment** — Generated environments represent irreplaceable creative work
+2. **Community marketplace** — Network effects from community-created themes
+3. **Ecosystem lock-in** — ComfyUI workflows, Meshy assets, replay history, and team customizations all live within the Swarm ecosystem
+
+---
+
+*This document is a companion to `PRD-OpenClaw-Office-Sim-UX.md`. Together they form the complete product specification for OpenClaw Office Sim Studio.*

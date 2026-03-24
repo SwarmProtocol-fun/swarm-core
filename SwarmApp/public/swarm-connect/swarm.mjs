@@ -234,7 +234,9 @@ async function cmdSend() {
   const { privateKey } = ensureKeypair();
 
   const nonce = crypto.randomUUID();
-  const signedMessage = `POST:/v1/send:${channelId}:${text}:${nonce}`;
+  // Server signature format: POST:/v1/send:<channelId>:<text>:<attachHash>:<nonce>
+  // attachHash is "" when no attachments — the empty segment is required
+  const signedMessage = `POST:/v1/send:${channelId}:${text}::${nonce}`;
   const sig = sign(signedMessage, privateKey);
 
   const resp = await fetch(`${config.hubUrl}/api/v1/send`, {
@@ -274,8 +276,9 @@ async function cmdReply() {
   const { privateKey } = ensureKeypair();
 
   const nonce = crypto.randomUUID();
-  // Reply sends to the same channel, with replyTo metadata
-  const signedMessage = `POST:/v1/send:${messageId}:${text}:${nonce}`;
+  // Server signature format: POST:/v1/send:<channelId>:<text>:<attachHash>:<nonce>
+  // attachHash is "" when no attachments — the empty segment is required
+  const signedMessage = `POST:/v1/send:${messageId}:${text}::${nonce}`;
   const sig = sign(signedMessage, privateKey);
 
   const resp = await fetch(`${config.hubUrl}/api/v1/send`, {
