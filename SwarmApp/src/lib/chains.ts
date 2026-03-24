@@ -242,16 +242,16 @@ export function getChain(key: string): ChainConfig | undefined {
     return CHAIN_CONFIGS[key];
 }
 
-/** Get native currency symbol for a chain (default: "ETH") */
+/** Get native currency symbol for a chain (default: "HBAR" for Hedera Mainnet) */
 export function getCurrencySymbol(chainId?: number): string {
-    if (!chainId) return "ETH";
-    return getChainById(chainId)?.nativeCurrency.symbol ?? "ETH";
+    if (!chainId) return "HBAR";
+    return getChainById(chainId)?.nativeCurrency.symbol ?? "HBAR";
 }
 
 /** Get native currency decimals for a chain */
 export function getCurrencyDecimals(chainId?: number): number {
-    if (!chainId) return 18; // ETH default
-    return getChainById(chainId)?.nativeCurrency.decimals ?? 18;
+    if (!chainId) return 8; // HBAR default (Hedera uses 8 decimals)
+    return getChainById(chainId)?.nativeCurrency.decimals ?? 8;
 }
 
 /** Convert raw amount to human-readable using chain-specific decimals */

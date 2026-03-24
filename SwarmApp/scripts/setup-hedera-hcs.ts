@@ -8,7 +8,7 @@
  *
  * Requirements:
  *   - Hedera testnet account (https://portal.hedera.com)
- *   - Testnet HBAR (https://portal.hedera.com/faucet)
+ *   - Testnet HBAR (free from faucet: https://portal.hedera.com/faucet)
  *   - Environment variables set in .env
  */
 
@@ -152,7 +152,7 @@ function printSummary(topicId: string): void {
 
     console.log("📊 Topic Information:");
     console.log(`   Topic ID: ${topicId}`);
-    console.log(`   Network: Hedera Testnet`);
+    console.log(`   Network: Hedera Mainnet`);
     console.log(`   Mirror Node: ${MIRROR_NODE}`);
     console.log(`   RPC: ${TESTNET_RPC}\n`);
 

@@ -22,7 +22,8 @@ Agent Action → HCS Topic → Mirror Node Stream → Scoring Engine → Live UI
 
 1. **Hedera Testnet Account**
    - Create account at: https://portal.hedera.com
-   - Fund with testnet HBAR: https://portal.hedera.com/faucet
+   - Fund with **free** testnet HBAR: https://portal.hedera.com/faucet
+   - **Why Testnet?** Free HBAR for hackathon demos, easy for judges to test
 
 2. **Node.js Dependencies**
    ```bash
@@ -43,7 +44,7 @@ HEDERA_OPERATOR_KEY=302e020100300506032b65700422042... # Your private key
 # HCS Reputation Topic ID (created in Step 2)
 HEDERA_REPUTATION_TOPIC_ID=0.0.TOPIC_ID
 
-# Mirror Node URL (optional, defaults to testnet)
+# Mirror Node URL (defaults to testnet)
 HEDERA_MIRROR_NODE_URL=https://testnet.mirrornode.hedera.com
 
 # Platform Wallet Private Key (for checkpointing scores to NFT contract)

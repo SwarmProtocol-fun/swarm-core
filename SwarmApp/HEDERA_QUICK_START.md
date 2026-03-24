@@ -11,10 +11,12 @@ Get your privacy-first reputation system running in **5 minutes**.
    - Create a new testnet account
    - Copy your Account ID (e.g., `0.0.12345`)
    - Copy your Private Key (DER format)
+   - **Why Testnet?** Free HBAR for hackathon demos, easy for judges to test without buying HBAR
 
-2. **Get Testnet HBAR**
+2. **Get Testnet HBAR (FREE)**
    - Faucet: https://portal.hedera.com/faucet
-   - Request 10,000 testnet HBAR (free)
+   - Request 10,000 testnet HBAR (completely free)
+   - Instant delivery to your testnet account
 
 3. **Platform Wallet**
    - Any EVM wallet (MetaMask, etc.)
@@ -34,7 +36,7 @@ HEDERA_OPERATOR_KEY=302e020100300506032b657004220420...  # Your DER private key
 # Platform Wallet (for NFT checkpoints)
 HEDERA_PLATFORM_KEY=0xYOUR_PRIVATE_KEY
 
-# Optional: Mirror Node URL (defaults to testnet)
+# Mirror Node URL (defaults to testnet)
 HEDERA_MIRROR_NODE_URL=https://testnet.mirrornode.hedera.com
 ```
 
