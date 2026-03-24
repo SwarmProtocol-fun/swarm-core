@@ -154,25 +154,42 @@ function processScoreEvent(event: ScoreEvent): ScoreState {
 
 /**
  * Sync computed scores to Firestore.
- * Updates all agents with matching ASN.
+ * Queries agents by ASN first, then falls back to agentAddress field.
  */
 async function syncScoresToFirestore(state: ScoreState): Promise<void> {
     try {
-        // Find agent by ASN
         const agentsRef = collection(db, "agents");
-        const agentQuery = await getDoc(doc(agentsRef, state.asn)); // Assuming ASN is doc ID or we query by field
 
-        // For now, let's query by agentAddress (more reliable)
-        // In production, you'd have an ASN index
-        const snapshot = await getDoc(doc(agentsRef, state.agentAddress));
+        // Try ASN lookup first (preferred, uses resolveAgentId cache)
+        let agentDocId = asnToAgentId.get(state.asn);
 
-        if (!snapshot.exists()) {
-            console.warn(`No agent found for ASN ${state.asn}, skipping Firestore sync`);
+        if (!agentDocId) {
+            // Query by ASN field
+            const asnSnap = await getDocs(query(agentsRef, where("asn", "==", state.asn)));
+            if (!asnSnap.empty) {
+                agentDocId = asnSnap.docs[0].id;
+                asnToAgentId.set(state.asn, agentDocId);
+            }
+        }
+
+        // Fallback: query by wallet/agent address
+        if (!agentDocId && state.agentAddress) {
+            const addrSnap = await getDocs(
+                query(agentsRef, where("walletAddress", "==", state.agentAddress))
+            );
+            if (!addrSnap.empty) {
+                agentDocId = addrSnap.docs[0].id;
+                asnToAgentId.set(state.asn, agentDocId);
+            }
+        }
+
+        if (!agentDocId) {
+            console.warn(`No agent found for ASN ${state.asn} or address ${state.agentAddress}, skipping Firestore sync`);
             return;
         }
 
         // Update Firestore with new scores
-        await updateDoc(doc(agentsRef, snapshot.id), {
+        await updateDoc(doc(agentsRef, agentDocId), {
             creditScore: state.creditScore,
             trustScore: state.trustScore,
             lastScoreUpdate: serverTimestamp(),
@@ -240,6 +257,7 @@ export function getAllRecentEvents(): RecentEvent[] {
 
 let isSubscribing = false;
 let lastProcessedSequence = 0;
+let subscriberInterval: ReturnType<typeof setInterval> | null = null;
 
 /** Check if the subscriber is currently running. */
 export function isSubscriberRunning(): boolean {
@@ -266,7 +284,7 @@ export async function startMirrorNodeSubscriber(): Promise<void> {
     console.log(`🔄 Starting Mirror Node subscriber for topic ${topicId.toString()}`);
 
     // Poll every 10 seconds
-    setInterval(async () => {
+    subscriberInterval = setInterval(async () => {
         try {
             const response = await fetchTopicMessages(
                 topicId.toString(),
@@ -375,6 +393,10 @@ export async function startMirrorNodeSubscriber(): Promise<void> {
  * Stop the subscriber.
  */
 export function stopMirrorNodeSubscriber(): void {
+    if (subscriberInterval) {
+        clearInterval(subscriberInterval);
+        subscriberInterval = null;
+    }
     isSubscribing = false;
     console.log("🛑 Stopped Mirror Node subscriber");
 }

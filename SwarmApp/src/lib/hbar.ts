@@ -384,7 +384,7 @@ console.log("Task posted:", tx.hash);`,
         codeSnippet: `import { ethers } from "ethers";
 import { HEDERA_CONTRACTS, HEDERA_TREASURY_ABI, toHbar } from "@/lib/swarm-contracts";
 
-const provider = new ethers.JsonRpcProvider("https://mainnet.hashio.io/api");
+const provider = new ethers.JsonRpcProvider("https://testnet.hashio.io/api");
 const treasury = new ethers.Contract(
   HEDERA_CONTRACTS.AGENT_TREASURY, HEDERA_TREASURY_ABI, provider
 );

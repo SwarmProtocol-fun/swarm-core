@@ -9,6 +9,8 @@
 
 import { ethers } from "ethers";
 import { CONTRACTS, AGENT_IDENTITY_NFT_ABI } from "./swarm-contracts";
+import { db } from "@/lib/firebase";
+import { collection, query, where, getDocs, limit } from "firebase/firestore";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
@@ -103,16 +105,47 @@ export async function getAgentNFTIdentity(agentAddress: string): Promise<AgentNF
 }
 
 /**
- * Get agent credit score by ASN
- * (looks up agent address by ASN, then queries NFT)
+ * Get agent credit score by ASN.
+ * Looks up agent wallet address from Firestore by ASN, then queries the on-chain NFT.
+ * Falls back to Firestore-stored scores if NFT lookup fails.
  */
 export async function getCreditScoreByASN(asn: string): Promise<{ creditScore: number; trustScore: number } | null> {
     try {
-        // TODO: Look up agent address by ASN from Firestore
-        // For now, this is a placeholder - in production, we'd query
-        // the asnMemoryBackups collection to find the wallet address
+        // Look up agent by ASN in Firestore
+        const q = query(
+            collection(db, "agents"),
+            where("asn", "==", asn),
+            limit(1),
+        );
+        const snap = await getDocs(q);
 
-        return null; // Will be implemented when agent address lookup is available
+        if (snap.empty) {
+            console.warn(`No agent found for ASN ${asn}`);
+            return null;
+        }
+
+        const agentData = snap.docs[0].data();
+        const agentAddress = agentData.walletAddress || agentData.agentAddress;
+
+        // If we have Firestore-stored scores, use those as fallback
+        const firestoreScores = (typeof agentData.creditScore === "number" && typeof agentData.trustScore === "number")
+            ? { creditScore: agentData.creditScore, trustScore: agentData.trustScore }
+            : null;
+
+        // Try on-chain NFT lookup
+        if (agentAddress) {
+            try {
+                const identity = await getAgentNFTIdentity(agentAddress);
+                if (identity.hasNFT && identity.creditScore !== undefined && identity.trustScore !== undefined) {
+                    return { creditScore: identity.creditScore, trustScore: identity.trustScore };
+                }
+            } catch (nftError) {
+                console.warn(`NFT lookup failed for ASN ${asn}, using Firestore scores:`, nftError);
+            }
+        }
+
+        // Fall back to Firestore scores
+        return firestoreScores;
     } catch (error) {
         console.error("Error getting credit score by ASN:", error);
         return null;

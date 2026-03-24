@@ -59,9 +59,9 @@ export interface ChainConfig {
 // Chain Definitions
 // ═══════════════════════════════════════════════════════════════
 
-const hedera = defineChain({
+const hederaMainnet = defineChain({
     id: 295,
-    name: "Hedera",
+    name: "Hedera Mainnet",
     rpc: "https://mainnet.hashio.io/api",
 });
 
@@ -147,25 +147,24 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
 
     hedera: {
         key: "hedera",
-        name: "Hedera",
-        chainId: 295,
-        thirdwebChain: hedera,
-        rpc: "https://mainnet.hashio.io/api",
+        name: "Hedera Testnet",
+        chainId: 296,
+        thirdwebChain: hederaTestnet,
+        rpc: "https://testnet.hashio.io/api",
         nativeCurrency: { name: "HBAR", symbol: "HBAR", decimals: 8 },
         explorer: {
             name: "HashScan",
-            baseUrl: "https://hashscan.io/mainnet",
-            txUrl: (h) => `https://hashscan.io/mainnet/transaction/${h}`,
-            addressUrl: (a) => `https://hashscan.io/mainnet/account/${a}`,
-            contractUrl: (a) => `https://hashscan.io/mainnet/contract/${a}`,
+            baseUrl: "https://hashscan.io/testnet",
+            txUrl: (h) => `https://hashscan.io/testnet/transaction/${h}`,
+            addressUrl: (a) => `https://hashscan.io/testnet/account/${a}`,
+            contractUrl: (a) => `https://hashscan.io/testnet/contract/${a}`,
         },
         contracts: {
-            // NOTE: These addresses are on Hedera Mainnet (chain ID 295)
-            // Deployed contracts for Swarm Protocol
-            taskBoard: "0xC02EcE9c48E20Fb5a3D59b2ff143a0691694b9a9",
-            agentRegistry: "0x1C56831b3413B916CEa6321e0C113cc19fD250Bd",
+            // Deployed contracts on Hedera Testnet (chain ID 296)
+            taskBoard: "0xf97b6900f5573cba7dcE4e58e5118b403E098434",
+            agentRegistry: "0xC110E3bB1a898E1A4bd8Cc75a913603601e7c228",
             brandVault: "0x2254185AB8B6AC995F97C769a414A0281B42853b",
-            agentTreasury: "0x1AC9C959459ED904899a1d52f493e9e4A879a9f4",
+            agentTreasury: "0x91D581cFdda6F1AC4cA211d8A05B31BeFcEF2882",
         },
         enabled: true,
         logo: "/chains/hedera.svg",
@@ -226,15 +225,15 @@ export const ENABLED_CHAINS = Object.values(CHAIN_CONFIGS).filter((c) => c.enabl
 
 /** Thirdweb chain objects for wallet ConnectButton */
 export const WALLET_CHAINS: Chain[] = [
-  hedera,
+  hederaTestnet,
   ethereum,
   base,
   avalanche,
   sepoliaChain,
 ];
 
-/** Default chain for ConnectButton — Hedera Mainnet */
-export const DEFAULT_CHAIN = hedera;
+/** Default chain for ConnectButton — Hedera Testnet */
+export const DEFAULT_CHAIN = hederaTestnet;
 
 /** Get chain config by EVM chain ID */
 export function getChainById(chainId: number): ChainConfig | undefined {
@@ -266,14 +265,14 @@ export function toNative(rawAmount: bigint | number, chainId?: number): number {
 
 /** Get explorer TX link for a chain */
 export function getExplorerTxUrl(hash: string, chainId?: number): string {
-    if (!chainId) return `https://hashscan.io/mainnet/transaction/${hash}`;
+    if (!chainId) return `https://hashscan.io/testnet/transaction/${hash}`;
     const chain = getChainById(chainId);
     return chain?.explorer.txUrl(hash) ?? `#`;
 }
 
 /** Get explorer contract link for a chain */
 export function getExplorerContractUrl(addr: string, chainId?: number): string {
-    if (!chainId) return `https://hashscan.io/mainnet/contract/${addr}`;
+    if (!chainId) return `https://hashscan.io/testnet/contract/${addr}`;
     const chain = getChainById(chainId);
     return chain?.explorer.contractUrl(addr) ?? `#`;
 }

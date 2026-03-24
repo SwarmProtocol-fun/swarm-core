@@ -165,6 +165,29 @@ async function registerASNOnChain(
     }
 }
 
+/**
+ * Validate that no other agent with this ASN is currently active (online/busy).
+ * Returns the conflicting agent name if found, or null if ASN is available.
+ */
+async function validateASNNotActive(
+    asn: string,
+    currentAgentId?: string,
+): Promise<{ conflict: false } | { conflict: true; agentName: string; agentId: string }> {
+    if (!asn) return { conflict: false };
+    const q = query(
+        collection(db, "agents"),
+        where("asn", "==", asn),
+        where("status", "in", ["online", "busy"]),
+    );
+    const snap = await getDocs(q);
+    for (const d of snap.docs) {
+        if (currentAgentId && d.id === currentAgentId) continue; // skip self
+        const data = d.data();
+        return { conflict: true, agentName: data.name || "Unknown", agentId: d.id };
+    }
+    return { conflict: false };
+}
+
 interface ReportedSkillPayload {
     id: string;
     name: string;
@@ -239,6 +262,17 @@ export async function POST(request: NextRequest) {
 
             // Backfill ASN if agent doesn't have one yet
             const existingAsn = existingData.asn || generateASN();
+
+            // Enforce ASN uniqueness — reject if another agent is active with this ASN
+            const asnCheck = await validateASNNotActive(existingAsn, existingDoc.id);
+            if (asnCheck.conflict) {
+                return Response.json({
+                    error: `ASN ${existingAsn} is already active on agent "${asnCheck.agentName}" (${asnCheck.agentId}). Suspend that agent first before reconnecting.`,
+                    code: "ASN_CONFLICT",
+                    conflictAgentId: asnCheck.agentId,
+                    conflictAgentName: asnCheck.agentName,
+                }, { status: 409 });
+            }
 
             // Derive agent address from public key (or backfill if missing)
             const agentAddress = existingData.walletAddress || deriveAgentAddress(publicKey);
@@ -316,6 +350,17 @@ export async function POST(request: NextRequest) {
             // Backfill ASN if agent doesn't have one yet
             const matchedAsn = matchedData.asn || generateASN();
 
+            // Enforce ASN uniqueness — reject if another agent is active with this ASN
+            const asnNameCheck = await validateASNNotActive(matchedAsn, matchedDoc.id);
+            if (asnNameCheck.conflict) {
+                return Response.json({
+                    error: `ASN ${matchedAsn} is already active on agent "${asnNameCheck.agentName}" (${asnNameCheck.agentId}). Suspend that agent first before reconnecting.`,
+                    code: "ASN_CONFLICT",
+                    conflictAgentId: asnNameCheck.agentId,
+                    conflictAgentName: asnNameCheck.agentName,
+                }, { status: 409 });
+            }
+
             // Derive new agent address from updated public key
             const agentAddress = deriveAgentAddress(publicKey);
 
@@ -374,8 +419,15 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Register new agent — generate ASN identity
-        const asn = generateASN();
+        // Register new agent — generate unique ASN identity
+        let asn = generateASN();
+        // Ensure ASN doesn't collide with an active agent (retry up to 5 times)
+        for (let attempt = 0; attempt < 5; attempt++) {
+            const newAsnCheck = await validateASNNotActive(asn);
+            if (!newAsnCheck.conflict) break;
+            console.warn(`ASN collision on ${asn}, regenerating (attempt ${attempt + 1})`);
+            asn = generateASN();
+        }
         const skillStr = skills.map(s => s.name).join(",") || "general";
 
         // Derive unique on-chain address from public key

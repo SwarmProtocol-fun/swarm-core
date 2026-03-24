@@ -14,9 +14,9 @@ describe("toNative", () => {
     expect(toNative(100_000_000)).toBeCloseTo(1);
   });
 
-  it("converts tinybars to HBAR (8 decimals, chainId 295)", () => {
-    // Hedera mainnet is chainId 295 in chains.ts
-    expect(toNative(100_000_000, 295)).toBeCloseTo(1);
+  it("converts tinybars to HBAR (8 decimals, chainId 296)", () => {
+    // Hedera testnet is chainId 296 in chains.ts
+    expect(toNative(100_000_000, 296)).toBeCloseTo(1);
   });
 
   it("handles zero", () => {
@@ -51,8 +51,8 @@ describe("getCurrencySymbol", () => {
     expect(getCurrencySymbol()).toBe("HBAR");
   });
 
-  it("returns HBAR for Hedera (295)", () => {
-    expect(getCurrencySymbol(295)).toBe("HBAR");
+  it("returns HBAR for Hedera Testnet (296)", () => {
+    expect(getCurrencySymbol(296)).toBe("HBAR");
   });
 
   it("returns HBAR for unknown chainId", () => {
@@ -61,8 +61,8 @@ describe("getCurrencySymbol", () => {
 });
 
 describe("getCurrencyDecimals", () => {
-  it("returns 8 for Hedera (295)", () => {
-    expect(getCurrencyDecimals(295)).toBe(8);
+  it("returns 8 for Hedera Testnet (296)", () => {
+    expect(getCurrencyDecimals(296)).toBe(8);
   });
 
   it("defaults to 8 for undefined chainId", () => {
@@ -75,8 +75,8 @@ describe("getCurrencyDecimals", () => {
 });
 
 describe("getChainById", () => {
-  it("finds Hedera by chainId (295)", () => {
-    const chain = getChainById(295);
+  it("finds Hedera Testnet by chainId (296)", () => {
+    const chain = getChainById(296);
     expect(chain).toBeDefined();
     expect(chain!.key).toBe("hedera");
   });
@@ -87,13 +87,13 @@ describe("getChainById", () => {
 });
 
 describe("getExplorerTxUrl", () => {
-  it("returns HashScan URL for undefined chainId", () => {
+  it("returns HashScan testnet URL for undefined chainId", () => {
     const url = getExplorerTxUrl("0xabc");
-    expect(url).toBe("https://hashscan.io/mainnet/transaction/0xabc");
+    expect(url).toBe("https://hashscan.io/testnet/transaction/0xabc");
   });
 
-  it("returns HashScan URL for Hedera (295)", () => {
-    const url = getExplorerTxUrl("0xabc", 295);
+  it("returns HashScan URL for Hedera Testnet (296)", () => {
+    const url = getExplorerTxUrl("0xabc", 296);
     expect(url).toContain("hashscan.io");
     expect(url).toContain("0xabc");
   });

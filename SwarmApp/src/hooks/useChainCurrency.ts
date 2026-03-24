@@ -13,7 +13,7 @@ export function useChainCurrency() {
   const chain = useActiveWalletChain();
   const chainId = chain?.id;
   const symbol = getCurrencySymbol(chainId);
-  const isHedera = chainId === 295;
+  const isHedera = chainId === 295 || chainId === 296;
 
   /** Format a numeric value with the correct currency prefix/suffix */
   const fmt = (value: number | string, decimals = 2): string => {

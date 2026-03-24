@@ -169,6 +169,19 @@ function AgentDetailPage() {
   const [registerSkills, setRegisterSkills] = useState('');
   const [registerFeeRate, setRegisterFeeRate] = useState('500');
 
+  // Memory management state
+  const [memoryBackingUp, setMemoryBackingUp] = useState(false);
+  const [memoryStatus, setMemoryStatus] = useState<{
+    hasBackup: boolean;
+    lastBackup?: string;
+    messageCount?: number;
+    cid?: string;
+    hederaTopicId?: string;
+    hederaMemoryEnabled?: boolean;
+  } | null>(null);
+  const [memoryStatusLoading, setMemoryStatusLoading] = useState(false);
+  const [suspendingASN, setSuspendingASN] = useState(false);
+
   const loadAgentData = async () => {
     if (!currentOrg) return;
 
@@ -355,6 +368,67 @@ function AgentDetailPage() {
     const txHash = await swarmWrite.registerAgent(registerName.trim(), registerSkills.trim(), feeRate);
     if (txHash) {
       swarm.refetch();
+    }
+  };
+
+  // Memory: fetch backup status
+  const loadMemoryStatus = async () => {
+    if (!agent || !currentOrg) return;
+    setMemoryStatusLoading(true);
+    try {
+      const res = await fetch(`/api/v1/asn-memory/agent-status?agentId=${agent.id}&orgId=${currentOrg.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setMemoryStatus(data);
+      }
+    } catch (err) {
+      console.error("Failed to load memory status:", err);
+    } finally {
+      setMemoryStatusLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (agent?.id && currentOrg?.id) loadMemoryStatus();
+  }, [agent?.id, currentOrg?.id]);
+
+  // Memory: trigger backup
+  const handleBackupMemory = async () => {
+    if (!agent || !currentOrg || !agent.asn) return;
+    setMemoryBackingUp(true);
+    try {
+      const res = await fetch("/api/v1/asn-memory/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId: agent.id, asn: agent.asn, orgId: currentOrg.id }),
+      });
+      if (res.ok) {
+        await loadMemoryStatus(); // Refresh status
+      } else {
+        const err = await res.json();
+        setError(err.error || "Backup failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Backup failed");
+    } finally {
+      setMemoryBackingUp(false);
+    }
+  };
+
+  // ASN: suspend (set offline to release ASN)
+  const handleSuspendASN = async () => {
+    if (!agent || !currentOrg) return;
+    setSuspendingASN(true);
+    try {
+      await updateAgent(agentId, { status: "offline" as Agent['status'] });
+      if (agent.status === "online") {
+        await agentCheckOut(agent, currentOrg.id);
+      }
+      setAgent({ ...agent, status: "offline" });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to suspend ASN");
+    } finally {
+      setSuspendingASN(false);
     }
   };
 
@@ -998,6 +1072,91 @@ function AgentDetailPage() {
                 )}
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Memory & ASN Management */}
+      {agent.asn && (
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base">🧠 Memory & ASN Management</CardTitle>
+              <div className="flex gap-2">
+                {(agent.status === "online" || agent.status === "busy") && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50"
+                    onClick={handleSuspendASN}
+                    disabled={suspendingASN}
+                  >
+                    {suspendingASN ? "Suspending..." : "Suspend ASN"}
+                  </Button>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs border-purple-300 text-purple-600 hover:bg-purple-50"
+                  onClick={handleBackupMemory}
+                  disabled={memoryBackingUp || !agent.asn}
+                >
+                  {memoryBackingUp ? "Backing up..." : "Backup Now"}
+                </Button>
+              </div>
+            </div>
+            <CardDescription>Manage agent memory backups, ASN suspension, and Hedera memory topics</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-lg border border-border">
+                <div className="text-[10px] text-muted-foreground mb-1">Backup Status</div>
+                {memoryStatusLoading ? (
+                  <div className="text-xs text-muted-foreground">Loading...</div>
+                ) : memoryStatus?.hasBackup ? (
+                  <>
+                    <div className="text-sm font-medium text-emerald-600 dark:text-emerald-400">Backed Up</div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      {memoryStatus.lastBackup ? new Date(memoryStatus.lastBackup).toLocaleDateString() : "—"}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-sm font-medium text-muted-foreground">No Backup</div>
+                )}
+              </div>
+              <div className="p-3 rounded-lg border border-border">
+                <div className="text-[10px] text-muted-foreground mb-1">Messages</div>
+                <div className="text-xl font-bold">{memoryStatus?.messageCount ?? 0}</div>
+              </div>
+              <div className="p-3 rounded-lg border border-border">
+                <div className="text-[10px] text-muted-foreground mb-1">Hedera Memory</div>
+                <div className={`text-sm font-medium ${agent.hederaMemoryEnabled ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                  {agent.hederaMemoryEnabled ? "Enabled" : "Not Set Up"}
+                </div>
+                {agent.hederaMemoryTopicId && (
+                  <div className="text-[9px] font-mono text-muted-foreground mt-0.5 truncate" title={agent.hederaMemoryTopicId}>
+                    {agent.hederaMemoryTopicId}
+                  </div>
+                )}
+              </div>
+              <div className="p-3 rounded-lg border border-border">
+                <div className="text-[10px] text-muted-foreground mb-1">ASN Active</div>
+                <div className={`text-sm font-medium ${agent.status === "online" || agent.status === "busy" ? "text-emerald-600 dark:text-emerald-400" : "text-muted-foreground"}`}>
+                  {agent.status === "online" || agent.status === "busy" ? "Yes" : "Suspended"}
+                </div>
+                <div className="text-[9px] text-muted-foreground mt-0.5">
+                  {agent.status === "online" || agent.status === "busy"
+                    ? "Suspend to release ASN"
+                    : "ASN available for reassignment"}
+                </div>
+              </div>
+            </div>
+            {memoryStatus?.cid && (
+              <div className="mt-3 p-2 rounded-lg bg-muted/50 text-xs">
+                <span className="text-muted-foreground">Backup CID: </span>
+                <span className="font-mono text-[10px] break-all">{memoryStatus.cid}</span>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
