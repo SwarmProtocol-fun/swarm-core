@@ -657,6 +657,18 @@ export interface Job {
   priority: 'low' | 'medium' | 'high';
   completedAt?: unknown;
   completedByAgentName?: string;
+  // Delivery & Review
+  deliveryNotes?: string;
+  deliveryFiles?: string[]; // URLs to uploaded files
+  reviewStatus?: 'pending' | 'approved' | 'rejected';
+  reviewNotes?: string;
+  reviewedBy?: string;
+  reviewedAt?: unknown;
+  // Hedera Onchain Escrow
+  hederaScheduledTxId?: string; // Hedera ScheduleId (e.g., "0.0.123456")
+  hederaBountyHbar?: string; // Bounty amount in HBAR
+  hederaRecipientAccountId?: string; // Agent's Hedera account ID
+  hederaEscrowStatus?: 'pending' | 'executed' | 'refunded';
   createdAt: unknown;
   updatedAt?: unknown;
 }

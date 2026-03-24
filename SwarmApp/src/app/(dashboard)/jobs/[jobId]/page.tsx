@@ -1,638 +1,284 @@
-/** Job Detail — Full workspace for viewing deliverables and guiding agent work. */
+/**
+ * Job Detail Page — Review delivery, approve/reject, manage job lifecycle
+ */
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { use } from "react";
 import Link from "next/link";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { useOrg } from "@/contexts/OrgContext";
-import { useChainCurrency } from "@/hooks/useChainCurrency";
+import { useSession } from "@/contexts/SessionContext";
 import {
   getJob,
-  getAgent,
-  getProject,
-  getAgentsByOrg,
-  getChannelsByProject,
-  onMessagesByChannel,
   updateJob,
-  sendMessage,
   type Job,
-  type Agent,
-  type Project,
-  type Channel,
-  type Message,
 } from "@/lib/firestore";
-import { getAgentAvatarUrl } from "@/lib/agent-avatar";
-import { GitHubIcon } from "@/components/github/github-icon";
-import { shortAddress } from "@/lib/chains";
+import {
+  CheckCircle2,
+  XCircle,
+  FileText,
+  Upload,
+  ExternalLink,
+  ChevronLeft,
+  AlertCircle,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// ─── Helpers ───────────────────────────────────────────
-
-const priorityColors: Record<string, string> = {
-  low: "bg-muted text-muted-foreground",
-  medium: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
-  high: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
-};
-
-const statusConfig: Record<string, { label: string; color: string }> = {
-  open: { label: "Open", color: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400" },
-  in_progress: { label: "In Progress", color: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400" },
-  completed: { label: "Completed", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400" },
-  claimed: { label: "Claimed", color: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400" },
-  closed: { label: "Closed", color: "bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400" },
-};
-
-function formatTime(timestamp: unknown): string {
-  if (!timestamp) return "Unknown";
-  let date: Date;
-  if (timestamp && typeof timestamp === "object" && "seconds" in timestamp) {
-    date = new Date((timestamp as { seconds: number }).seconds * 1000);
-  } else {
-    date = new Date(timestamp as string | number);
-  }
-  const diff = Date.now() - date.getTime();
-  const mins = Math.floor(diff / 60000);
-  const hrs = Math.floor(diff / 3600000);
-  const days = Math.floor(diff / 86400000);
-  if (days > 0) return `${days}d ago`;
-  if (hrs > 0) return `${hrs}h ago`;
-  if (mins > 0) return `${mins}m ago`;
-  return "just now";
-}
-
-// ─── Deliverable Message Component ─────────────────────
-
-function DeliverableMessage({ message }: { message: Message }) {
-  const isSystem = message.senderId === "system";
-  const isHuman = !isSystem && message.senderType === "human";
-  const cleanContent = message.content.replace(/\[JOB:[^\]]+\]/g, "").trim();
-
-  return (
-    <div
-      className={cn(
-        "p-3 rounded-lg border-l-4",
-        isSystem
-          ? "border-l-blue-400 bg-blue-50/50 dark:bg-blue-950/20"
-          : isHuman
-          ? "border-l-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/20"
-          : "border-l-amber-400 bg-amber-50/50 dark:bg-amber-950/20"
-      )}
-    >
-      <div className="flex items-center justify-between mb-1.5">
-        <div className="flex items-center gap-2 text-xs">
-          <span className="font-medium">{message.senderName}</span>
-          <Badge variant="outline" className="text-[10px]">
-            {isSystem ? "System" : isHuman ? "Human" : "Agent"}
-          </Badge>
-        </div>
-        <span className="text-[11px] text-muted-foreground">{formatTime(message.createdAt)}</span>
-      </div>
-      <p className="text-sm whitespace-pre-wrap">{cleanContent}</p>
-    </div>
-  );
-}
-
-// ─── Page ──────────────────────────────────────────────
-
-export default function JobDetailPage() {
-  const params = useParams();
-  const jobId = params.jobId as string;
+export default function JobDetailPage({ params }: { params: Promise<{ jobId: string }> }) {
+  const resolvedParams = use(params);
   const { currentOrg } = useOrg();
-  const { symbol: currencySymbol } = useChainCurrency();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { address } = useSession();
 
-  // Core data
   const [job, setJob] = useState<Job | null>(null);
-  const [project, setProject] = useState<Project | null>(null);
-  const [agent, setAgent] = useState<Agent | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [channel, setChannel] = useState<Channel | null>(null);
-  const [deliverables, setDeliverables] = useState<Message[]>([]);
-
-  // UI state
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [actionType, setActionType] = useState<"help" | "correct" | null>(null);
-  const [actionMessage, setActionMessage] = useState("");
-  const [sending, setSending] = useState(false);
-  const [updating, setUpdating] = useState(false);
+  const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
+  const [reviewAction, setReviewAction] = useState<'approve' | 'reject'>('approve');
+  const [reviewNotes, setReviewNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
 
-  // ── Load job data ──
-
-  const loadJobData = async () => {
-    if (!currentOrg) return;
-    try {
+  useEffect(() => {
+    if (!resolvedParams.jobId) return;
+    const load = async () => {
       setLoading(true);
-      setError(null);
-
-      const jobData = await getJob(jobId);
-      if (!jobData) { setError("Job not found"); setLoading(false); return; }
-      if (jobData.orgId !== currentOrg.id) { setError("Job not found in this organization"); setLoading(false); return; }
-      setJob(jobData);
-
-      const promises: [
-        Promise<Project | null>,
-        Promise<Agent | null>,
-        Promise<Agent[]>,
-      ] = [
-        jobData.projectId ? getProject(jobData.projectId) : Promise.resolve(null),
-        jobData.takenByAgentId ? getAgent(jobData.takenByAgentId) : Promise.resolve(null),
-        getAgentsByOrg(currentOrg.id),
-      ];
-
-      const [projectData, agentData, agentsData] = await Promise.all(promises);
-      setProject(projectData);
-      setAgent(agentData);
-      setAgents(agentsData);
-
-      // Get channel for deliverables
-      if (projectData) {
-        const channels = await getChannelsByProject(projectData.id);
-        if (channels.length > 0) {
-          setChannel(channels[0]);
-        }
+      try {
+        const jobData = await getJob(resolvedParams.jobId);
+        setJob(jobData);
+      } catch (error) {
+        console.error("Failed to load job:", error);
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      console.error("Failed to load job data:", err);
-      setError(err instanceof Error ? err.message : "Failed to load job data");
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+    load();
+  }, [resolvedParams.jobId]);
 
-  useEffect(() => { loadJobData(); }, [jobId, currentOrg]);
-
-  // ── Real-time deliverables ──
-
-  useEffect(() => {
-    if (!channel) return;
-    const jobTag = `[JOB:${jobId}]`;
-    const unsub = onMessagesByChannel(channel.id, (messages) => {
-      setDeliverables(messages.filter((m) => m.content.includes(jobTag)));
-    });
-    return () => unsub();
-  }, [channel, jobId]);
-
-  // Auto-scroll when new deliverables arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [deliverables.length]);
-
-  // ── Actions ──
-
-  const handleSendAction = async (type: "help" | "correct") => {
-    if (!channel || !actionMessage.trim() || !currentOrg) return;
-    try {
-      setSending(true);
-      const prefix = type === "help" ? "**Guidance**" : "**Correction**";
-      const icon = type === "help" ? "💡" : "🔧";
-      await sendMessage({
-        channelId: channel.id,
-        senderId: "human",
-        senderName: "Manager",
-        senderType: "human",
-        content: `${icon} ${prefix}\n\n${actionMessage.trim()}\n\n[JOB:${jobId}]`,
-        orgId: currentOrg.id,
-        createdAt: new Date(),
-      });
-      setActionMessage("");
-      setActionType(null);
-    } catch (err) {
-      console.error("Failed to send message:", err);
-    } finally {
-      setSending(false);
-    }
-  };
-
-  const handleApprove = async () => {
-    if (!job || !currentOrg) return;
-    try {
-      setUpdating(true);
-      await updateJob(job.id, {
-        status: "completed",
-        completedAt: new Date(),
-        completedByAgentName: agent?.name || "Unknown",
-      });
-
-      if (channel) {
-        await sendMessage({
-          channelId: channel.id,
-          senderId: "system",
-          senderName: "Swarm",
-          senderType: "human",
-          content: `✅ **Job Approved**\n\nJob "${job.title}" has been reviewed and marked as complete.\n\n[JOB:${jobId}]`,
-          orgId: currentOrg.id,
-          createdAt: new Date(),
-        });
-      }
-
-      const updatedJob = await getJob(jobId);
-      if (updatedJob) setJob(updatedJob);
-    } catch (err) {
-      console.error("Failed to approve job:", err);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  const handleReopen = async () => {
+  const handleReview = async () => {
     if (!job) return;
+    setSubmitting(true);
     try {
-      setUpdating(true);
-      await updateJob(job.id, { status: "in_progress" });
-      const updatedJob = await getJob(jobId);
-      if (updatedJob) setJob(updatedJob);
-    } catch (err) {
-      console.error("Failed to reopen job:", err);
+      await updateJob(job.id, {
+        reviewStatus: reviewAction === 'approve' ? 'approved' : 'rejected',
+        reviewNotes: reviewNotes.trim() || undefined,
+        reviewedBy: address || "Unknown",
+        reviewedAt: new Date(),
+        status: reviewAction === 'approve' ? 'completed' : 'in_progress',
+      });
+
+      const updated = await getJob(job.id);
+      setJob(updated);
+      setReviewDialogOpen(false);
+      setReviewNotes("");
+    } catch (error) {
+      console.error("Failed to review job:", error);
     } finally {
-      setUpdating(false);
+      setSubmitting(false);
     }
   };
-
-  const handleAssignAgent = async (agentId: string) => {
-    if (!job || !currentOrg) return;
-    try {
-      setUpdating(true);
-      const assignedAgent = agents.find((a) => a.id === agentId);
-      await updateJob(job.id, { status: "in_progress", takenByAgentId: agentId });
-
-      // Post assignment notification to channel
-      if (channel) {
-        await sendMessage({
-          channelId: channel.id,
-          senderId: "system",
-          senderName: "Swarm",
-          senderType: "agent",
-          content: `📋 **New Job Assignment**\n\nJob: "${job.title}"\nDescription: ${job.description || "No description"}\nAssigned to: @${assignedAgent?.name || "Unknown"}\nPriority: ${job.priority}\n\nPlease work on this and post your deliverables here when complete. Tag your response with [JOB:${job.id}] so we can track completion.`,
-          orgId: currentOrg.id,
-          createdAt: new Date(),
-        });
-      }
-
-      const updatedJob = await getJob(jobId);
-      if (updatedJob) setJob(updatedJob);
-      if (assignedAgent) setAgent(assignedAgent);
-    } catch (err) {
-      console.error("Failed to assign agent:", err);
-    } finally {
-      setUpdating(false);
-    }
-  };
-
-  // ── Loading / Error states ──
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-amber-500 border-t-transparent mx-auto mb-3" />
-          <p className="text-sm text-muted-foreground">Loading job...</p>
-        </div>
-      </div>
-    );
+    return <div className="container mx-auto p-6"><div className="text-center text-muted-foreground">Loading job...</div></div>;
   }
 
-  if (error || !job) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="text-center">
-          <div className="text-4xl mb-4">😕</div>
-          <h2 className="text-xl font-bold mb-2">Job Not Found</h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
-          <Button asChild variant="outline">
-            <Link href="/jobs">← Back to Jobs</Link>
-          </Button>
-        </div>
-      </div>
-    );
+  if (!job) {
+    return <div className="container mx-auto p-6"><div className="text-center text-muted-foreground">Job not found</div></div>;
   }
 
-  const status = statusConfig[job.status] || statusConfig.open;
-  const isActive = job.status === "in_progress" || job.status === "claimed";
-  const isCompleted = job.status === "completed";
-  const hasDeliverables = deliverables.length > 0;
+  const statusColors = {
+    open: "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400",
+    claimed: "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-400",
+    in_progress: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
+    closed: "bg-muted text-muted-foreground",
+  };
+
+  const priorityColors = {
+    low: "bg-muted text-muted-foreground",
+    medium: "bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
+    high: "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-400",
+  };
+
+  const canReview = job.status === 'completed' && job.deliveryNotes && !job.reviewStatus;
 
   return (
-    <div className="space-y-6">
-      {/* ── Header ── */}
-      <div>
-        <Link
-          href="/jobs"
-          className="text-sm text-muted-foreground hover:text-amber-600 transition-colors inline-flex items-center gap-1 mb-4"
-        >
-          ← Back to Jobs
-        </Link>
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-3 flex-wrap mb-2">
-              <h1 className="text-2xl font-bold">{job.title}</h1>
-              <Badge className={cn("text-xs", status.color)}>{status.label}</Badge>
-              <Badge variant="outline" className={cn("text-xs", priorityColors[job.priority])}>
-                {job.priority}
-              </Badge>
-            </div>
-            {job.description && (
-              <p className="text-muted-foreground">{job.description}</p>
-            )}
+    <div className="container mx-auto p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-1">
+          <Link href="/jobs">
+            <Button variant="ghost" size="sm" className="mb-2">
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Back to Jobs
+            </Button>
+          </Link>
+          <h1 className="text-3xl font-bold">{job.title}</h1>
+          <div className="flex items-center gap-2">
+            <Badge className={cn("text-xs", statusColors[job.status])}>
+              {job.status.replace('_', ' ').toUpperCase()}
+            </Badge>
+            <Badge className={cn("text-xs", priorityColors[job.priority])}>
+              {job.priority.toUpperCase()}
+            </Badge>
+            {job.reward && <Badge variant="outline" className="text-xs">${job.reward}</Badge>}
           </div>
-          {job.reward && (
-            <div className="shrink-0 text-right">
-              <div className="px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-                <span className="text-xl font-bold text-amber-500">{job.reward}</span>
-                <span className="text-xs text-amber-500/70 ml-1">{currencySymbol}</span>
-              </div>
-            </div>
-          )}
         </div>
+
+        {canReview && (
+          <div className="flex gap-2">
+            <Button onClick={() => { setReviewAction('reject'); setReviewDialogOpen(true); }} variant="outline" className="text-destructive">
+              <XCircle className="h-4 w-4 mr-2" />Reject
+            </Button>
+            <Button onClick={() => { setReviewAction('approve'); setReviewDialogOpen(true); }} className="bg-emerald-600 hover:bg-emerald-700">
+              <CheckCircle2 className="h-4 w-4 mr-2" />Approve
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* ── Metadata ── */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 text-sm">
-            {project && (
-              <div>
-                <span className="text-xs text-muted-foreground block mb-1">Project</span>
-                <span className="font-medium">{project.name}</span>
-              </div>
-            )}
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Assigned Agent</span>
-              {agent ? (
-                <Link
-                  href={`/agents/${agent.id}`}
-                  className="flex items-center gap-2 hover:text-amber-600 transition-colors"
-                >
-                  <img
-                    src={agent.avatarUrl || getAgentAvatarUrl(agent.name, agent.type)}
-                    alt={agent.name}
-                    className="w-5 h-5 rounded-full"
-                  />
-                  <span className="font-medium">{agent.name}</span>
-                </Link>
-              ) : (
-                <span className="text-muted-foreground">Unassigned</span>
-              )}
-            </div>
-            <div>
-              <span className="text-xs text-muted-foreground block mb-1">Posted</span>
-              <span className="font-medium">{formatTime(job.createdAt)}</span>
-            </div>
-            {job.postedByAddress && (
-              <div>
-                <span className="text-xs text-muted-foreground block mb-1">Posted By</span>
-                <span className="font-mono text-xs">{shortAddress(job.postedByAddress)}</span>
-              </div>
-            )}
-            {isCompleted && !!job.completedAt && (
-              <div>
-                <span className="text-xs text-muted-foreground block mb-1">Completed</span>
-                <span className="font-medium">{formatTime(job.completedAt)}</span>
-              </div>
-            )}
-            {isCompleted && job.completedByAgentName && (
-              <div>
-                <span className="text-xs text-muted-foreground block mb-1">Completed By</span>
-                <span className="font-medium">{job.completedByAgentName}</span>
-              </div>
-            )}
-          </div>
-
-          {(job.requiredSkills ?? []).length > 0 && (
-            <div className="mt-4 pt-4 border-t">
-              <span className="text-xs text-muted-foreground block mb-2">Required Skills</span>
-              <div className="flex flex-wrap gap-1.5">
-                {(job.requiredSkills ?? []).map((skill) => (
-                  <Badge
-                    key={skill}
-                    variant="outline"
-                    className="text-xs bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800"
-                  >
-                    {skill}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* ── GitHub Repos ── */}
-      {project?.githubRepos && project.githubRepos.length > 0 && (
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Linked Repositories</CardTitle>
-            <CardDescription>
-              Repositories from {project.name} that provide context for this job
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="pt-0">
-            <div className="space-y-2">
-              {project.githubRepos.map((repo) => (
-                <a
-                  key={repo.repoId}
-                  href={`https://github.com/${repo.fullName}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors"
-                >
-                  <GitHubIcon className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium">{repo.fullName}</span>
-                    <span className="text-xs text-muted-foreground ml-2">({repo.defaultBranch})</span>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">Open in GitHub →</span>
-                </a>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* ── Deliverables Feed ── */}
-        <div className="lg:col-span-2">
+      <div className="grid lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Deliverables</CardTitle>
-                <Badge variant="secondary">{deliverables.length}</Badge>
-              </div>
-              <CardDescription>
-                Agent outputs and messages tagged with this job
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {!channel ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="text-2xl mb-2">📭</div>
-                  <p className="text-sm">No project channel</p>
-                  <p className="text-xs mt-1">
-                    Link this job to a project to enable deliverable tracking
-                  </p>
-                </div>
-              ) : deliverables.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  <div className="text-2xl mb-2">📭</div>
-                  <p className="text-sm">No deliverables yet</p>
-                  <p className="text-xs mt-1">
-                    {job.status === "open"
-                      ? "Assign an agent to start receiving deliverables"
-                      : "The agent is working — deliverables will appear here in real time"}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-[600px] overflow-y-auto">
-                  {deliverables.map((msg) => (
-                    <DeliverableMessage key={msg.id} message={msg} />
-                  ))}
-                  <div ref={messagesEndRef} />
-                </div>
-              )}
+            <CardHeader><CardTitle>Description</CardTitle></CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap">{job.description || "No description provided"}</p>
             </CardContent>
           </Card>
+
+          {job.deliveryNotes && (
+            <Card className="border-2 border-emerald-500/20 bg-emerald-500/5">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-emerald-600" />Delivery
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <div className="text-sm font-medium mb-2">Notes from {job.completedByAgentName}:</div>
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-background p-3 rounded border">{job.deliveryNotes}</div>
+                </div>
+                {job.deliveryFiles && job.deliveryFiles.length > 0 && (
+                  <div>
+                    <div className="text-sm font-medium mb-2">Attached Files:</div>
+                    <div className="space-y-2">
+                      {job.deliveryFiles.map((fileUrl, i) => (
+                        <a key={i} href={fileUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-sm p-2 rounded bg-background hover:bg-muted transition-colors border">
+                          <Upload className="h-4 w-4" />
+                          <span className="truncate">{fileUrl.split('/').pop() || `file-${i + 1}`}</span>
+                          <ExternalLink className="h-3 w-3 ml-auto text-muted-foreground" />
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {job.completedAt ? (
+                  <div className="text-xs text-muted-foreground">
+                    Submitted {new Date(job.completedAt as any).toLocaleString()}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          )}
+
+          {job.reviewStatus && (
+            <Card className={cn("border-2", job.reviewStatus === 'approved' ? "border-emerald-500/20 bg-emerald-500/5" : job.reviewStatus === 'rejected' ? "border-destructive/20 bg-destructive/5" : "border-amber-500/20 bg-amber-500/5")}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  {job.reviewStatus === 'approved' ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : job.reviewStatus === 'rejected' ? <XCircle className="h-5 w-5 text-destructive" /> : <AlertCircle className="h-5 w-5 text-amber-600" />}
+                  Review: {job.reviewStatus.toUpperCase()}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {job.reviewNotes && (
+                  <div>
+                    <div className="text-sm font-medium mb-2">Feedback:</div>
+                    <div className="text-sm text-muted-foreground whitespace-pre-wrap bg-background p-3 rounded border">{job.reviewNotes}</div>
+                  </div>
+                )}
+                {job.reviewedBy ? (
+                  <div className="text-xs text-muted-foreground">
+                    Reviewed by {job.reviewedBy}
+                    {job.reviewedAt ? ` on ${new Date(job.reviewedAt as any).toLocaleString()}` : ''}
+                  </div>
+                ) : null}
+              </CardContent>
+            </Card>
+          )}
         </div>
 
-        {/* ── Actions Panel ── */}
-        <div className="space-y-4">
+        <div className="space-y-6">
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Actions</CardTitle>
-              <CardDescription>Guide, review, or correct the agent's work</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-0 space-y-3">
-              {/* Assign agent (open jobs) */}
-              {job.status === "open" && agents.length > 0 && (
+            <CardHeader><CardTitle className="text-lg">Details</CardTitle></CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {job.requiredSkills && job.requiredSkills.length > 0 && (
                 <div>
-                  <span className="text-xs text-muted-foreground block mb-1.5">Assign an agent</span>
-                  <Select onValueChange={handleAssignAgent} disabled={updating}>
-                    <SelectTrigger className="text-xs">
-                      <SelectValue placeholder="Pick an agent..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {agents.map((a) => (
-                        <SelectItem key={a.id} value={a.id}>
-                          {a.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="font-medium mb-1">Required Skills</div>
+                  <div className="flex flex-wrap gap-1">
+                    {job.requiredSkills.map(skill => <Badge key={skill} variant="outline" className="text-xs">{skill}</Badge>)}
+                  </div>
                 </div>
               )}
-
-              {/* Action buttons */}
-              <div className="flex flex-col gap-2">
-                {isActive && channel && (
-                  <Button
-                    variant={actionType === "help" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActionType(actionType === "help" ? null : "help")}
-                    className={cn("justify-start", actionType === "help" && "bg-blue-600 hover:bg-blue-700 text-white")}
-                  >
-                    💡 Send Guidance
-                  </Button>
-                )}
-
-                {hasDeliverables && !isCompleted && channel && (
-                  <Button
-                    variant={actionType === "correct" ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => setActionType(actionType === "correct" ? null : "correct")}
-                    className={cn("justify-start", actionType === "correct" && "bg-orange-600 hover:bg-orange-700 text-white")}
-                  >
-                    🔧 Send Correction
-                  </Button>
-                )}
-
-                {isActive && hasDeliverables && (
-                  <Button
-                    size="sm"
-                    onClick={handleApprove}
-                    disabled={updating}
-                    className="justify-start bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    {updating ? "Approving..." : "✅ Approve & Complete"}
-                  </Button>
-                )}
-
-                {isCompleted && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleReopen}
-                    disabled={updating}
-                    className="justify-start"
-                  >
-                    {updating ? "Reopening..." : "🔄 Reopen for Rework"}
-                  </Button>
-                )}
+              {job.takenByAgentId && (
+                <div>
+                  <div className="font-medium mb-1">Assigned To</div>
+                  <div className="text-muted-foreground">{job.completedByAgentName || job.takenByAgentId}</div>
+                </div>
+              )}
+              <div>
+                <div className="font-medium mb-1">Posted By</div>
+                <div className="text-muted-foreground font-mono text-xs">{job.postedByAddress?.slice(0, 6)}...{job.postedByAddress?.slice(-4)}</div>
               </div>
-
-              {/* Message input for Help / Correct */}
-              {actionType && (
-                <div className="space-y-2 border-t pt-3">
-                  <p className="text-xs text-muted-foreground">
-                    {actionType === "help"
-                      ? "Send guidance to help the agent:"
-                      : "Send a correction to redirect the work:"}
-                  </p>
-                  <Textarea
-                    placeholder={
-                      actionType === "help"
-                        ? "e.g., Focus on the API integration first..."
-                        : "e.g., The output format should be JSON, not CSV..."
-                    }
-                    value={actionMessage}
-                    onChange={(e) => setActionMessage(e.target.value)}
-                    rows={3}
-                    className="text-sm"
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => handleSendAction(actionType)}
-                    disabled={sending || !actionMessage.trim()}
-                    className={cn(
-                      "w-full",
-                      actionType === "help"
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-orange-600 hover:bg-orange-700 text-white"
-                    )}
-                  >
-                    {sending
-                      ? "Sending..."
-                      : actionType === "help"
-                      ? "Send Guidance"
-                      : "Send Correction"}
-                  </Button>
-                </div>
-              )}
+              <div>
+                <div className="font-medium mb-1">Created</div>
+                <div className="text-muted-foreground">{new Date(job.createdAt as any).toLocaleDateString()}</div>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Job status indicator */}
-          {isActive && (
-            <Card className="border-amber-500/40">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
-                  </span>
-                  <span className="text-sm font-medium text-amber-600 dark:text-amber-400">Agent Working</span>
+          {canReview && (
+            <Card className="border-2 border-amber-500/50 bg-amber-500/5">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+                  <div>
+                    <div className="font-medium mb-1">Review Required</div>
+                    <div className="text-sm text-muted-foreground">This job has been completed and is awaiting your review.</div>
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {agent?.name || "An agent"} is actively working on this job. Deliverables will appear in real time.
-                </p>
               </CardContent>
             </Card>
           )}
         </div>
       </div>
+
+      <Dialog open={reviewDialogOpen} onOpenChange={setReviewDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{reviewAction === 'approve' ? 'Approve Delivery' : 'Reject Delivery'}</DialogTitle>
+            <DialogDescription>{reviewAction === 'approve' ? 'Mark this job as successfully completed and approved.' : 'Send this job back for revisions. The agent will be notified.'}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Feedback {reviewAction === 'reject' && <span className="text-destructive">*</span>}</label>
+              <Textarea placeholder={reviewAction === 'approve' ? "Great work! (optional)" : "Please explain what needs to be changed..."} value={reviewNotes} onChange={(e) => setReviewNotes(e.target.value)} rows={4} />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button variant="outline" onClick={() => setReviewDialogOpen(false)} disabled={submitting}>Cancel</Button>
+              <Button onClick={handleReview} disabled={submitting || (reviewAction === 'reject' && !reviewNotes.trim())} className={reviewAction === 'approve' ? "bg-emerald-600 hover:bg-emerald-700" : "bg-destructive hover:bg-destructive/90"}>
+                {submitting ? "Submitting..." : reviewAction === 'approve' ? 'Approve' : 'Reject'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
