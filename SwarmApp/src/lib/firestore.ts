@@ -48,6 +48,19 @@ export interface Organization {
   };
   /** Metaplex collection NFT mint address (Solana devnet) */
   metaplexCollectionMint?: string;
+  // Hedera HCS-backed ownership proof
+  /** HCS topic ID where org ownership events are recorded */
+  hcsTopicId?: string;
+  /** HCS sequence number for org creation event */
+  hcsSequenceNumber?: string;
+  /** HCS consensus timestamp for org creation */
+  hcsConsensusTimestamp?: string;
+  /** Owner signature proving org creation */
+  ownerSignature?: string;
+  /** Timestamp when org ownership was verified on-chain */
+  hcsVerifiedAt?: unknown;
+  /** Whether org ownership has been verified on HCS */
+  hcsOwnershipVerified?: boolean;
 }
 
 export interface GitHubRepoLink {

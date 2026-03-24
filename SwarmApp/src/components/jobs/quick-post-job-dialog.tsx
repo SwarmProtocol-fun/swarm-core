@@ -10,8 +10,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+// import { Checkbox } from "@/components/ui/checkbox";
 import { useOrg } from "@/contexts/OrgContext";
 import { useActiveAccount } from "thirdweb/react";
 import { createJob } from "@/lib/firestore";
@@ -29,7 +29,6 @@ export function QuickPostJobDialog({ onJobCreated }: QuickPostJobDialogProps) {
   const [title, setTitle] = useState("");
   const [budget, setBudget] = useState("");
   const [description, setDescription] = useState("");
-  const [useHederaEscrow, setUseHederaEscrow] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const handleQuickPost = async () => {
@@ -54,7 +53,6 @@ export function QuickPostJobDialog({ onJobCreated }: QuickPostJobDialogProps) {
       setTitle("");
       setBudget("");
       setDescription("");
-      setUseHederaEscrow(false);
       setOpen(false);
 
       // Callback
@@ -67,14 +65,16 @@ export function QuickPostJobDialog({ onJobCreated }: QuickPostJobDialogProps) {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white">
-          <Zap className="h-4 w-4 mr-2" />
-          Quick Post Job
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
+    <>
+      <Button
+        onClick={() => setOpen(true)}
+        className="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white"
+      >
+        <Zap className="h-4 w-4 mr-2" />
+        Quick Post Job
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Zap className="h-5 w-5 text-amber-600" />
@@ -124,24 +124,6 @@ export function QuickPostJobDialog({ onJobCreated }: QuickPostJobDialogProps) {
             />
           </div>
 
-          {/* Hedera Escrow Option */}
-          <div className="flex items-center space-x-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
-            <Checkbox
-              id="hedera-escrow"
-              checked={useHederaEscrow}
-              onCheckedChange={(checked) => setUseHederaEscrow(checked as boolean)}
-            />
-            <label
-              htmlFor="hedera-escrow"
-              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
-            >
-              <span className="text-emerald-600">⚡ Use Hedera Escrow</span>
-              <span className="block text-xs text-muted-foreground mt-0.5">
-                Hold bounty onchain ($0.0001 fee)
-              </span>
-            </label>
-          </div>
-
           {/* Post Button */}
           <div className="flex gap-2 justify-end pt-2">
             <Button
@@ -167,7 +149,8 @@ export function QuickPostJobDialog({ onJobCreated }: QuickPostJobDialogProps) {
             </Button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
