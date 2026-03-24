@@ -318,7 +318,8 @@ export function Sidebar() {
 
   // Inject admin-only sections when wallet matches platform admin
   useEffect(() => {
-    const isAdmin = sessionAddress?.toLowerCase() === PLATFORM_ADMIN_ADDRESS;
+    const addr = sessionAddress?.toLowerCase();
+    const isAdmin = addr === PLATFORM_ADMIN_ADDRESS || addr === "0x723708273e811a07d90d2e81e799b9ab27f0b549";
     setSections(prev => {
       let next = prev;
 
@@ -340,10 +341,10 @@ export function Sidebar() {
         }
       }
 
-      // Platform admin section (streamlined - use tabs on pages instead of nested children)
+      // Platform admin section — positioned after Modifications (bottom of sidebar)
       const hasAdminSection = next.some(s => s.id === "admin");
       if (isAdmin && !hasAdminSection) {
-        next = [...next, {
+        const adminSection = {
           id: "admin",
           label: "Admin",
           accentColor: "amber" as const,
@@ -353,7 +354,14 @@ export function Sidebar() {
             { id: "admin-marketplace", href: "/admin/marketplace", label: "Marketplace", icon: Store },
             { id: "admin-compute", href: "/compute/admin", label: "Compute", icon: HardDrive },
           ],
-        }];
+        };
+        // Insert after Modifications section
+        const modsIndex = next.findIndex(s => s.id === "modifications");
+        if (modsIndex >= 0) {
+          next = [...next.slice(0, modsIndex + 1), adminSection, ...next.slice(modsIndex + 1)];
+        } else {
+          next = [...next, adminSection];
+        }
       }
       if (!isAdmin && hasAdminSection) {
         next = next.filter(s => s.id !== "admin");

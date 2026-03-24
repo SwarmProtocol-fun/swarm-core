@@ -87,6 +87,12 @@ export function generateASN(): string {
     return `ASN-SWM-${year}-${hex()}-${hex()}-${check}`;
 }
 
+/**
+ * @deprecated Use `resolvePolicyTier()` from `credit-policy.ts` instead.
+ * This function is retained for backward compatibility with the ASN playground UI.
+ * The new credit-policy module adds fraud flag downgrades, org overrides,
+ * fee multipliers, marketplace visibility, and enforcement helpers.
+ */
 export function getDefaultPolicy(score: number): PolicyState {
     if (score >= 850) return { spendingCapUsd: 50000, requiresManualReview: false, escrowRatio: 0.10, maxConcurrentTasks: 20, sensitiveWorkflowAccess: true };
     if (score >= 750) return { spendingCapUsd: 10000, requiresManualReview: false, escrowRatio: 0.25, maxConcurrentTasks: 10, sensitiveWorkflowAccess: true };

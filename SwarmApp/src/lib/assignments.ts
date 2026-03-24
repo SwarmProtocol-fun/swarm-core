@@ -167,10 +167,36 @@ export async function createAssignment(params: CreateAssignmentParams): Promise<
   }
 
   const workMode = (agent as any).workMode || "available";
-  const capacity = (agent as any).capacity || 3;
+  let capacity = (agent as any).capacity || 3;
   const currentLoad = (agent as any).currentLoad || 0;
   const capacityOverflowPolicy = (agent as any).capacityOverflowPolicy || "warn";
   const autoAcceptAssignments = (agent as any).autoAcceptAssignments || false;
+
+  // ── Credit Policy: derive capacity ceiling from tier ──
+  try {
+    const { resolveAgentPolicy } = await import("@/lib/auth-guard");
+    const { getCreditPolicyConfig, recordPolicyEvent } = await import("@/lib/credit-policy-settings");
+    const config = await getCreditPolicyConfig();
+    if (config.enforcementEnabled && config.enforceConcurrentLimits) {
+      const policyResult = await resolveAgentPolicy(toAgentId);
+      if (policyResult.ok && policyResult.policy) {
+        const policyCapacity = policyResult.policy.maxConcurrentTasks;
+        capacity = Math.min(capacity, policyCapacity);
+
+        if (currentLoad >= capacity) {
+          await recordPolicyEvent({
+            agentId: toAgentId,
+            orgId,
+            action: "concurrent_limit_enforced",
+            tier: policyResult.tier!,
+            details: { currentLoad, capacity, policyCapacity },
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[assignments] Credit policy capacity check failed (using agent default):", err);
+  }
 
   // Handle capacity overflow
   if (currentLoad >= capacity) {

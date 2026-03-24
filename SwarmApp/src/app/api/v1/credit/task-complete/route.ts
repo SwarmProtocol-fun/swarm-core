@@ -172,6 +172,45 @@ export async function POST(request: NextRequest) {
         trigger: "task_complete",
     }).catch(err => console.error("[credit/task-complete] Webhook dispatch error:", err));
 
+    // ── Credit Policy: Fee multiplier + tier re-resolution ──
+    let feeMultiplier = 1.0;
+    let resolvedTier: string | undefined;
+    try {
+        const { resolveAgentPolicy } = await import("@/lib/auth-guard");
+        const { calculateFeeWithMultiplier } = await import("@/lib/credit-policy");
+        const { getCreditPolicyConfig, recordPolicyEvent } = await import("@/lib/credit-policy-settings");
+
+        const config = await getCreditPolicyConfig();
+        const policyResult = await resolveAgentPolicy(agentId);
+
+        if (config.enforcementEnabled && config.enforceFeeMultipliers && policyResult.ok && policyResult.policy) {
+            const fee = calculateFeeWithMultiplier(policyResult.policy, 15); // 15% base platform fee
+            feeMultiplier = fee.multiplier;
+            resolvedTier = policyResult.tier;
+
+            // Update cached policy tier on agent if score crossed a tier boundary
+            await updateDoc(agentRef, {
+                policyTier: policyResult.tier,
+                policyTierResolvedAt: serverTimestamp(),
+            });
+
+            await recordPolicyEvent({
+                agentId,
+                orgId: policyResult.orgId || "",
+                action: "fee_multiplier_applied",
+                tier: policyResult.tier!,
+                details: {
+                    baseFee: 15,
+                    effectiveFee: fee.effectiveFeePercent,
+                    multiplier: fee.multiplier,
+                    creditScore: newCredit,
+                },
+            });
+        }
+    } catch (err) {
+        console.warn("[credit/task-complete] Fee multiplier calc failed (non-blocking):", err);
+    }
+
     // Update on-chain credit + record task completion in parallel
     const [creditResult, taskTxHash] = await Promise.all([
         updateCreditOnChain(agentData.walletAddress || "", asn, newCredit, newTrust),
@@ -184,6 +223,7 @@ export async function POST(request: NextRequest) {
         creditScore: newCredit,
         trustScore: newTrust,
         delta: { credit: newCredit - currentCredit, trust: newTrust - currentTrust },
+        ...(resolvedTier ? { policyTier: resolvedTier, feeMultiplier } : {}),
         onChain: {
             agentTxHash: creditResult.agentTxHash || null,
             asnTxHash: creditResult.asnTxHash || null,

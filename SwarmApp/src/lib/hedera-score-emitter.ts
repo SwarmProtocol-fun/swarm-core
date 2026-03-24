@@ -102,6 +102,22 @@ export async function emitPenalty(
 }
 
 /**
+ * Emit a fraud penalty event.
+ * Call this when the fraud detection system applies an automated penalty.
+ * Non-blocking — errors are logged but don't interrupt the calling code.
+ */
+export async function emitFraudPenalty(
+    asn: string,
+    agentAddress: string,
+    creditPenalty: number,
+    signalType: string,
+    scanRunId: string,
+): Promise<void> {
+    const event = createFraudPenaltyEvent(asn, agentAddress, creditPenalty, signalType, scanRunId);
+    await emitScoreEvent(event);
+}
+
+/**
  * Emit an admin override event.
  * Call this when a platform admin manually adjusts an agent's score.
  */

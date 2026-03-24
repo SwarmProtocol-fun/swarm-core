@@ -125,7 +125,7 @@ export async function checkAndSlashOverdueTasks(): Promise<SlashingEvent[]> {
                 agentId: task.assigneeAgentId,
                 asn: agent.asn,
                 agentAddress: agent.walletAddress,
-                orgId: (agent as Record<string, unknown>).orgId as string || "",
+                orgId: (agent as unknown as Record<string, unknown>).orgId as string || "",
                 flagType: "slashing",
                 flagReason: `Auto-slash: ${reason.replace(/_/g, " ")} for task ${task.id} (${hoursLate.toFixed(1)}h late)`,
                 flaggedBy: "system",

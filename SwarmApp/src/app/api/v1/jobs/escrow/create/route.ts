@@ -82,18 +82,20 @@ export async function POST(req: NextRequest) {
       payerAccountId
     );
 
-    // Update job with Hedera escrow details
+    // Update job with Hedera escrow details + applied policy
     await updateJob(jobId, {
       hederaScheduledTxId: scheduledTxId,
       hederaBountyHbar: bountyHbar,
       hederaRecipientAccountId: recipientAccountId,
       hederaEscrowStatus: 'pending',
+      ...(appliedEscrowRatio !== undefined ? { appliedEscrowRatio } : {}),
     });
 
     return NextResponse.json({
       success: true,
       scheduledTxId,
       bountyHbar,
+      ...(appliedEscrowRatio !== undefined ? { appliedEscrowRatio } : {}),
       message: `✅ Created ${bountyHbar} HBAR escrow for job ${jobId}`,
       hashscanUrl: `https://hashscan.io/testnet/transaction/${scheduledTxId}`,
     });
