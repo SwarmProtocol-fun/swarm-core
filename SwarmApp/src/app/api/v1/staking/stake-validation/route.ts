@@ -7,7 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { stakeForValidation } from "@/lib/hedera-staking";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -15,8 +15,8 @@ import type { Agent } from "@/lib/firestore";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
-        if (!session?.address) {
+        const session = await validateSession();
+        if (!session?.sub) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
         // Get validator agent
         const agentsRef = collection(db, "agents");
-        const q = query(agentsRef, where("walletAddress", "==", session.address));
+        const q = query(agentsRef, where("walletAddress", "==", session.sub));
         const snapshot = await getDocs(q);
 
         if (snapshot.empty) {
@@ -43,9 +43,9 @@ export async function POST(req: NextRequest) {
 
         const validatorAgent = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() } as Agent;
 
-        if (!validatorAgent.asn || !validatorAgent.agentAddress) {
+        if (!validatorAgent.asn || !validatorAgent.walletAddress) {
             return NextResponse.json(
-                { error: "Agent missing ASN or address" },
+                { error: "Agent missing ASN or wallet address" },
                 { status: 400 },
             );
         }
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         const stakeId = await stakeForValidation(
             taskId,
             validatorAgent.asn,
-            validatorAgent.agentAddress,
+            validatorAgent.walletAddress,
             validatorAgent.id,
             workerASN,
             workerAddress,

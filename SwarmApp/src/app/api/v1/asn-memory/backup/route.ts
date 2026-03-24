@@ -14,7 +14,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { collection, doc, setDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { uploadContent, isStorachaConfigured } from "@/lib/storacha/client";
 import { getAgentNFTIdentity } from "@/lib/hedera-nft-client";
 
@@ -28,7 +28,7 @@ interface BackupRequest {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -138,7 +138,7 @@ export async function POST(req: NextRequest) {
             creditScore: nftIdentity?.creditScore || null,
             trustScore: nftIdentity?.trustScore || null,
             tier: nftIdentity?.tier || null,
-            createdBy: session.address,
+            createdBy: session.sub,
             createdAt: serverTimestamp(),
             lastBackup: serverTimestamp(),
         });

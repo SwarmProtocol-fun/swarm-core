@@ -6,12 +6,12 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { getScoreState, getAllScoreStates } from "@/lib/hedera-mirror-subscriber";
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
 
             return NextResponse.json({
                 asn: state.asn,
-                agentAddress: state.agentAddress,
+                agentAddress: state.walletAddress,
                 creditScore: state.creditScore,
                 trustScore: state.trustScore,
                 lastEventTimestamp: state.lastEventTimestamp,
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
             count: allStates.length,
             scores: allStates.map(s => ({
                 asn: s.asn,
-                agentAddress: s.agentAddress,
+                agentAddress: s.walletAddress,
                 creditScore: s.creditScore,
                 trustScore: s.trustScore,
                 lastEventTimestamp: s.lastEventTimestamp,

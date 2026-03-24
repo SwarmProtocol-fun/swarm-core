@@ -5,24 +5,24 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { getPendingProposalsForSigner } from "@/lib/hedera-governance";
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 
-        const proposals = await getPendingProposalsForSigner(session.address);
+        const proposals = await getPendingProposalsForSigner(session.sub);
 
         return NextResponse.json({
             count: proposals.length,
             proposals: proposals.map(p => ({
                 id: p.id,
                 asn: p.asn,
-                agentAddress: p.agentAddress,
+                agentAddress: p.walletAddress,
                 creditPenalty: p.creditPenalty,
                 trustPenalty: p.trustPenalty,
                 reason: p.reason,

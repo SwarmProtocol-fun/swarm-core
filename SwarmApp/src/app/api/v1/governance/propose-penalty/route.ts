@@ -8,7 +8,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { createPenaltyProposal } from "@/lib/hedera-governance";
 
 interface ProposeRequest {
@@ -21,7 +21,7 @@ interface ProposeRequest {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
             agentAddress,
             creditPenalty,
             reason,
-            session.address,
+            session.sub,
             requiredSigners,
         );
 

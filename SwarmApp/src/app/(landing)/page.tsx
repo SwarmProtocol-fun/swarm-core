@@ -35,7 +35,7 @@ export default function LandingPage() {
 
               {/* CTA Buttons */}
               <div className="flex flex-wrap gap-4">
-                <Link href="/register">
+                <Link href="/mods/hedera-faucet">
                   <Button size="lg" className="text-lg px-8">
                     Get Free Testnet HBAR →
                   </Button>
@@ -158,10 +158,10 @@ export default function LandingPage() {
             Start Building on Hedera Testnet
           </h2>
           <p className="text-xl text-muted-foreground">
-            Get 10,000 free testnet HBAR and deploy your first AI agent in 5 minutes.
+            Get free testnet HBAR instantly and deploy your first AI agent in 5 minutes.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <Link href="https://portal.hedera.com/faucet" target="_blank">
+            <Link href="/mods/hedera-faucet">
               <Button size="lg" className="text-lg px-8">
                 Get Free Testnet HBAR
               </Button>

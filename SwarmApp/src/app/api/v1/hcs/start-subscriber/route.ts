@@ -6,13 +6,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { startMirrorNodeSubscriber } from "@/lib/hedera-mirror-subscriber";
 import { isHCSConfigured } from "@/lib/hedera-hcs-client";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

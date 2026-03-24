@@ -5,13 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { getStakingPoolStats, getPendingValidations } from "@/lib/hedera-staking";
 
 export async function GET(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
-        if (!session?.address) {
+        const session = await validateSession();
+        if (!session?.sub) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
 

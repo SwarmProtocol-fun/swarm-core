@@ -18,10 +18,10 @@ import { collection, query, where, getDocs } from "firebase/firestore";
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
   try {
-    const { address } = params;
+    const { address } = await params;
 
     if (!address || !/^0x[a-fA-F0-9]{40}$/.test(address)) {
       return new NextResponse("Invalid address", { status: 400 });

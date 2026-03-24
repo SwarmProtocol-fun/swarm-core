@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     // Update on-chain credit + record task completion in parallel
     const [creditResult, taskTxHash] = await Promise.all([
-        updateCreditOnChain(agentData.agentAddress || "", asn, newCredit, newTrust),
+        updateCreditOnChain(agentData.walletAddress || "", asn, newCredit, newTrust),
         recordTaskCompletionOnChain(asn, volumeWei),
     ]);
 

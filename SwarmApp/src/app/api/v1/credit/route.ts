@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     // Update on-chain
     const onChainResult = await updateCreditOnChain(
-        agentData.agentAddress || "",
+        agentData.walletAddress || "",
         asn,
         creditScore,
         trustScore,

@@ -241,7 +241,7 @@ export async function POST(request: NextRequest) {
             const existingAsn = existingData.asn || generateASN();
 
             // Derive agent address from public key (or backfill if missing)
-            const agentAddress = existingData.agentAddress || deriveAgentAddress(publicKey);
+            const agentAddress = existingData.walletAddress || deriveAgentAddress(publicKey);
 
             const updates: Record<string, unknown> = {
                 status: "online",
@@ -255,8 +255,8 @@ export async function POST(request: NextRequest) {
                 updates.creditScore = existingData.creditScore ?? 680;
                 updates.trustScore = existingData.trustScore ?? 50;
             }
-            if (!existingData.agentAddress) {
-                updates.agentAddress = agentAddress;
+            if (!existingData.walletAddress) {
+                updates.walletAddress = agentAddress;
             }
             await updateDoc(doc(db, "agents", existingDoc.id), updates);
 

@@ -1041,7 +1041,7 @@ function AgentDetailPage() {
                 <div className="grid grid-cols-2 gap-3 text-sm pl-2 border-l-2 border-emerald-500/30">
                   <div>
                     <span className="text-xs text-muted-foreground">Agent Address</span>
-                    <p className="font-mono text-xs mt-0.5">{shortAddress(onchainMatch.agentAddress)}</p>
+                    <p className="font-mono text-xs mt-0.5">{shortAddress(onchainMatch.walletAddress)}</p>
                   </div>
                   <div>
                     <span className="text-xs text-muted-foreground">Fee Rate</span>
@@ -1086,7 +1086,7 @@ function AgentDetailPage() {
                   <div className="grid grid-cols-2 gap-3 text-sm pl-2 border-l-2 border-blue-500/30">
                     <div>
                       <span className="text-xs text-muted-foreground">Agent Address</span>
-                      <p className="font-mono text-xs mt-0.5">{shortAddress(linkMatch.agentAddress)}</p>
+                      <p className="font-mono text-xs mt-0.5">{shortAddress(linkMatch.walletAddress)}</p>
                     </div>
                     <div>
                       <span className="text-xs text-muted-foreground">ASN</span>

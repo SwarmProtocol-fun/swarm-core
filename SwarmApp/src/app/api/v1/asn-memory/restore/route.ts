@@ -15,7 +15,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc } from "firebase/firestore";
-import { getServerSession } from "@/lib/session";
+import { validateSession } from "@/lib/session";
 import { retrieveContent, isStorachaConfigured } from "@/lib/storacha/client";
 import { getAgentNFTIdentity } from "@/lib/hedera-nft-client";
 
@@ -27,7 +27,7 @@ interface RestoreRequest {
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await getServerSession(req);
+        const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }

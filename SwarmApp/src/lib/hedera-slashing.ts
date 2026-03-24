@@ -70,7 +70,7 @@ export async function checkAndSlashOverdueTasks(): Promise<SlashingEvent[]> {
 
         const agent = agentDoc.docs[0].data() as Agent;
 
-        if (!agent.asn || !agent.agentAddress) continue;
+        if (!agent.asn || !agent.walletAddress) continue;
 
         // Determine penalty based on lateness
         let creditPenalty: number;
@@ -98,7 +98,7 @@ export async function checkAndSlashOverdueTasks(): Promise<SlashingEvent[]> {
         // Emit penalty
         await emitPenalty(
             agent.asn,
-            agent.agentAddress,
+            agent.walletAddress,
             -creditPenalty,
             `AUTO-SLASH: ${reason.replace(/_/g, " ")} for task ${task.id} (${hoursLate.toFixed(1)}h late)`,
         );
@@ -108,7 +108,7 @@ export async function checkAndSlashOverdueTasks(): Promise<SlashingEvent[]> {
             taskId: task.id,
             agentId: task.assigneeAgentId,
             asn: agent.asn,
-            agentAddress: agent.agentAddress,
+            agentAddress: agent.walletAddress,
             reason,
             creditPenalty: -creditPenalty,
             trustPenalty: -trustPenalty,

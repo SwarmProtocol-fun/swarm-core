@@ -90,7 +90,6 @@ export async function GET(req: NextRequest) {
                 tasksCompleted: agent.tasksCompleted || 0,
                 projectIds: (agent.projectIds || []).length,
                 status: agent.status,
-                lastSeen: agent.lastSeen,
             };
         }
 

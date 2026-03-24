@@ -294,7 +294,7 @@ function MarketItemCard({
                     </div>
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                            <h3 className="font-semibold text-sm truncate">{item.name}</h3>
+                            <h3 className="font-semibold text-base text-foreground">{item.name}</h3>
                             <span className="text-[10px] text-muted-foreground">v{item.version}</span>
                             {isPaid && priceLabel ? (
                                 <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20">
@@ -920,8 +920,8 @@ export default function MarketPage() {
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                     <span className="text-2xl">{item.icon}</span>
-                                    <div className="min-w-0">
-                                        <h3 className="font-bold text-sm truncate">{item.name}</h3>
+                                    <div className="min-w-0 flex-1">
+                                        <h3 className="font-bold text-base text-foreground">{item.name}</h3>
                                         <p className="text-[10px] text-amber-400 capitalize">{item.type}</p>
                                     </div>
                                 </div>

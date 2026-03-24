@@ -128,7 +128,7 @@ export default function HbarPage() {
   const agentPerfData = useMemo<AgentPerformance[]>(() => {
     return swarm.agents.map((agent) => {
       const agentTasks = swarm.tasks.filter(
-        (t) => t.claimedBy?.toLowerCase() === agent.agentAddress.toLowerCase()
+        (t) => t.claimedBy?.toLowerCase() === agent.walletAddress.toLowerCase()
       );
       const wins = agentTasks.filter((t) => t.status === TaskStatus.Completed).length;
       const losses = agentTasks.filter(
@@ -141,7 +141,7 @@ export default function HbarPage() {
       const firstSkill = (agent.skills || "").split(",")[0]?.trim() || "Agent";
 
       return {
-        agentId: agent.agentAddress,
+        agentId: agent.walletAddress,
         name: agent.name,
         type: firstSkill,
         winRate: Math.round(winRate * 10) / 10,
@@ -443,7 +443,7 @@ export default function HbarPage() {
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {swarm.agents.map((agent) => (
-                      <OnchainAgentCard key={agent.agentAddress} agent={agent} />
+                      <OnchainAgentCard key={agent.walletAddress} agent={agent} />
                     ))}
                   </div>
                 </div>
@@ -487,7 +487,7 @@ export default function HbarPage() {
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {swarm.agents.map((agent) => (
-                    <OnchainAgentCard key={agent.agentAddress} agent={agent} />
+                    <OnchainAgentCard key={agent.walletAddress} agent={agent} />
                   ))}
                 </div>
               )}
@@ -1171,7 +1171,7 @@ function OnchainAgentCard({ agent }: { agent: AgentProfile }) {
             <div className={cn("h-2 w-2 rounded-full shrink-0", agent.active ? "bg-emerald-400" : "bg-gray-400")} />
             <p className="text-sm font-medium truncate">{agent.name}</p>
           </div>
-          <p className="text-[10px] text-muted-foreground font-mono shrink-0">{shortAddr(agent.agentAddress)}</p>
+          <p className="text-[10px] text-muted-foreground font-mono shrink-0">{shortAddr(agent.walletAddress)}</p>
         </div>
         {skills.length > 0 && (
           <div className="flex flex-wrap gap-1">
