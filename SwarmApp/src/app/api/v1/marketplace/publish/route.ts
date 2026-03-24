@@ -29,7 +29,7 @@ import {
 } from "@/lib/submission-protocol";
 import { getMarketplaceSettings } from "@/lib/marketplace-settings";
 
-const VALID_TYPES: MarketItemType[] = ["mod", "plugin", "skill", "skin", "agent"];
+const VALID_TYPES: MarketItemType[] = ["mod", "plugin", "skill", "skin", "agent", "compute"];
 const VALID_TRACKS = ["prd_only", "open_repo", "private_repo", "managed_partner"] as const;
 
 export async function POST(req: NextRequest) {
@@ -277,6 +277,7 @@ export async function POST(req: NextRequest) {
                 submittedBy: publisherWallet,
                 submittedByName: publisherName,
                 skinConfig: body.skinConfig as { colors?: Record<string, string>; features?: string[] } | undefined,
+                computeConfig: body.computeConfig as { vCpu?: number; ramGb?: number; gpu?: string; region?: string; } | undefined,
                 modManifest,
                 submissionType,
                 submissionTrack,

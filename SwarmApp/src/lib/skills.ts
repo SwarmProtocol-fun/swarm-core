@@ -1206,6 +1206,13 @@ export interface CommunityMarketItem {
         colors?: Record<string, string>;
         features?: string[];
     };
+    /** Compute Node spec (type === "compute") */
+    computeConfig?: {
+        vCpu?: number;
+        ramGb?: number;
+        gpu?: string;
+        region?: string;
+    };
     /** Simplified mod manifest entries (type === "mod") */
     modManifest?: {
         tools?: string[];

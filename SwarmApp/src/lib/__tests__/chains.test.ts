@@ -10,8 +10,8 @@ import {
 } from "../chains";
 
 describe("toNative", () => {
-  it("converts wei to ETH (18 decimals, default)", () => {
-    expect(toNative(1_000_000_000_000_000_000n)).toBeCloseTo(1);
+  it("converts tinybars to HBAR (8 decimals, default)", () => {
+    expect(toNative(100_000_000)).toBeCloseTo(1);
   });
 
   it("converts tinybars to HBAR (8 decimals, chainId 295)", () => {
@@ -23,8 +23,8 @@ describe("toNative", () => {
     expect(toNative(0)).toBe(0);
   });
 
-  it("defaults to 18 decimals for unknown chainId", () => {
-    expect(toNative(1_000_000_000_000_000_000n, 999999)).toBeCloseTo(1);
+  it("defaults to 8 decimals for unknown chainId", () => {
+    expect(toNative(100_000_000, 999999)).toBeCloseTo(1);
   });
 });
 
@@ -47,34 +47,30 @@ describe("shortAddress", () => {
 });
 
 describe("getCurrencySymbol", () => {
-  it("returns ETH for undefined chainId", () => {
-    expect(getCurrencySymbol()).toBe("ETH");
+  it("returns HBAR for undefined chainId", () => {
+    expect(getCurrencySymbol()).toBe("HBAR");
   });
 
   it("returns HBAR for Hedera (295)", () => {
     expect(getCurrencySymbol(295)).toBe("HBAR");
   });
 
-  it("returns ETH for Sepolia (11155111)", () => {
-    expect(getCurrencySymbol(11155111)).toBe("ETH");
-  });
-
-  it("returns ETH for unknown chainId", () => {
-    expect(getCurrencySymbol(999999)).toBe("ETH");
+  it("returns HBAR for unknown chainId", () => {
+    expect(getCurrencySymbol(999999)).toBe("HBAR");
   });
 });
 
 describe("getCurrencyDecimals", () => {
-  it("returns 18 for ETH chains", () => {
-    expect(getCurrencyDecimals(11155111)).toBe(18);
-  });
-
   it("returns 8 for Hedera (295)", () => {
     expect(getCurrencyDecimals(295)).toBe(8);
   });
 
-  it("defaults to 18 for unknown", () => {
-    expect(getCurrencyDecimals(999999)).toBe(18);
+  it("defaults to 8 for undefined chainId", () => {
+    expect(getCurrencyDecimals()).toBe(8);
+  });
+
+  it("defaults to 8 for unknown chainId", () => {
+    expect(getCurrencyDecimals(999999)).toBe(8);
   });
 });
 
@@ -85,21 +81,15 @@ describe("getChainById", () => {
     expect(chain!.key).toBe("hedera");
   });
 
-  it("finds Sepolia by chainId", () => {
-    const chain = getChainById(11155111);
-    expect(chain).toBeDefined();
-    expect(chain!.key).toBe("sepolia");
-  });
-
   it("returns undefined for unknown chainId", () => {
     expect(getChainById(999999)).toBeUndefined();
   });
 });
 
 describe("getExplorerTxUrl", () => {
-  it("returns etherscan URL for undefined chainId", () => {
+  it("returns HashScan URL for undefined chainId", () => {
     const url = getExplorerTxUrl("0xabc");
-    expect(url).toBe("https://etherscan.io/tx/0xabc");
+    expect(url).toBe("https://hashscan.io/mainnet/transaction/0xabc");
   });
 
   it("returns HashScan URL for Hedera (295)", () => {

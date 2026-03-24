@@ -1082,7 +1082,7 @@ function AgentDetailPage() {
             {linkDeployed && (
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium">Ethereum Sepolia</span>
+                  <span className="text-xs font-medium">Hedera</span>
                   <Badge variant="outline" className="text-[9px]">LINK</Badge>
                 </div>
                 {linkMatch ? (
@@ -1123,7 +1123,7 @@ function AgentDetailPage() {
                         rel="noopener noreferrer"
                         className="text-[10px] text-cyan-600 hover:underline"
                       >
-                        View TX on Etherscan
+                        View TX on HashScan
                       </a>
                     )}
                   </div>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { ConnectButton, useActiveAccount } from "thirdweb/react";
 import { thirdwebClient } from "@/lib/thirdweb-client";
-import { WALLET_CHAINS } from "@/lib/chains";
+import { WALLET_CHAINS, DEFAULT_CHAIN } from "@/lib/chains";
 import { swarmWallets } from "@/lib/wallets";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useEffect, Suspense, lazy, useRef } from "react";
@@ -144,7 +144,7 @@ function LandingPageContent() {
                 </Button>
               </Link>
             ) : (
-              <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
+              <ConnectButton client={thirdwebClient} wallets={swarmWallets} chain={DEFAULT_CHAIN} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
             )}
           </div>
         </div>
@@ -213,7 +213,7 @@ function LandingPageContent() {
                   </Button>
                 </Link>
               ) : (
-                <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
+                <ConnectButton client={thirdwebClient} wallets={swarmWallets} chain={DEFAULT_CHAIN} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
               )}
               <Link href="/docs">
                 <Button variant="outline" size="lg" className="h-12 px-8 rounded-full border-white/10 hover:bg-white/5 group bg-black/20">
@@ -238,7 +238,7 @@ function LandingPageContent() {
                   </Button>
                 </Link>
               ) : (
-                <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
+                <ConnectButton client={thirdwebClient} wallets={swarmWallets} chain={DEFAULT_CHAIN} chains={WALLET_CHAINS} connectButton={{ label: "Connect" }} />
               )}
             </div>
           </div>

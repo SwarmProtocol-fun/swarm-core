@@ -127,8 +127,9 @@ function PublisherTierBadge({ walletAddress }: { walletAddress?: string }) {
 // ═══════════════════════════════════════════════════════════════
 
 /** Helper: format price display */
-function formatPrice(price: number): string {
-    return price % 1 === 0 ? `$${price}` : `$${price.toFixed(2)}`;
+function formatPrice(price: number, currency: string = "USD"): string {
+    const symbol = currency === "HBAR" ? "ℏ" : "$";
+    return price % 1 === 0 ? `${symbol}${price}` : `${symbol}${price.toFixed(2)}`;
 }
 
 /** Helper: get cheapest tier label */
@@ -137,11 +138,11 @@ function getCheapestLabel(item: Skill): string | null {
     const tiers = item.pricing.tiers;
     if (!tiers || tiers.length === 0) return null;
     const monthly = tiers.find((t) => t.plan === "monthly");
-    if (monthly) return `${formatPrice(monthly.price)}/mo`;
+    if (monthly) return `${formatPrice(monthly.price, monthly.currency)}/mo`;
     const yearly = tiers.find((t) => t.plan === "yearly");
-    if (yearly) return `${formatPrice(yearly.price)}/yr`;
+    if (yearly) return `${formatPrice(yearly.price, yearly.currency)}/yr`;
     const lifetime = tiers.find((t) => t.plan === "lifetime");
-    if (lifetime) return `${formatPrice(lifetime.price)} once`;
+    if (lifetime) return `${formatPrice(lifetime.price, lifetime.currency)} once`;
     return null;
 }
 
@@ -827,7 +828,8 @@ export default function MarketPage() {
     const bundleCount = SKILL_BUNDLES.length;
     const submitCount = userSubmissions.length;
     const skinCount = allItems.filter((s) => s.type === "skin").length;
-    const tabCounts: Record<Tab, number> = { agents: agentCount, mods: modCount, plugins: pluginCount, skills: skillCount, skins: skinCount, bundles: bundleCount, inventory: inventoryCount, submit: submitCount };
+    const computeCount = 0;
+    const tabCounts: Record<Tab, number> = { agents: agentCount, mods: modCount, plugins: pluginCount, skills: skillCount, skins: skinCount, compute: computeCount, bundles: bundleCount, inventory: inventoryCount, submit: submitCount };
 
     if (!account && !authenticated) {
         return (
@@ -1377,27 +1379,39 @@ export default function MarketPage() {
                                                 </div>
                                             </div>
                                             <div className="text-right">
-                                                <div className="font-bold text-sm">{formatPrice(tier.price)}</div>
+                                                <div className="font-bold text-sm">{formatPrice(tier.price, tier.currency)}</div>
                                                 <div className="text-[10px] text-muted-foreground">
                                                     {tier.plan === "monthly" ? "/month" : tier.plan === "yearly" ? "/year" : "once"}
                                                 </div>
                                             </div>
                                         </div>
                                         <div className="flex gap-2">
-                                            <button
-                                                onClick={() => handleSubscribe(subKey, tier.plan, "stripe")}
-                                                disabled={!!busyId}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                <CreditCard className="h-3.5 w-3.5" /> Pay with Card
-                                            </button>
-                                            <button
-                                                onClick={() => handleSubscribe(subKey, tier.plan, "crypto")}
-                                                disabled={!!busyId}
-                                                className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md border border-border hover:bg-muted/50 text-xs font-medium transition-colors disabled:opacity-50"
-                                            >
-                                                <Zap className="h-3.5 w-3.5" /> Pay with Crypto
-                                            </button>
+                                            {tier.currency === "HBAR" ? (
+                                                <button
+                                                    onClick={() => handleSubscribe(subKey, tier.plan, "crypto")}
+                                                    disabled={!!busyId}
+                                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                                                >
+                                                    <Zap className="h-3.5 w-3.5" /> Pay with HBAR
+                                                </button>
+                                            ) : (
+                                                <>
+                                                    <button
+                                                        onClick={() => handleSubscribe(subKey, tier.plan, "stripe")}
+                                                        disabled={!!busyId}
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md bg-purple-600 hover:bg-purple-700 text-white text-xs font-medium transition-colors disabled:opacity-50"
+                                                    >
+                                                        <CreditCard className="h-3.5 w-3.5" /> Pay with Card
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleSubscribe(subKey, tier.plan, "crypto")}
+                                                        disabled={!!busyId}
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md border border-border hover:bg-muted/50 text-xs font-medium transition-colors disabled:opacity-50"
+                                                    >
+                                                        <Zap className="h-3.5 w-3.5" /> Pay with Crypto
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     );

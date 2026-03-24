@@ -224,13 +224,17 @@ export const CHAIN_CONFIGS: Record<string, ChainConfig> = {
 /** All enabled chains */
 export const ENABLED_CHAINS = Object.values(CHAIN_CONFIGS).filter((c) => c.enabled);
 
-/** Thirdweb chain objects for wallet ConnectButton - only use well-supported chains to avoid chainId errors */
+/** Thirdweb chain objects for wallet ConnectButton */
 export const WALLET_CHAINS: Chain[] = [
+  hedera,
   ethereum,
   base,
   avalanche,
   sepoliaChain,
 ];
+
+/** Default chain for ConnectButton — Hedera Mainnet */
+export const DEFAULT_CHAIN = hedera;
 
 /** Get chain config by EVM chain ID */
 export function getChainById(chainId: number): ChainConfig | undefined {
@@ -262,21 +266,21 @@ export function toNative(rawAmount: bigint | number, chainId?: number): number {
 
 /** Get explorer TX link for a chain */
 export function getExplorerTxUrl(hash: string, chainId?: number): string {
-    if (!chainId) return `https://etherscan.io/tx/${hash}`;
+    if (!chainId) return `https://hashscan.io/mainnet/transaction/${hash}`;
     const chain = getChainById(chainId);
     return chain?.explorer.txUrl(hash) ?? `#`;
 }
 
 /** Get explorer contract link for a chain */
 export function getExplorerContractUrl(addr: string, chainId?: number): string {
-    if (!chainId) return `https://etherscan.io/address/${addr}`;
+    if (!chainId) return `https://hashscan.io/mainnet/contract/${addr}`;
     const chain = getChainById(chainId);
     return chain?.explorer.contractUrl(addr) ?? `#`;
 }
 
 /** Get deployed contract addresses for a chain (returns empty object if none) */
 export function getContracts(chainId?: number) {
-    if (!chainId) return CHAIN_CONFIGS.ethereum.contracts;
+    if (!chainId) return CHAIN_CONFIGS.hedera.contracts;
     return getChainById(chainId)?.contracts ?? {};
 }
 

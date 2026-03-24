@@ -92,7 +92,7 @@ async function registerOnChain(
     }
 }
 
-/** Attempt on-chain registration on Ethereum Sepolia using platform wallet */
+/** Attempt on-chain registration on Hedera using platform wallet */
 async function registerOnChainLink(
     agentName: string,
     asn: string,
@@ -429,7 +429,7 @@ export async function POST(request: NextRequest) {
             }
         }).catch(() => {});
 
-        // Attempt on-chain registration on Ethereum Sepolia / LINK (non-blocking)
+        // Attempt on-chain registration on Hedera (non-blocking)
         registerOnChainLink(agentName, asn, skillStr, publicKey).then(async (result) => {
             if (result) {
                 await updateDoc(doc(db, "agents", ref.id), {

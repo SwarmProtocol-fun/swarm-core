@@ -53,6 +53,7 @@ export function SubmitMarketItemDialog({
     const [tagsInput, setTagsInput] = useState("");
     const [requiredKeysInput, setRequiredKeysInput] = useState("");
     const [pricingModel, setPricingModel] = useState<PricingModel>("free");
+    const [pricingCurrency, setPricingCurrency] = useState<"USD" | "HBAR">("HBAR");
     const [monthlyPrice, setMonthlyPrice] = useState("");
     const [yearlyPrice, setYearlyPrice] = useState("");
     const [lifetimePrice, setLifetimePrice] = useState("");
@@ -111,6 +112,7 @@ export function SubmitMarketItemDialog({
         setTagsInput("");
         setRequiredKeysInput("");
         setPricingModel("free");
+        setPricingCurrency("HBAR");
         setMonthlyPrice("");
         setYearlyPrice("");
         setLifetimePrice("");
@@ -203,7 +205,7 @@ export function SubmitMarketItemDialog({
                     rentalUsage: rentalUsage ? parseFloat(rentalUsage) : undefined,
                     rentalPerformance: performanceShare ? parseFloat(performanceShare) : undefined,
                     hirePerTask: hirePerTask ? parseFloat(hirePerTask) : undefined,
-                    currency: "USD",
+                    currency: pricingCurrency,
                 };
 
                 // SOUL template
@@ -226,9 +228,9 @@ export function SubmitMarketItemDialog({
                 const pricing: MarketPricing = { model: pricingModel };
                 if (pricingModel === "subscription") {
                     pricing.tiers = [];
-                    if (monthlyPrice) pricing.tiers.push({ plan: "monthly", price: parseFloat(monthlyPrice), currency: "USD" });
-                    if (yearlyPrice) pricing.tiers.push({ plan: "yearly", price: parseFloat(yearlyPrice), currency: "USD" });
-                    if (lifetimePrice) pricing.tiers.push({ plan: "lifetime", price: parseFloat(lifetimePrice), currency: "USD" });
+                    if (monthlyPrice) pricing.tiers.push({ plan: "monthly", price: parseFloat(monthlyPrice), currency: pricingCurrency });
+                    if (yearlyPrice) pricing.tiers.push({ plan: "yearly", price: parseFloat(yearlyPrice), currency: pricingCurrency });
+                    if (lifetimePrice) pricing.tiers.push({ plan: "lifetime", price: parseFloat(lifetimePrice), currency: pricingCurrency });
                 }
                 body.pricing = pricing;
 
@@ -479,10 +481,21 @@ export function SubmitMarketItemDialog({
                             </div>
 
                             {/* Agent pricing */}
-                            <p className="text-xs font-medium text-cyan-400 mt-2">Distribution Pricing</p>
+                            <div className="flex items-center justify-between mt-2">
+                                <p className="text-xs font-medium text-cyan-400">Distribution Pricing</p>
+                                <Select value={pricingCurrency} onValueChange={(v: "USD" | "HBAR") => setPricingCurrency(v)}>
+                                    <SelectTrigger className="h-6 text-[10px] w-20 border-cyan-500/30 text-cyan-500 bg-cyan-500/10">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="HBAR">HBAR (ℏ)</SelectItem>
+                                        <SelectItem value="USD">USD ($)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
                             <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Config Purchase ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Config Purchase ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number" min="0" step="0.01"
                                         placeholder="39"
@@ -492,7 +505,7 @@ export function SubmitMarketItemDialog({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Rental Monthly ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Rental Monthly ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number" min="0" step="0.01"
                                         placeholder="15"
@@ -502,7 +515,7 @@ export function SubmitMarketItemDialog({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Per Request ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Per Request ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number" min="0" step="0.01"
                                         placeholder="2"
@@ -512,7 +525,7 @@ export function SubmitMarketItemDialog({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Hire Per Task ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Hire Per Task ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number" min="0" step="0.01"
                                         placeholder="5"
@@ -863,15 +876,28 @@ export function SubmitMarketItemDialog({
                     {type !== "agent" && <div className="space-y-3 p-3 rounded-lg border border-border bg-muted/30">
                         <div>
                             <label className="text-sm font-medium mb-1 block">Access Model</label>
-                            <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as PricingModel)}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="free">Free</SelectItem>
-                                    <SelectItem value="subscription">Subscription (Paid)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                            <div className="flex gap-2">
+                                <Select value={pricingModel} onValueChange={(v) => setPricingModel(v as PricingModel)}>
+                                    <SelectTrigger className="flex-1">
+                                        <SelectValue />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="free">Free</SelectItem>
+                                        <SelectItem value="subscription">Subscription (Paid)</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                {pricingModel !== "free" && (
+                                    <Select value={pricingCurrency} onValueChange={(v: "USD" | "HBAR") => setPricingCurrency(v)}>
+                                        <SelectTrigger className="w-[100px] shrink-0 border-amber-500/30 text-amber-500 bg-amber-500/10">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="HBAR">HBAR</SelectItem>
+                                            <SelectItem value="USD">USD</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                )}
+                            </div>
                             <p className="text-[10px] text-muted-foreground mt-0.5">
                                 {pricingModel === "free" ? "Anyone can install and use this item" : "Users pay to access — you control the pricing tiers"}
                             </p>
@@ -879,7 +905,7 @@ export function SubmitMarketItemDialog({
                         {pricingModel === "subscription" && (
                             <div className="grid grid-cols-3 gap-2">
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Monthly ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Monthly ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number"
                                         min="0"
@@ -891,7 +917,7 @@ export function SubmitMarketItemDialog({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Yearly ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Yearly ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number"
                                         min="0"
@@ -903,7 +929,7 @@ export function SubmitMarketItemDialog({
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Lifetime ($)</label>
+                                    <label className="text-[11px] font-medium mb-0.5 block text-muted-foreground">Lifetime ({pricingCurrency === "HBAR" ? "ℏ" : "$"})</label>
                                     <Input
                                         type="number"
                                         min="0"

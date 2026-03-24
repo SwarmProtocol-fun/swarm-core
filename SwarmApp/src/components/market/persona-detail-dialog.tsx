@@ -40,6 +40,8 @@ export function PersonaDetailDialog({ open, onOpenChange, persona, onApply }: Pe
     const soul: SOULConfig = persona.soulTemplate || identityToSOUL(persona.identity, persona.name);
     const price = persona.pricing.configPurchase;
     const isFree = !price || price === 0;
+    const currency = persona.pricing.currency || "USD";
+    const currencySymbol = currency === "HBAR" ? "ℏ" : "$";
     const allSkills = [...(persona.requiredSkills || []), ...(persona.requiredMods || [])];
 
     return (
@@ -58,7 +60,7 @@ export function PersonaDetailDialog({ open, onOpenChange, persona, onApply }: Pe
                                     <Badge className="bg-emerald-500/20 text-emerald-400 border-emerald-500/30 text-xs">Free</Badge>
                                 ) : (
                                     <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 text-xs">
-                                        <DollarSign className="h-3 w-3 mr-0.5" />{price}
+                                        {currencySymbol}{price}
                                     </Badge>
                                 )}
                             </div>
@@ -291,7 +293,7 @@ export function PersonaDetailDialog({ open, onOpenChange, persona, onApply }: Pe
                         onClick={() => onApply(persona)}
                     >
                         <Bot className="h-4 w-4" />
-                        {isFree ? "Apply to Agent" : `Buy & Apply — $${price}`}
+                        {isFree ? "Apply to Agent" : `Buy & Apply — ${currencySymbol}${price}`}
                     </Button>
                 </div>
             </DialogContent>

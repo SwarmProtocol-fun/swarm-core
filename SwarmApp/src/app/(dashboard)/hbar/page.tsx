@@ -101,6 +101,99 @@ export default function HbarPage() {
   const [ocAgentSkills, setOcAgentSkills] = useState("");
   const [ocAgentFeeRate, setOcAgentFeeRate] = useState("500");
 
+  // Memory tab state
+  const [memAgentId, setMemAgentId] = useState("");
+  const [memASN, setMemASN] = useState("");
+  const [memTopicId, setMemTopicId] = useState("");
+  const [memContent, setMemContent] = useState("");
+  const [memType, setMemType] = useState<"conversation" | "context" | "skill_learned" | "preference" | "snapshot">("conversation");
+  const [memLoading, setMemLoading] = useState(false);
+  const [memStatus, setMemStatus] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const [memMemories, setMemMemories] = useState<any[]>([]);
+  const [memBreakdown, setMemBreakdown] = useState<Record<string, number>>({});
+  const [memTotalCount, setMemTotalCount] = useState(0);
+  const [memHashscanUrl, setMemHashscanUrl] = useState("");
+
+  // Memory API handlers
+  async function handleCreateMemoryTopic() {
+    if (!memAgentId || !memASN) {
+      setMemStatus({ type: "error", message: "Agent ID and ASN are required" });
+      return;
+    }
+    setMemLoading(true);
+    setMemStatus(null);
+    try {
+      const res = await fetch("/api/v1/hedera-memory/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ agentId: memAgentId, asn: memASN }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to create topic");
+      setMemTopicId(data.memoryTopicId);
+      setMemHashscanUrl(data.hashscanUrl || "");
+      setMemStatus({ type: "success", message: `Topic created: ${data.memoryTopicId}` });
+    } catch (err: any) {
+      setMemStatus({ type: "error", message: err.message });
+    } finally {
+      setMemLoading(false);
+    }
+  }
+
+  async function handlePostMemory() {
+    if (!memTopicId || !memASN || !memContent) {
+      setMemStatus({ type: "error", message: "Topic ID, ASN, and content are required" });
+      return;
+    }
+    setMemLoading(true);
+    setMemStatus(null);
+    try {
+      const res = await fetch("/api/v1/hedera-memory/post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          topicId: memTopicId,
+          asn: memASN,
+          message: { type: memType, content: memContent, metadata: { timestamp: Date.now() } },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to post memory");
+      setMemContent("");
+      setMemStatus({ type: "success", message: `Memory posted! Seq #${data.sequenceNumber}` });
+    } catch (err: any) {
+      setMemStatus({ type: "error", message: err.message });
+    } finally {
+      setMemLoading(false);
+    }
+  }
+
+  async function handleRetrieveMemories() {
+    if (!memTopicId || !memASN) {
+      setMemStatus({ type: "error", message: "Topic ID and ASN are required" });
+      return;
+    }
+    setMemLoading(true);
+    setMemStatus(null);
+    try {
+      const res = await fetch("/api/v1/hedera-memory/retrieve", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ topicId: memTopicId, asn: memASN }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to retrieve memories");
+      setMemMemories(data.memories || []);
+      setMemBreakdown(data.breakdown || {});
+      setMemTotalCount(data.totalMemories || 0);
+      setMemStatus({ type: "success", message: data.message });
+    } catch (err: any) {
+      setMemStatus({ type: "error", message: err.message });
+    } finally {
+      setMemLoading(false);
+    }
+  }
+
   // ── Derived data ──
 
   const onchainOpen = useMemo(
@@ -892,29 +985,198 @@ export default function HbarPage() {
                 <p className="text-sm text-muted-foreground">Private encrypted memories stored on Hedera Consensus Service, reconnectable with ASN</p>
               </div>
 
-              {/* Coming soon placeholder */}
+              {/* Status banner */}
+              {memStatus && (
+                <div className={cn(
+                  "px-4 py-3 rounded-lg text-sm border",
+                  memStatus.type === "success"
+                    ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                    : "bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400"
+                )}>
+                  {memStatus.type === "success" ? "✅ " : "❌ "}{memStatus.message}
+                </div>
+              )}
+
+              {/* Feature overview cards */}
+              <div className="grid sm:grid-cols-3 gap-4">
+                <div className="p-4 rounded-lg border border-border">
+                  <p className="text-sm font-medium mb-1">🔒 AES-256-GCM</p>
+                  <p className="text-xs text-muted-foreground">End-to-end encryption with ASN-derived keys</p>
+                </div>
+                <div className="p-4 rounded-lg border border-border">
+                  <p className="text-sm font-medium mb-1">⚡ Real-time</p>
+                  <p className="text-xs text-muted-foreground">3-5s finality, $0.0001 per memory</p>
+                </div>
+                <div className="p-4 rounded-lg border border-border">
+                  <p className="text-sm font-medium mb-1">🔄 Reconnectable</p>
+                  <p className="text-xs text-muted-foreground">Agent memories persist across chains and sessions</p>
+                </div>
+              </div>
+
+              {/* Step 1: Create Memory Topic */}
               <Card>
-                <CardContent className="py-16 text-center">
-                  <p className="text-4xl mb-4">🧠</p>
-                  <p className="text-lg font-semibold mb-2">Hedera Agent Memory</p>
-                  <p className="text-sm text-muted-foreground max-w-md mx-auto">
-                    Agents can post encrypted memories to private HCS topics and retrieve them across sessions using their ASN (Agent Social Number).
+                <CardHeader>
+                  <CardTitle className="text-sm">Step 1 — Create Private Memory Topic</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Each agent gets a private HCS topic for storing encrypted memories. The topic is linked to the agent&apos;s ASN for decryption.
                   </p>
-                  <div className="mt-6 grid sm:grid-cols-3 gap-4 max-w-2xl mx-auto text-left">
-                    <div className="p-4 rounded-lg border border-border">
-                      <p className="text-sm font-medium mb-1">🔒 AES-256-GCM</p>
-                      <p className="text-xs text-muted-foreground">End-to-end encryption with ASN-derived keys</p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Agent ID</label>
+                      <Input
+                        placeholder="e.g. agent-abc123"
+                        value={memAgentId}
+                        onChange={(e) => setMemAgentId(e.target.value)}
+                      />
                     </div>
-                    <div className="p-4 rounded-lg border border-border">
-                      <p className="text-sm font-medium mb-1">⚡ Real-time</p>
-                      <p className="text-xs text-muted-foreground">3-5s finality, $0.0001 per memory</p>
-                    </div>
-                    <div className="p-4 rounded-lg border border-border">
-                      <p className="text-sm font-medium mb-1">🔄 Reconnectable</p>
-                      <p className="text-xs text-muted-foreground">Agent memories persist across chains and sessions</p>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">ASN (Agent Social Number)</label>
+                      <Input
+                        placeholder="e.g. ASN-SWM-2025-A1B2-C3D4-XY"
+                        value={memASN}
+                        onChange={(e) => setMemASN(e.target.value)}
+                      />
                     </div>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-6">UI Coming Soon</p>
+                  <div className="flex items-center gap-3">
+                    <Button onClick={handleCreateMemoryTopic} disabled={memLoading || !memAgentId || !memASN} size="sm">
+                      {memLoading ? "Creating..." : "Create HCS Topic"}
+                    </Button>
+                    {memTopicId && (
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="font-mono text-xs">{memTopicId}</Badge>
+                        {memHashscanUrl && (
+                          <a href={memHashscanUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 dark:text-blue-400 hover:underline">
+                            View on HashScan
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {memTopicId && (
+                    <div className="text-xs text-muted-foreground">
+                      Or enter an existing topic:
+                      <Input
+                        className="mt-1"
+                        placeholder="0.0.XXXXX"
+                        value={memTopicId}
+                        onChange={(e) => setMemTopicId(e.target.value)}
+                      />
+                    </div>
+                  )}
+                  {!memTopicId && (
+                    <div className="text-xs text-muted-foreground">
+                      Already have a topic? Enter it directly:
+                      <Input
+                        className="mt-1"
+                        placeholder="0.0.XXXXX"
+                        value={memTopicId}
+                        onChange={(e) => setMemTopicId(e.target.value)}
+                      />
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Step 2: Post Memory */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Step 2 — Post Encrypted Memory</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Post an encrypted message to the agent&apos;s private HCS topic. Content is encrypted with AES-256-GCM using the ASN-derived key before submission.
+                  </p>
+                  <div className="grid sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Topic ID</label>
+                      <Input
+                        placeholder="0.0.XXXXX"
+                        value={memTopicId}
+                        onChange={(e) => setMemTopicId(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground mb-1 block">Memory Type</label>
+                      <select
+                        className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm"
+                        value={memType}
+                        onChange={(e) => setMemType(e.target.value as typeof memType)}
+                      >
+                        <option value="conversation">Conversation</option>
+                        <option value="context">Context</option>
+                        <option value="skill_learned">Skill Learned</option>
+                        <option value="preference">Preference</option>
+                        <option value="snapshot">Snapshot</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-medium text-muted-foreground mb-1 block">Memory Content</label>
+                    <Textarea
+                      placeholder="Enter memory content to encrypt and store on Hedera..."
+                      value={memContent}
+                      onChange={(e) => setMemContent(e.target.value)}
+                      rows={3}
+                    />
+                  </div>
+                  <Button onClick={handlePostMemory} disabled={memLoading || !memTopicId || !memASN || !memContent} size="sm">
+                    {memLoading ? "Encrypting & Posting..." : "Post Encrypted Memory"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Step 3: Retrieve Memories */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm">Step 3 — Retrieve & Decrypt Memories</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <p className="text-xs text-muted-foreground">
+                    Retrieve all encrypted memories from the HCS topic and decrypt them using the ASN. Only the agent with the correct ASN can read their memories.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button onClick={handleRetrieveMemories} disabled={memLoading || !memTopicId || !memASN} size="sm">
+                      {memLoading ? "Retrieving..." : "Retrieve Memories"}
+                    </Button>
+                    {memTotalCount > 0 && (
+                      <span className="text-sm text-muted-foreground">{memTotalCount} memories found</span>
+                    )}
+                  </div>
+
+                  {/* Breakdown stats */}
+                  {Object.keys(memBreakdown).length > 0 && (
+                    <div className="grid grid-cols-5 gap-2">
+                      {Object.entries(memBreakdown).map(([type, count]) => (
+                        <div key={type} className="text-center p-2 rounded-lg border border-border">
+                          <p className="text-lg font-bold">{count}</p>
+                          <p className="text-[10px] text-muted-foreground">{type.replace("_", " ")}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Memory list */}
+                  {memMemories.length > 0 && (
+                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                      {memMemories.map((m, i) => (
+                        <div key={i} className="p-3 rounded-lg border border-border bg-muted/30">
+                          <div className="flex items-center justify-between mb-1">
+                            <Badge variant="outline" className="text-[10px]">{m.type}</Badge>
+                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                              {m.sequenceNumber && <span>Seq #{m.sequenceNumber}</span>}
+                              {m.consensusTimestamp && (
+                                <span>{new Date(m.consensusTimestamp).toLocaleString()}</span>
+                              )}
+                            </div>
+                          </div>
+                          <p className="text-sm break-words">{m.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 

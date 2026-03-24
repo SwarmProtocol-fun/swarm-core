@@ -252,7 +252,7 @@ export function FaucetPanel() {
               <div>
                 <div className="font-medium">Connect your wallet</div>
                 <div className="text-sm text-muted-foreground">
-                  Connect your Ethereum wallet to authenticate your request
+                  Connect your wallet to authenticate your request
                 </div>
               </div>
             </div>

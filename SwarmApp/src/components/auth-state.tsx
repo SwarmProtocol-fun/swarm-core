@@ -6,7 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ConnectButton } from 'thirdweb/react';
 import { thirdwebClient } from '@/lib/thirdweb-client';
-import { WALLET_CHAINS } from '@/lib/chains';
+import { WALLET_CHAINS, DEFAULT_CHAIN } from '@/lib/chains';
 import { swarmWallets } from '@/lib/wallets';
 import {
   WifiOff,
@@ -101,7 +101,7 @@ function DisconnectedState() {
           Your wallet was disconnected.
         </p>
       </div>
-      <ConnectButton client={thirdwebClient} wallets={swarmWallets} chains={WALLET_CHAINS} />
+      <ConnectButton client={thirdwebClient} wallets={swarmWallets} chain={DEFAULT_CHAIN} chains={WALLET_CHAINS} />
       <Link
         href="/"
         className="text-xs text-muted-foreground hover:text-foreground transition-colors"
