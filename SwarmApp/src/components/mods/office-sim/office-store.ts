@@ -32,7 +32,6 @@ export interface OfficeState {
   selectedAgentId: string | null;
   connected: boolean;
   hubConnected: boolean;
-  demoMode: boolean;
   cameraMode: CameraMode;
   filter: FilterState;
   activityFeed: OfficeActivityEvent[];
@@ -61,7 +60,6 @@ export type OfficeAction =
   | { type: "SET_HUB_CONNECTED"; hubConnected: boolean }
   | { type: "SET_LINKS"; links: CollaborationLink[] }
   | { type: "SET_FILTER"; filter: Partial<FilterState> }
-  | { type: "TOGGLE_DEMO" }
   | { type: "SET_CAMERA_MODE"; mode: CameraMode }
   | { type: "SET_ACTIVITY_FEED"; events: OfficeActivityEvent[] }
   | { type: "PUSH_ACTIVITY"; event: OfficeActivityEvent }
@@ -83,7 +81,6 @@ export const initialState: OfficeState = {
   selectedAgentId: null,
   connected: false,
   hubConnected: false,
-  demoMode: false,
   cameraMode: "orbit",
   filter: { statusFilter: "all", searchQuery: "" },
   activityFeed: [],
@@ -147,8 +144,6 @@ export function officeReducer(state: OfficeState, action: OfficeAction): OfficeS
       return { ...state, collaborationLinks: action.links };
     case "SET_FILTER":
       return { ...state, filter: { ...state.filter, ...action.filter } };
-    case "TOGGLE_DEMO":
-      return { ...state, demoMode: !state.demoMode };
     case "SET_CAMERA_MODE":
       return { ...state, cameraMode: action.mode };
     case "SET_ACTIVITY_FEED":

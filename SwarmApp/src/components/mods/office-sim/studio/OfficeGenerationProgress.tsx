@@ -1,4 +1,4 @@
-/** OfficeGenerationProgress — Multi-task progress grid for batch office generation */
+/** OfficeGenerationProgress — Multi-job progress grid for batch office generation */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,43 +13,49 @@ import {
   type TextureMaterial,
 } from "./texture-types";
 
-interface BatchTask {
-  type: "furniture" | "texture";
-  id: string;
+interface BatchJob {
+  jobId: string;
+  pluginId: string;
   category: string;
+  assetKind: string;
 }
 
-interface TaskStatus {
+interface JobStatus {
   id: string;
   status: string;
   progress?: number;
   completed?: boolean;
 }
 
+/** Label lookup that works across both furniture and texture categories */
+function getCategoryLabel(category: string, pluginId: string): string {
+  if (pluginId === "meshy") {
+    return FURNITURE_LABELS[category as FurnitureCategory] || category;
+  }
+  return TEXTURE_LABELS[category as TextureMaterial] || category;
+}
+
 export function OfficeGenerationProgress({
-  tasks,
+  jobs,
 }: {
-  tasks: BatchTask[];
+  jobs: BatchJob[];
 }) {
-  const [statuses, setStatuses] = useState<Map<string, TaskStatus>>(new Map());
+  const [statuses, setStatuses] = useState<Map<string, JobStatus>>(new Map());
   const [polling, setPolling] = useState(true);
 
-  const pollTask = useCallback(async (task: BatchTask) => {
+  const pollJob = useCallback(async (job: BatchJob) => {
     try {
-      const endpoint = task.type === "furniture"
-        ? `/api/v1/mods/office-sim/furniture-design/${task.id}`
-        : `/api/v1/mods/office-sim/texture-design/${task.id}`;
-
-      const res = await fetch(endpoint);
+      // Use the unified plugin job polling endpoint
+      const res = await fetch(`/api/v1/plugins/jobs/${job.jobId}`);
       if (!res.ok) return;
       const data = await res.json();
 
       setStatuses((prev) => {
         const next = new Map(prev);
-        next.set(task.id, {
-          id: task.id,
+        next.set(job.jobId, {
+          id: job.jobId,
           status: data.status,
-          progress: data.meshy?.progress || data.provider?.progress,
+          progress: data.progress,
           completed: data.completed,
         });
         return next;
@@ -59,38 +65,38 @@ export function OfficeGenerationProgress({
     }
   }, []);
 
-  // Poll all tasks periodically
+  // Poll all jobs periodically
   useEffect(() => {
-    if (!polling || tasks.length === 0) return;
+    if (!polling || jobs.length === 0) return;
 
     const pollAll = () => {
-      for (const task of tasks) {
-        const current = statuses.get(task.id);
+      for (const job of jobs) {
+        const current = statuses.get(job.jobId);
         if (current?.status === "completed" || current?.status === "failed") continue;
-        pollTask(task);
+        pollJob(job);
       }
     };
 
     pollAll();
     const interval = setInterval(pollAll, 4000);
     return () => clearInterval(interval);
-  }, [tasks, polling, pollTask, statuses]);
+  }, [jobs, polling, pollJob, statuses]);
 
   // Check if all done
   useEffect(() => {
-    if (tasks.length === 0) return;
-    const allDone = tasks.every((t) => {
-      const s = statuses.get(t.id);
+    if (jobs.length === 0) return;
+    const allDone = jobs.every((j) => {
+      const s = statuses.get(j.jobId);
       return s?.status === "completed" || s?.status === "failed";
     });
     if (allDone) setPolling(false);
-  }, [tasks, statuses]);
+  }, [jobs, statuses]);
 
-  const completedCount = tasks.filter(
-    (t) => statuses.get(t.id)?.status === "completed",
+  const completedCount = jobs.filter(
+    (j) => statuses.get(j.jobId)?.status === "completed",
   ).length;
-  const failedCount = tasks.filter(
-    (t) => statuses.get(t.id)?.status === "failed",
+  const failedCount = jobs.filter(
+    (j) => statuses.get(j.jobId)?.status === "failed",
   ).length;
 
   return (
@@ -98,7 +104,7 @@ export function OfficeGenerationProgress({
       {/* Summary bar */}
       <div className="flex items-center justify-between text-xs">
         <span className="text-muted-foreground">
-          {completedCount}/{tasks.length} completed
+          {completedCount}/{jobs.length} completed
           {failedCount > 0 && ` (${failedCount} failed)`}
         </span>
         {polling && (
@@ -107,7 +113,7 @@ export function OfficeGenerationProgress({
             Generating...
           </Badge>
         )}
-        {!polling && completedCount === tasks.length && (
+        {!polling && completedCount === jobs.length && (
           <Badge variant="outline" className="text-[10px] border-green-500/30 text-green-400">
             All done
           </Badge>
@@ -118,24 +124,22 @@ export function OfficeGenerationProgress({
       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div
           className="h-full rounded-full bg-amber-500 transition-all duration-500"
-          style={{ width: `${tasks.length > 0 ? (completedCount / tasks.length) * 100 : 0}%` }}
+          style={{ width: `${jobs.length > 0 ? (completedCount / jobs.length) * 100 : 0}%` }}
         />
       </div>
 
-      {/* Task grid */}
+      {/* Job grid */}
       <div className="grid grid-cols-2 gap-2">
-        {tasks.map((task) => {
-          const status = statuses.get(task.id);
-          const label = task.type === "furniture"
-            ? FURNITURE_LABELS[task.category as FurnitureCategory] || task.category
-            : TEXTURE_LABELS[task.category as TextureMaterial] || task.category;
+        {jobs.map((job) => {
+          const status = statuses.get(job.jobId);
+          const label = getCategoryLabel(job.category, job.pluginId);
 
           return (
             <div
-              key={task.id}
+              key={job.jobId}
               className="flex items-center gap-2 p-2 rounded border border-border text-xs"
             >
-              <TaskIcon status={status?.status} />
+              <JobIcon status={status?.status} />
               <div className="flex-1 min-w-0">
                 <p className="font-medium truncate">{label}</p>
                 <p className="text-[10px] text-muted-foreground capitalize">
@@ -143,6 +147,9 @@ export function OfficeGenerationProgress({
                   {status?.progress ? ` (${Math.round(status.progress)}%)` : ""}
                 </p>
               </div>
+              <span className="text-[9px] text-muted-foreground/50">
+                {job.pluginId}
+              </span>
             </div>
           );
         })}
@@ -151,15 +158,13 @@ export function OfficeGenerationProgress({
   );
 }
 
-function TaskIcon({ status }: { status?: string }) {
+function JobIcon({ status }: { status?: string }) {
   switch (status) {
     case "completed":
       return <CheckCircle2 className="h-4 w-4 text-green-400 shrink-0" />;
     case "failed":
       return <XCircle className="h-4 w-4 text-red-400 shrink-0" />;
-    case "generating_3d":
-    case "refining_3d":
-    case "generating":
+    case "running":
     case "uploading":
       return <Loader2 className="h-4 w-4 text-amber-400 animate-spin shrink-0" />;
     default:

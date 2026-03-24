@@ -6,13 +6,12 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { useOffice } from "@/components/mods/office-sim/office-store";
-import { STATUS_COLORS, STATUS_ICONS } from "@/components/mods/office-sim/types";
+import { STATUS_COLORS } from "@/components/mods/office-sim/types";
 import type { VisualAgent, OfficeActivityEvent } from "@/components/mods/office-sim/types";
 
 export default function OfficeSimPage() {
-  const { state, dispatch } = useOffice();
+  const { state } = useOffice();
   const agents = Array.from(state.agents.values());
   const { activeCount, errorCount, taskCount } = state.metrics;
   const totalAgents = agents.length;
@@ -32,19 +31,9 @@ export default function OfficeSimPage() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs text-muted-foreground">Demo</span>
-            <Switch
-              checked={state.demoMode}
-              onCheckedChange={() => dispatch({ type: "TOGGLE_DEMO" })}
-              className="scale-75"
-            />
-          </div>
-          <Badge variant="outline" className={state.connected ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400"}>
-            {state.connected ? "Connected" : "Disconnected"}
-          </Badge>
-        </div>
+        <Badge variant="outline" className={state.connected ? "border-green-500/30 text-green-400" : "border-red-500/30 text-red-400"}>
+          {state.connected ? "Connected" : "Disconnected"}
+        </Badge>
       </div>
 
       {/* Overview Cards */}
@@ -107,8 +96,7 @@ export default function OfficeSimPage() {
         {state.activityFeed.length === 0 ? (
           <Card>
             <CardContent className="p-6 text-center text-muted-foreground text-sm">
-              No recent activity.{" "}
-              {!state.demoMode && "Toggle demo mode to see sample events."}
+              No recent activity. Deploy agents to see live events here.
             </CardContent>
           </Card>
         ) : (

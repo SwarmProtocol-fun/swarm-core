@@ -11,10 +11,11 @@ import { useOrg } from "@/contexts/OrgContext";
 import { THEME_PRESETS } from "../themes";
 import { OfficeGenerationProgress } from "./OfficeGenerationProgress";
 
-interface BatchTask {
-  type: "furniture" | "texture";
-  id: string;
+interface BatchJob {
+  jobId: string;
+  pluginId: string;
   category: string;
+  assetKind: string;
 }
 
 export function OfficeGenerationDialog() {
@@ -22,7 +23,7 @@ export function OfficeGenerationDialog() {
   const { currentOrg } = useOrg();
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [tasks, setTasks] = useState<BatchTask[]>([]);
+  const [jobs, setJobs] = useState<BatchJob[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const theme = THEME_PRESETS.find((t) => t.id === state.theme.id) || THEME_PRESETS[0];
@@ -33,12 +34,13 @@ export function OfficeGenerationDialog() {
     setError(null);
 
     try {
-      const res = await fetch("/api/v1/mods/office-sim/generate-office", {
+      const res = await fetch("/api/v1/plugins/generate-batch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgId: currentOrg.id,
           themeId: theme.id,
+          preset: "office",
         }),
       });
 
@@ -48,7 +50,7 @@ export function OfficeGenerationDialog() {
         return;
       }
 
-      setTasks(data.tasks || []);
+      setJobs(data.jobs || []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Network error");
     } finally {
@@ -85,7 +87,7 @@ export function OfficeGenerationDialog() {
               className="text-xs"
               onClick={() => {
                 setOpen(false);
-                setTasks([]);
+                setJobs([]);
                 setError(null);
               }}
             >
@@ -119,12 +121,12 @@ export function OfficeGenerationDialog() {
           </div>
 
           {/* Generation info */}
-          {tasks.length === 0 && (
+          {jobs.length === 0 && (
             <div className="text-xs text-muted-foreground space-y-1">
-              <p>This will generate AI artwork for your office:</p>
+              <p>This will generate AI artwork for your office using plugins:</p>
               <ul className="list-disc list-inside space-y-0.5 ml-2">
-                <li>6 furniture pieces (desk, chair, plant, whiteboard, coffee machine, lamp)</li>
-                <li>2 tileable textures (wood floor, concrete wall)</li>
+                <li>6 furniture pieces via Meshy.ai (desk, chair, plant, whiteboard, coffee machine, lamp)</li>
+                <li>2 tileable textures via ComfyUI/Replicate (wood floor, concrete wall)</li>
               </ul>
               <p className="mt-2">
                 Generation takes 2-5 minutes per item. You can close this dialog
@@ -141,12 +143,12 @@ export function OfficeGenerationDialog() {
           )}
 
           {/* Progress */}
-          {tasks.length > 0 && (
-            <OfficeGenerationProgress tasks={tasks} />
+          {jobs.length > 0 && (
+            <OfficeGenerationProgress jobs={jobs} />
           )}
 
           {/* Actions */}
-          {tasks.length === 0 && (
+          {jobs.length === 0 && (
             <Button
               onClick={handleGenerate}
               disabled={loading || !currentOrg}
@@ -160,7 +162,7 @@ export function OfficeGenerationDialog() {
               ) : (
                 <>
                   <Sparkles className="h-4 w-4 mr-2" />
-                  Generate for "{theme.name}"
+                  Generate for &ldquo;{theme.name}&rdquo;
                 </>
               )}
             </Button>

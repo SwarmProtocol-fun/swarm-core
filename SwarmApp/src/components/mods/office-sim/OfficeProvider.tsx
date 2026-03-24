@@ -9,11 +9,9 @@ import {
   initialState,
   mapAgentStatus,
 } from "./office-store";
-import type { VisualAgent, Position, AgentVisualStatus, OfficeActivityEvent } from "./types";
+import type { VisualAgent, Position, AgentVisualStatus } from "./types";
 import { DEFAULT_LAYOUT } from "./types";
 import { classifyTransition, generateNarrative, shouldHold, getZoneForStatus } from "./engine/perception";
-import { generateDemoState, rotateDemoState, generateDemoLinks } from "./demo-data";
-import type { AgentAvatarData } from "./studio/avatar-types";
 import type { OfficeFurnitureData } from "./studio/furniture-types";
 import type { OfficeTextureData } from "./studio/texture-types";
 import { useHubStream } from "@/hooks/useHubStream";
@@ -89,7 +87,7 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
   /* ── SSE real-time stream (preferred) ── */
   useHubStream({
     orgId: currentOrg?.id,
-    enabled: !state.demoMode,
+    enabled: true,
     dispatch,
     onConnected: () => setSseActive(true),
     onDisconnected: () => setSseActive(false),
@@ -98,12 +96,12 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Live agent fetching (initial load + periodic refresh) ── */
   const fetchAgents = useCallback(async () => {
-    if (!currentOrg || state.demoMode) return;
+    if (!currentOrg) return;
     try {
-      // Fetch hub-aware agents + avatars in parallel
+      // Fetch hub-aware agents + avatar assets from unified registry in parallel
       const [agentRes, avatarRes] = await Promise.all([
         fetch(`/api/v1/mods/office-sim/hub-agents?orgId=${currentOrg.id}`),
-        fetch(`/api/v1/mods/office-sim/avatars?orgId=${currentOrg.id}`).catch(() => null),
+        fetch(`/api/v1/plugins/assets?orgId=${currentOrg.id}&purpose=avatar`).catch(() => null),
       ]);
       if (!agentRes.ok) return;
       const data = await agentRes.json();
@@ -115,17 +113,28 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
       }
       const visual = assignPositions(raw, state.layout.desks);
 
-      // Merge avatar data onto agents (graceful — if avatar fetch fails, agents still render)
+      // Merge avatar assets onto agents from unified registry
       if (avatarRes?.ok) {
         try {
           const avatarData = await avatarRes.json();
-          const avatars = (avatarData.avatars || {}) as Record<string, AgentAvatarData>;
+          const assets = (avatarData.assets || []) as { agentId?: string; kind: string; url: string }[];
+          // Group by agentId
+          const assetsByAgent = new Map<string, typeof assets>();
+          for (const asset of assets) {
+            if (!asset.agentId) continue;
+            const list = assetsByAgent.get(asset.agentId) || [];
+            list.push(asset);
+            assetsByAgent.set(asset.agentId, list);
+          }
           for (const agent of visual) {
-            const avatar = avatars[agent.id];
-            if (avatar) {
-              if (avatar.modelUrl) agent.modelUrl = avatar.modelUrl;
-              if (avatar.spriteUrl) agent.spriteUrl = avatar.spriteUrl;
-              if (avatar.animationUrls) agent.animationUrls = avatar.animationUrls;
+            const agentAssets = assetsByAgent.get(agent.id);
+            if (!agentAssets) continue;
+            for (const asset of agentAssets) {
+              if (asset.kind === "model-rigged" || asset.kind === "model-3d") {
+                agent.modelUrl = asset.url;
+              } else if (asset.kind === "sprite-2d") {
+                agent.spriteUrl = asset.url;
+              }
             }
           }
         } catch {
@@ -172,26 +181,27 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
       dispatch({ type: "SET_CONNECTED", connected: false });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrg, state.demoMode, state.layout.desks]);
+  }, [currentOrg, state.layout.desks]);
 
   /* ── Polling loop — initial fetch always, then slower interval when SSE is active ── */
   useEffect(() => {
-    if (state.demoMode) return;
     fetchAgents();
     // When SSE is active, poll less frequently (30s) as a safety net
     // When SSE is not active, poll at 5s for near-real-time updates
     const interval = setInterval(fetchAgents, sseActive ? 30_000 : 5_000);
     return () => clearInterval(interval);
-  }, [fetchAgents, state.demoMode, sseActive]);
+  }, [fetchAgents, sseActive]);
 
-  /* ── Fetch furniture + textures when theme changes ── */
+  /* ── Fetch furniture + textures from unified asset registry when theme changes ── */
   useEffect(() => {
-    if (!currentOrg || state.demoMode) return;
+    if (!currentOrg) return;
     const themeId = state.theme.id;
 
+    // Fetch furniture and textures in parallel from unified plugin assets API
     Promise.all([
-      fetch(`/api/v1/mods/office-sim/furniture?orgId=${currentOrg.id}&themeId=${themeId}`).catch(() => null),
-    ]).then(async ([furnitureRes]) => {
+      fetch(`/api/v1/plugins/assets?orgId=${currentOrg.id}&purpose=furniture&themeId=${themeId}`).catch(() => null),
+      fetch(`/api/v1/plugins/assets?orgId=${currentOrg.id}&purpose=texture&themeId=${themeId}`).catch(() => null),
+    ]).then(async ([furnitureRes, textureRes]) => {
       if (furnitureRes?.ok) {
         try {
           const data = await furnitureRes.json();
@@ -206,38 +216,23 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
           // Furniture fetch failed gracefully
         }
       }
+      if (textureRes?.ok) {
+        try {
+          const data = await textureRes.json();
+          const textureMap = new Map<string, OfficeTextureData>();
+          if (data.textures) {
+            for (const [mat, info] of Object.entries(data.textures)) {
+              textureMap.set(mat, info as OfficeTextureData);
+            }
+          }
+          dispatch({ type: "SET_TEXTURES", textures: textureMap });
+        } catch {
+          // Texture fetch failed gracefully
+        }
+      }
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentOrg, state.theme.id, state.demoMode]);
-
-  /* ── Demo mode ── */
-  useEffect(() => {
-    if (!state.demoMode) return;
-
-    const demoAgents = generateDemoState();
-    dispatch({ type: "SET_AGENTS", agents: demoAgents });
-    dispatch({ type: "SET_LINKS", links: generateDemoLinks(demoAgents) });
-    dispatch({ type: "SET_CONNECTED", connected: true });
-
-    // Seed some activity events
-    const seedEvents: OfficeActivityEvent[] = demoAgents
-      .filter(a => a.status !== "idle" && a.status !== "offline")
-      .map(a => ({
-        timestamp: Date.now() - Math.floor(Math.random() * 600_000),
-        agentId: a.id,
-        agentName: a.name,
-        type: a.status === "error" ? "error" as const : "status_change" as const,
-        description: `${a.name} is ${a.status}`,
-      }));
-    dispatch({ type: "SET_ACTIVITY_FEED", events: seedEvents.sort((a, b) => b.timestamp - a.timestamp) });
-
-    // Rotate demo state every 4s
-    const interval = setInterval(() => {
-      dispatch({ type: "SET_AGENTS", agents: rotateDemoState(Array.from(state.agents.values()).length > 0 ? Array.from(state.agents.values()) : generateDemoState()) });
-    }, 4000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.demoMode]);
+  }, [currentOrg, state.theme.id]);
 
   return (
     <OfficeContext.Provider value={{ state, dispatch }}>

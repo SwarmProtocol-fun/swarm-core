@@ -1,4 +1,4 @@
-/** OfficeToolbar — Shared toolbar for 2D/3D views with filter, search, demo toggle */
+/** OfficeToolbar — Shared toolbar for 2D/3D views with filter, search, generation */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -13,7 +13,6 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
 import { useOffice } from "./office-store";
 import type { AgentVisualStatus } from "./types";
 import { STATUS_LABELS, LAYOUT_TEMPLATES } from "./types";
@@ -193,16 +192,6 @@ export function OfficeToolbar({ view }: { view: "2d" | "3d" }) {
         >
           {state.hubConnected ? "Hub Live" : "Polling"}
         </Badge>
-
-        {/* Demo toggle */}
-        <div className="flex items-center gap-1.5">
-          <span className="text-[10px] text-muted-foreground">Demo</span>
-          <Switch
-            checked={state.demoMode}
-            onCheckedChange={() => dispatch({ type: "TOGGLE_DEMO" })}
-            className="scale-75"
-          />
-        </div>
 
         {/* View switch */}
         <Link href={`/mods/office-sim/${otherView}`}>
