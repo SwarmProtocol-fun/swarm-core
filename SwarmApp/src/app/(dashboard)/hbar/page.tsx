@@ -17,6 +17,8 @@ import { useSwarmWrite } from "@/hooks/useSwarmWrite";
 import { useChainCurrency } from "@/hooks/useChainCurrency";
 import { useActiveAccount } from "thirdweb/react";
 import { useAuthAddress } from "@/hooks/useAuthAddress";
+import { useOrg } from "@/contexts/OrgContext";
+import { getOwnedItems } from "@/lib/skills";
 import {
   TaskStatus,
   STATUS_CONFIG,
@@ -61,6 +63,17 @@ export default function HbarPage() {
   const [tab, setTab] = useState<HbarTab>(initialTab);
   const account = useActiveAccount();
   const authAddress = useAuthAddress();
+  const { selectedOrg } = useOrg();
+  const [hasBrandMover, setHasBrandMover] = useState(false);
+
+  // Check if org owns BrandMover mod
+  useEffect(() => {
+    if (!selectedOrg?.id) return;
+    getOwnedItems(selectedOrg.id).then((items) => {
+      const owned = items.some((item) => item.skillId === "brandmover" && item.enabled);
+      setHasBrandMover(owned);
+    });
+  }, [selectedOrg?.id]);
 
   // Sync tab from URL changes (e.g. sidebar click to ?tab=brandmover)
   useEffect(() => {
@@ -128,7 +141,7 @@ export default function HbarPage() {
   const agentPerfData = useMemo<AgentPerformance[]>(() => {
     return swarm.agents.map((agent) => {
       const agentTasks = swarm.tasks.filter(
-        (t) => t.claimedBy?.toLowerCase() === agent.walletAddress.toLowerCase()
+        (t) => t.claimedBy?.toLowerCase() === agent.agentAddress.toLowerCase()
       );
       const wins = agentTasks.filter((t) => t.status === TaskStatus.Completed).length;
       const losses = agentTasks.filter(
@@ -141,7 +154,7 @@ export default function HbarPage() {
       const firstSkill = (agent.skills || "").split(",")[0]?.trim() || "Agent";
 
       return {
-        agentId: agent.walletAddress,
+        agentId: agent.agentAddress,
         name: agent.name,
         type: firstSkill,
         winRate: Math.round(winRate * 10) / 10,
@@ -224,7 +237,7 @@ export default function HbarPage() {
 
   // ── Tabs ──
 
-  const tabs: { id: HbarTab; label: string; icon: string }[] = [
+  const allTabs: { id: HbarTab; label: string; icon: string }[] = [
     { id: "overview", label: "Overview", icon: "📊" },
     { id: "tasks", label: "Tasks", icon: "📋" },
     { id: "agents", label: "Agents", icon: "🤖" },
@@ -232,6 +245,9 @@ export default function HbarPage() {
     { id: "explorer", label: "Explorer", icon: "🔗" },
     { id: "brandmover", label: "BrandMover", icon: "📢" },
   ];
+
+  // Filter out BrandMover tab if not owned from marketplace
+  const tabs = allTabs.filter((t) => t.id !== "brandmover" || hasBrandMover);
 
   // ── Render ──
 
@@ -443,7 +459,7 @@ export default function HbarPage() {
                   </div>
                   <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {swarm.agents.map((agent) => (
-                      <OnchainAgentCard key={agent.walletAddress} agent={agent} />
+                      <OnchainAgentCard key={agent.agentAddress} agent={agent} />
                     ))}
                   </div>
                 </div>
@@ -487,7 +503,7 @@ export default function HbarPage() {
               ) : (
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {swarm.agents.map((agent) => (
-                    <OnchainAgentCard key={agent.walletAddress} agent={agent} />
+                    <OnchainAgentCard key={agent.agentAddress} agent={agent} />
                   ))}
                 </div>
               )}
@@ -1171,7 +1187,7 @@ function OnchainAgentCard({ agent }: { agent: AgentProfile }) {
             <div className={cn("h-2 w-2 rounded-full shrink-0", agent.active ? "bg-emerald-400" : "bg-gray-400")} />
             <p className="text-sm font-medium truncate">{agent.name}</p>
           </div>
-          <p className="text-[10px] text-muted-foreground font-mono shrink-0">{shortAddr(agent.walletAddress)}</p>
+          <p className="text-[10px] text-muted-foreground font-mono shrink-0">{shortAddr(agent.agentAddress)}</p>
         </div>
         {skills.length > 0 && (
           <div className="flex flex-wrap gap-1">
