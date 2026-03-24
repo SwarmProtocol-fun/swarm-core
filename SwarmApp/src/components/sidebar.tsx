@@ -172,6 +172,42 @@ const PINNED_ITEMS: NavItem[] = [
 
 const PLATFORM_ADMIN_ADDRESS = (process.env.NEXT_PUBLIC_ADMIN_ADDRESS || "").toLowerCase();
 
+function isAdminAddress(addr: string | null | undefined): boolean {
+  if (!addr) return false;
+  const lower = addr.toLowerCase();
+  return lower === PLATFORM_ADMIN_ADDRESS || lower === "0x723708273e811a07d90d2e81e799b9ab27f0b549";
+}
+
+const ADMIN_SECTION: NavSection = {
+  id: "admin",
+  label: "Admin",
+  accentColor: "amber",
+  collapsible: true,
+  items: [
+    { id: "admin-dashboard", href: "/admin", label: "Dashboard", icon: ShieldAlert },
+    { id: "admin-marketplace", href: "/admin/marketplace", label: "Marketplace", icon: Store },
+    { id: "admin-credit-ops", href: "/admin/credit-ops", label: "Credit Ops", icon: DollarSign },
+    { id: "admin-risk", href: "/admin/risk", label: "Risk", icon: Flag },
+    { id: "admin-compute", href: "/compute/admin", label: "Compute", icon: HardDrive },
+  ],
+};
+
+/** Inject or remove the admin section from a sections array based on admin status */
+function applyAdminSection(sections: NavSection[], isAdmin: boolean): NavSection[] {
+  const hasAdmin = sections.some(s => s.id === "admin");
+  if (isAdmin && !hasAdmin) {
+    const modsIndex = sections.findIndex(s => s.id === "modifications");
+    if (modsIndex >= 0) {
+      return [...sections.slice(0, modsIndex + 1), ADMIN_SECTION, ...sections.slice(modsIndex + 1)];
+    }
+    return [...sections, ADMIN_SECTION];
+  }
+  if (!isAdmin && hasAdmin) {
+    return sections.filter(s => s.id !== "admin");
+  }
+  return sections;
+}
+
 const SECTION_ORDER_KEY = "swarm-sidebar-order-v2";
 const ITEM_ORDER_KEY = "swarm-sidebar-items-v2";
 const COLLAPSED_KEY = "swarm-sidebar-collapsed";
@@ -316,60 +352,14 @@ export function Sidebar() {
     });
   }, []);
 
-  // Inject admin-only sections when wallet matches platform admin
+  // Inject or remove admin section whenever session address or sections change
+  const isAdmin = isAdminAddress(sessionAddress);
   useEffect(() => {
-    const addr = sessionAddress?.toLowerCase();
-    const isAdmin = addr === PLATFORM_ADMIN_ADDRESS || addr === "0x723708273e811a07d90d2e81e799b9ab27f0b549";
     setSections(prev => {
-      let next = prev;
-
-      // Compute admin link
-      const computeSection = next.find(s => s.id === "compute");
-      if (computeSection) {
-        const hasComputeAdmin = computeSection.items.some(i => i.id === "compute-admin");
-        if (isAdmin && !hasComputeAdmin) {
-          next = next.map(s => s.id === "compute" ? {
-            ...s,
-            items: [...s.items, { id: "compute-admin", href: "/compute/admin", label: "Admin", icon: Shield }],
-          } : s);
-        }
-        if (!isAdmin && hasComputeAdmin) {
-          next = next.map(s => s.id === "compute" ? {
-            ...s,
-            items: s.items.filter(i => i.id !== "compute-admin"),
-          } : s);
-        }
-      }
-
-      // Platform admin section — positioned after Modifications (bottom of sidebar)
-      const hasAdminSection = next.some(s => s.id === "admin");
-      if (isAdmin && !hasAdminSection) {
-        const adminSection = {
-          id: "admin",
-          label: "Admin",
-          accentColor: "amber" as const,
-          collapsible: true,
-          items: [
-            { id: "admin-dashboard", href: "/admin", label: "Dashboard", icon: ShieldAlert },
-            { id: "admin-marketplace", href: "/admin/marketplace", label: "Marketplace", icon: Store },
-            { id: "admin-compute", href: "/compute/admin", label: "Compute", icon: HardDrive },
-          ],
-        };
-        // Insert after Modifications section
-        const modsIndex = next.findIndex(s => s.id === "modifications");
-        if (modsIndex >= 0) {
-          next = [...next.slice(0, modsIndex + 1), adminSection, ...next.slice(modsIndex + 1)];
-        } else {
-          next = [...next, adminSection];
-        }
-      }
-      if (!isAdmin && hasAdminSection) {
-        next = next.filter(s => s.id !== "admin");
-      }
-
+      const next = applyAdminSection(prev, isAdmin);
       return next === prev ? prev : next;
     });
-  }, [sessionAddress]);
+  }, [isAdmin]);
 
   // Auto-expand section when navigating to a route inside it
   useEffect(() => {
@@ -520,11 +510,11 @@ export function Sidebar() {
         }
       }
 
-      setSections(applySavedState(base));
+      setSections(applyAdminSection(applySavedState(base), isAdmin));
     } catch {
-      setSections(applySavedState());
+      setSections(applyAdminSection(applySavedState(), isAdmin));
     }
-  }, []);
+  }, [isAdmin]);
 
   // Load on org change
   useEffect(() => {
@@ -532,7 +522,7 @@ export function Sidebar() {
     orgIdRef.current = orgId;
 
     if (!orgId) {
-      setSections(applySavedState());
+      setSections(applyAdminSection(applySavedState(), isAdmin));
       return;
     }
 
