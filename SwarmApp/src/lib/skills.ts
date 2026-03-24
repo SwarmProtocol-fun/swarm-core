@@ -900,6 +900,21 @@ export const SKILL_REGISTRY: Skill[] = [
         pricing: { model: "free" },
     },
 
+    // ── Mecha LaunchPad Skin ──
+    {
+        id: "skin-mecha",
+        name: "Mecha LaunchPad",
+        description: "Industrial mech hangar with 3D robot agents — GitHub-dark palette, military HUD header, and procedural mech models powered by Three.js.",
+        type: "skin",
+        source: "verified",
+        category: "Themes",
+        icon: "🤖",
+        version: "1.0.0",
+        author: "Swarm Core",
+        tags: ["skin", "theme", "mecha", "robot", "3d", "launchpad", "industrial", "hangar"],
+        pricing: { model: "free" },
+    },
+
 ];
 
 /**

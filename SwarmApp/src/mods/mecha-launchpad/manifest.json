@@ -1,0 +1,29 @@
+{
+  "id": "skin-mecha",
+  "name": "Mecha LaunchPad",
+  "version": "1.0.0",
+  "type": "skin",
+  "author": "Swarm Core",
+  "description": "Industrial mech hangar UI — 3D procedural robots on a launchpad, HUD status bar, angular military design. Agents become mechs stationed in your personal hangar bay.",
+  "category": "Themes",
+  "icon": "🤖",
+  "pricing": { "model": "free" },
+  "tags": ["skin", "mecha", "robot", "3d", "launchpad", "industrial", "hangar", "military"],
+  "files": {
+    "skin_css": "globals-mecha.css",
+    "components": [
+      "mecha-sidebar.tsx",
+      "mecha-header.tsx",
+      "mecha-background.tsx"
+    ],
+    "context": "MechaContext.tsx",
+    "assets": []
+  },
+  "features": {
+    "layout_override": true,
+    "label_remapping": true,
+    "custom_cursor": false,
+    "chart_palette": true,
+    "three_js_background": true
+  }
+}

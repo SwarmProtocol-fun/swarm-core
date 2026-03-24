@@ -296,20 +296,20 @@ function MarketItemCard({
                         {item.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5">
-                            <h3 className="font-semibold text-base text-foreground">{item.name}</h3>
-                            <span className="text-[10px] text-muted-foreground">v{item.version}</span>
+                        <div className="flex items-center gap-2 mb-0.5 min-w-0">
+                            <h3 className="font-semibold text-base text-foreground truncate shrink min-w-0">{item.name}</h3>
+                            <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">v{item.version}</span>
                             {isPaid && priceLabel ? (
-                                <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20">
+                                <Badge className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20 shrink-0 whitespace-nowrap">
                                     <CreditCard className="h-2.5 w-2.5 mr-0.5" />{priceLabel}
                                 </Badge>
                             ) : (
-                                <Badge variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400">Free</Badge>
+                                <Badge variant="outline" className="text-[10px] border-emerald-500/20 text-emerald-400 shrink-0 whitespace-nowrap">Free</Badge>
                             )}
                             <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity ml-auto shrink-0" />
                         </div>
-                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{item.description}</p>
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-xs text-muted-foreground line-clamp-2 mb-2 break-words">{item.description}</p>
+                        <div className="flex items-center gap-1.5 flex-wrap">
                             <Badge variant="outline" className="text-[10px]">{item.category}</Badge>
                             {(() => {
                                 const modEntry = MOD_REGISTRY.find((m) => m.legacySkillId === item.id);
@@ -893,7 +893,7 @@ export default function MarketPage() {
                         {featuredAgents.map((agent) => (
                             <Card
                                 key={`feat-agent-${agent.id}`}
-                                className="min-w-[260px] max-w-[300px] p-4 bg-gradient-to-br from-amber-500/5 to-purple-500/5 border-amber-500/20 cursor-pointer hover:border-amber-500/40 transition-all shrink-0"
+                                className="featured-market-card min-w-[260px] max-w-[300px] p-4 bg-gradient-to-br from-amber-500/5 to-purple-500/5 border-amber-500/20 cursor-pointer hover:border-amber-500/40 transition-all shrink-0"
                                 onClick={() => setSelectedPersona(agent)}
                             >
                                 <div className="flex items-center gap-3 mb-2">
@@ -920,12 +920,12 @@ export default function MarketPage() {
                         {featuredCommunity.map((item) => (
                             <Card
                                 key={`feat-community-${item.id}`}
-                                className="min-w-[260px] max-w-[300px] p-4 bg-gradient-to-br from-amber-500/5 to-cyan-500/5 border-amber-500/20 hover:border-amber-500/40 transition-all shrink-0"
+                                className="featured-market-card min-w-[260px] max-w-[300px] p-4 bg-gradient-to-br from-amber-500/5 to-cyan-500/5 border-amber-500/20 hover:border-amber-500/40 transition-all shrink-0"
                             >
                                 <div className="flex items-center gap-3 mb-2">
                                     <span className="text-2xl">{item.icon}</span>
                                     <div className="min-w-0 flex-1">
-                                        <h3 className="font-bold text-base text-foreground">{item.name}</h3>
+                                        <h3 className="font-bold text-sm text-foreground truncate">{item.name}</h3>
                                         <p className="text-[10px] text-amber-400 capitalize">{item.type}</p>
                                     </div>
                                 </div>

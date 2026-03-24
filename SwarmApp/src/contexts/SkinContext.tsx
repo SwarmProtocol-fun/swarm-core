@@ -25,6 +25,7 @@ export const SKINS: SkinMeta[] = [
   { id: "hacker", name: "Hacker Green", description: "Green phosphor terminal — Matrix aesthetic", colors: ["#00ff41", "#00802b", "#003311"], builtin: true, marketId: "skin-hacker" },
   { id: "jrpg", name: "JRPG Fantasy", description: "16-bit SNES-era Final Fantasy — pixel fonts, dialog boxes, quest menus", colors: ["#ffd700", "#4dccff", "#0a0a2e"], builtin: true, marketId: "skin-jrpg" },
   { id: "pokemon", name: "Pokemon Trainer", description: "Catch 'em all — agents live in Pokeballs, Pokemon-style UI", colors: ["#ee1515", "#ffffff", "#3b4cca"], builtin: true, marketId: "skin-pokemon" },
+  { id: "mecha", name: "Mecha LaunchPad", description: "Industrial mech hangar — 3D robot agents on a launchpad", colors: ["#58a6ff", "#3fb950", "#d29922"], builtin: true, marketId: "skin-mecha" },
 ];
 
 const STORAGE_KEY = "swarm-skin";

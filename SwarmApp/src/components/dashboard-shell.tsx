@@ -35,6 +35,20 @@ const PokemonBackground = dynamic(
   { ssr: false }
 );
 
+// ── Mecha LaunchPad skin components (code-split) ──
+const MechaSidebar = dynamic(
+  () => import("@/components/mecha/mecha-sidebar").then((m) => ({ default: m.MechaSidebar })),
+  { ssr: false }
+);
+const MechaHeader = dynamic(
+  () => import("@/components/mecha/mecha-header").then((m) => ({ default: m.MechaHeader })),
+  { ssr: false }
+);
+const MechaBackground = dynamic(
+  () => import("@/components/mecha/mecha-background").then((m) => ({ default: m.MechaBackground })),
+  { ssr: false }
+);
+
 /** Resolve skin-specific components, falling back to standard chrome */
 function getSkinComponents(skin: string) {
   switch (skin) {
@@ -42,6 +56,8 @@ function getSkinComponents(skin: string) {
       return { Background: JrpgBackground, HeaderComp: JrpgHeader, SidebarComp: JrpgSidebar };
     case "pokemon":
       return { Background: PokemonBackground, HeaderComp: PokemonHeader, SidebarComp: PokemonSidebar };
+    case "mecha":
+      return { Background: MechaBackground, HeaderComp: MechaHeader, SidebarComp: MechaSidebar };
     default:
       return null;
   }

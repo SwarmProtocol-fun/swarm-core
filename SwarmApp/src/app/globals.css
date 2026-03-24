@@ -1863,7 +1863,66 @@ body::after {
   letter-spacing: 1px;
 }
 
-/* ── 26. Accent color overrides ── */
+/* ── 26. Marketplace card fixes — pixel font is wider than Inter ── */
+/* Tab bar: smaller text, tighter spacing */
+.skin-jrpg [role="tablist"] button,
+.skin-jrpg .scrollbar-none > button {
+  font-size: 7px !important;
+  padding-inline: 6px !important;
+  gap: 4px !important;
+  letter-spacing: 0 !important;
+}
+/* Tab count badges */
+.skin-jrpg .scrollbar-none > button > span.rounded-full {
+  font-size: 7px !important;
+  padding: 1px 4px !important;
+}
+/* Card titles: shrink pixel font, force truncation */
+.skin-jrpg .bg-card h3,
+.skin-jrpg .rounded-lg.border h3 {
+  font-size: 9px !important;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 180px;
+}
+/* Card descriptions */
+.skin-jrpg .bg-card .line-clamp-2,
+.skin-jrpg .rounded-lg.border .line-clamp-2 {
+  font-size: 8px !important;
+  line-height: 1.6 !important;
+}
+/* Badges inside marketplace cards — use monospace for dense data */
+.skin-jrpg .bg-card .inline-flex.items-center.border,
+.skin-jrpg .bg-card .market-badge {
+  font-size: 7px !important;
+  font-family: monospace !important;
+  padding: 1px 4px !important;
+  letter-spacing: 0 !important;
+}
+/* Small text inside cards (version, stats, etc.) */
+.skin-jrpg .bg-card .text-muted-foreground {
+  font-family: monospace !important;
+  letter-spacing: 0 !important;
+}
+/* Featured hero cards: tighter layout */
+.skin-jrpg .featured-market-card {
+  min-width: 220px !important;
+}
+.skin-jrpg .featured-market-card h3 {
+  font-size: 8px !important;
+}
+.skin-jrpg .featured-market-card p {
+  font-size: 7px !important;
+}
+/* Button text inside cards */
+.skin-jrpg .bg-card button[class*="h-7"] {
+  font-size: 7px !important;
+  letter-spacing: 0 !important;
+  padding: 2px 6px !important;
+}
+
+/* ── 27. Accent color overrides ── */
 .skin-jrpg .bg-amber-500 {
   background-color: #ffd700 !important;
 }
@@ -2166,7 +2225,24 @@ body::after {
   box-shadow: 0 8px 32px rgba(0,0,0,0.5);
 }
 
-/* ── 23. Accent overrides ── */
+/* ── 23. Marketplace card fixes ── */
+/* Card titles: force truncation for long mod names */
+.skin-pokemon .bg-card h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 220px;
+}
+/* Badges: slightly tighter padding to prevent row overflow */
+.skin-pokemon .bg-card .inline-flex.items-center.border {
+  padding: 1px 6px !important;
+}
+/* Featured cards: ensure text doesn't overflow the pokeball split */
+.skin-pokemon .featured-market-card p {
+  font-size: 11px;
+}
+
+/* ── 24. Accent overrides ── */
 .skin-pokemon .bg-amber-500 {
   background-color: #ee1515 !important;
 }
@@ -2245,4 +2321,379 @@ body::after {
 .pokeball-offline::after {
   background: #705898;
   box-shadow: 0 0 4px rgba(112,88,152,0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SKIN: Mecha LaunchPad — Industrial mech hangar, 3D robots
+   GitHub-dark palette, military HUD, angular design
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Font (loaded when skin active) ── */
+@font-face {
+  font-family: 'Share Tech Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/sharetechmono/v15/J7aHnp1uDWRBEqV98dVQztYldFcLowEFA87Heg.woff2') format('woff2');
+}
+
+/* ── 1. CSS Variable overrides ── */
+.skin-mecha {
+  --primary: 212 100% 67%;
+  --ring: 212 100% 67%;
+  --spotlight-color: rgba(88, 166, 255, 0.04);
+  --font-mecha: 'Share Tech Mono', monospace;
+  /* Remap amber → industrial blue */
+  --color-amber-50: oklch(97% 0.02 240);
+  --color-amber-100: oklch(93% 0.05 240);
+  --color-amber-200: oklch(85% 0.10 235);
+  --color-amber-300: oklch(75% 0.14 230);
+  --color-amber-400: oklch(68% 0.16 225);
+  --color-amber-500: oklch(62% 0.14 220);
+  --color-amber-600: oklch(55% 0.12 220);
+  --color-amber-700: oklch(48% 0.10 220);
+  --color-amber-800: oklch(40% 0.08 220);
+  --color-amber-900: oklch(32% 0.06 220);
+  --color-amber-950: oklch(22% 0.04 220);
+}
+.skin-mecha.dark {
+  --primary: 212 100% 67%;
+  --ring: 212 100% 67%;
+  --background: 215 28% 7%;
+  --foreground: 210 14% 93%;
+  --card: 215 22% 11%;
+  --card-foreground: 210 14% 93%;
+  --popover: 215 28% 7%;
+  --popover-foreground: 210 14% 93%;
+  --border: 215 14% 19%;
+  --input: 215 14% 19%;
+  --muted: 215 14% 16%;
+  --muted-foreground: 215 8% 56%;
+}
+
+/* ── 2. Body — dark hangar background ── */
+.skin-mecha body {
+  font-family: var(--font-mecha), monospace;
+  background-color: #0d1117;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 49px, rgba(88,166,255,0.03) 49px, rgba(88,166,255,0.03) 50px),
+    repeating-linear-gradient(90deg, transparent, transparent 49px, rgba(88,166,255,0.03) 49px, rgba(88,166,255,0.03) 50px),
+    radial-gradient(ellipse at 50% 100%, rgba(88,166,255,0.06) 0%, transparent 60%),
+    radial-gradient(ellipse at 85% 10%, rgba(63,185,80,0.04) 0%, transparent 50%),
+    linear-gradient(180deg, #0d1117 0%, #161b22 50%, #0d1117 100%);
+}
+
+/* ── 3. Suppress ambient orbs ── */
+.skin-mecha body::before,
+.skin-mecha body::after {
+  display: none;
+}
+
+/* ── 4. Text glow → blue ── */
+.skin-mecha.dark .text-glow {
+  text-shadow: 0 0 10px rgba(88, 166, 255, 0.5), 0 0 20px rgba(88, 166, 255, 0.2);
+}
+.skin-mecha.dark .text-glow-gold,
+.skin-mecha .dark .text-glow-gold {
+  text-shadow: 0 0 8px rgba(88, 166, 255, 0.5), 0 0 16px rgba(88, 166, 255, 0.3);
+}
+.skin-mecha.dark .text-glow-amber,
+.skin-mecha .dark .text-glow-amber {
+  text-shadow: 0 0 6px rgba(88, 166, 255, 0.4), 0 0 12px rgba(88, 166, 255, 0.2);
+}
+
+/* ── 5. Neon glow → blue ── */
+.skin-mecha .neon-glow-gold {
+  box-shadow: 0 0 4px rgba(88, 166, 255, 0.3),
+              0 0 12px rgba(88, 166, 255, 0.15),
+              0 0 24px rgba(88, 166, 255, 0.05);
+}
+
+/* ── 6. Border glow → blue ── */
+.skin-mecha .border-glow-gold {
+  border-color: rgba(88, 166, 255, 0.3);
+  box-shadow: inset 0 0 15px rgba(88, 166, 255, 0.03), 0 0 10px rgba(88, 166, 255, 0.05);
+}
+
+/* ── 7. Glass card → Industrial panel (angular, dark) ── */
+.skin-mecha .glass-card,
+.skin-mecha.dark .glass-card,
+.skin-mecha .dark .glass-card {
+  background: linear-gradient(180deg, rgba(22,27,34,0.95) 0%, rgba(13,17,23,0.98) 100%) !important;
+  border: 1px solid #30363d !important;
+  border-radius: 4px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4), inset 0 1px 0 rgba(88,166,255,0.05) !important;
+}
+.skin-mecha .glass-card:hover,
+.skin-mecha.dark .glass-card:hover,
+.skin-mecha .dark .glass-card:hover {
+  border-color: rgba(88, 166, 255, 0.5) !important;
+  box-shadow: 0 1px 6px rgba(88,166,255,0.15), inset 0 1px 0 rgba(88,166,255,0.1) !important;
+}
+.skin-mecha .glass-card-enhanced,
+.skin-mecha.dark .glass-card-enhanced,
+.skin-mecha .dark .glass-card-enhanced {
+  background: linear-gradient(180deg, rgba(22,27,34,0.95) 0%, rgba(13,17,23,0.98) 100%) !important;
+  border: 1px solid rgba(88,166,255,0.3) !important;
+  border-radius: 4px !important;
+}
+.skin-mecha .glass-card-enhanced:hover,
+.skin-mecha.dark .glass-card-enhanced:hover,
+.skin-mecha .dark .glass-card-enhanced:hover {
+  border-color: rgba(88, 166, 255, 0.5) !important;
+}
+
+/* ── 8. Generic card → Industrial panel ── */
+.skin-mecha.dark .rounded-lg.border.bg-card,
+.skin-mecha .dark .rounded-lg.border.bg-card {
+  background: linear-gradient(180deg, rgba(22,27,34,0.95) 0%, rgba(13,17,23,0.98) 100%) !important;
+  border: 1px solid #30363d !important;
+  border-radius: 4px !important;
+}
+
+/* ── 9. Gradient border spin → blue/green ── */
+.skin-mecha .gradient-border-spin::before {
+  background: conic-gradient(from 0deg, transparent, #58a6ff, #3fb950, transparent);
+}
+
+/* ── 10. Scan line → blue ── */
+.skin-mecha .scan-line-overlay {
+  background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.2), transparent);
+}
+
+/* ── 11. Button glow → angular industrial ── */
+.skin-mecha .btn-glow,
+.skin-mecha button:not([data-radix-collection-item]) {
+  border-radius: 2px !important;
+  font-family: var(--font-mecha), monospace;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.skin-mecha .btn-glow:hover {
+  box-shadow: 0 0 12px rgba(88, 166, 255, 0.3), inset 0 0 10px rgba(88, 166, 255, 0.05);
+  border-color: rgba(88, 166, 255, 0.5);
+}
+.skin-mecha .btn-glow::after {
+  background: linear-gradient(90deg, transparent, rgba(88, 166, 255, 0.1), transparent);
+}
+
+/* ── 12. Badge neon amber → blue ── */
+.skin-mecha .badge-neon-amber {
+  background: rgba(88, 166, 255, 0.1);
+  color: #58a6ff;
+  border-color: rgba(88, 166, 255, 0.3);
+  border-radius: 2px !important;
+  font-family: var(--font-mecha), monospace;
+}
+.skin-mecha.dark .badge-neon-amber,
+.skin-mecha .dark .badge-neon-amber {
+  background: rgba(88, 166, 255, 0.15);
+  color: #79c0ff;
+  box-shadow: 0 0 6px rgba(88, 166, 255, 0.2);
+}
+
+/* ── 13. Node execution running → blue ── */
+.skin-mecha .node-execution-running::before {
+  background: conic-gradient(from var(--node-angle, 0deg), transparent 25%, #58a6ff 50%, transparent 75%);
+}
+
+/* ── 14. React Flow edges → blue/green ── */
+.skin-mecha .react-flow {
+  --xy-edge-stroke-default: #58a6ff;
+}
+.skin-mecha .react-flow__connection-line {
+  stroke: #3fb950;
+}
+.skin-mecha .map-edge-path:hover,
+.skin-mecha .map-edge-path.selected {
+  stroke: #d29922;
+  filter: drop-shadow(0 0 6px rgba(210, 153, 34, 0.5));
+}
+
+/* ── 15. Keyframes ── */
+@keyframes pulse-glow-mecha {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 5px rgba(88,166,255,0.2); }
+  50% { opacity: 1; box-shadow: 0 0 20px rgba(88,166,255,0.4); }
+}
+@keyframes icon-pulse-mecha {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0px transparent); }
+  50% { transform: scale(1.1); filter: drop-shadow(0 0 6px rgba(88,166,255,0.4)); }
+}
+@keyframes glow-pulse-mecha {
+  0%, 100% { box-shadow: 0 0 5px rgba(88,166,255,0.3), 0 0 10px rgba(88,166,255,0.1); }
+  50% { box-shadow: 0 0 15px rgba(88,166,255,0.5), 0 0 30px rgba(88,166,255,0.2); }
+}
+@keyframes mecha-power-up {
+  0% { opacity: 0.3; filter: brightness(0.5); }
+  50% { opacity: 0.8; filter: brightness(1.2) drop-shadow(0 0 10px rgba(63,185,80,0.6)); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+@keyframes mecha-status-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.3; }
+}
+
+.skin-mecha .animate-pulse-glow {
+  animation: pulse-glow-mecha 3s ease-in-out infinite;
+}
+.skin-mecha .animate-icon-pulse {
+  animation: icon-pulse-mecha 3s ease-in-out infinite;
+}
+.skin-mecha .animate-glow-pulse {
+  animation: glow-pulse-mecha 2s ease-in-out infinite;
+}
+
+/* ── 16. Input fields → industrial ── */
+.skin-mecha input,
+.skin-mecha select,
+.skin-mecha textarea {
+  border-radius: 2px !important;
+  border: 1px solid #30363d !important;
+  background: rgba(13, 17, 23, 0.8) !important;
+  font-family: var(--font-mecha), monospace;
+}
+.skin-mecha input:focus,
+.skin-mecha select:focus,
+.skin-mecha textarea:focus {
+  border-color: #58a6ff !important;
+  box-shadow: 0 0 8px rgba(88, 166, 255, 0.2);
+}
+
+/* ── 17. Scrollbar ── */
+.skin-mecha ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.skin-mecha ::-webkit-scrollbar-track {
+  background: #0d1117;
+}
+.skin-mecha ::-webkit-scrollbar-thumb {
+  background: #30363d;
+  border-radius: 0;
+}
+.skin-mecha ::-webkit-scrollbar-thumb:hover {
+  background: #58a6ff;
+}
+
+/* ── 18. Selection ── */
+.skin-mecha ::selection {
+  background: rgba(88, 166, 255, 0.3);
+  color: #ffffff;
+}
+
+/* ── 19. Tooltips / popovers ── */
+.skin-mecha [data-radix-popper-content-wrapper] > div {
+  background: rgba(13, 17, 23, 0.98) !important;
+  border: 1px solid #30363d !important;
+  border-radius: 4px !important;
+  font-family: var(--font-mecha), monospace;
+}
+
+/* ── 20. Progress bars ── */
+.skin-mecha [role="progressbar"] {
+  border: 1px solid #30363d;
+  border-radius: 2px !important;
+  background: #0d1117;
+  overflow: hidden;
+}
+.skin-mecha [role="progressbar"] > div {
+  border-radius: 0 !important;
+}
+
+/* ── 21. Tabs ── */
+.skin-mecha [role="tablist"] {
+  border-radius: 2px !important;
+  border: 1px solid #30363d;
+  background: rgba(13, 17, 23, 0.6);
+}
+.skin-mecha [role="tab"] {
+  border-radius: 2px !important;
+  font-family: var(--font-mecha), monospace;
+  text-transform: uppercase;
+}
+.skin-mecha [role="tab"][data-state="active"] {
+  background: rgba(88, 166, 255, 0.15) !important;
+  color: #58a6ff !important;
+}
+
+/* ── 22. Dialog/modal ── */
+.skin-mecha [role="dialog"] {
+  background: rgba(13, 17, 23, 0.98) !important;
+  border: 1px solid #30363d !important;
+  border-radius: 4px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  font-family: var(--font-mecha), monospace;
+}
+
+/* ── 23. Table ── */
+.skin-mecha table {
+  border: 1px solid #30363d;
+}
+.skin-mecha th {
+  font-family: var(--font-mecha), monospace;
+  text-transform: uppercase;
+  color: #58a6ff;
+  border-bottom: 1px solid rgba(88, 166, 255, 0.2);
+}
+.skin-mecha td {
+  border-bottom: 1px solid rgba(48, 54, 61, 0.5);
+}
+
+/* ── 24. Heading overrides ── */
+.skin-mecha h1, .skin-mecha h2, .skin-mecha h3, .skin-mecha h4 {
+  font-family: var(--font-mecha), monospace;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+/* ── 25. Accent color overrides ── */
+.skin-mecha .bg-amber-500 {
+  background-color: #58a6ff !important;
+}
+.skin-mecha .text-amber-500,
+.skin-mecha .text-amber-400 {
+  color: #58a6ff !important;
+}
+.skin-mecha .border-amber-500 {
+  border-color: #58a6ff !important;
+}
+
+/* ── 26. Mecha utility classes ── */
+.mecha-hud-border {
+  border: 1px solid #30363d;
+  border-radius: 2px;
+  position: relative;
+}
+.mecha-hud-border::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 8px;
+  height: 8px;
+  border-top: 2px solid #58a6ff;
+  border-left: 2px solid #58a6ff;
+  pointer-events: none;
+}
+.mecha-hud-border::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-bottom: 2px solid #58a6ff;
+  border-right: 2px solid #58a6ff;
+  pointer-events: none;
+}
+.mecha-status-online {
+  color: #3fb950;
+  text-shadow: 0 0 4px rgba(63, 185, 80, 0.5);
+}
+.mecha-status-busy {
+  color: #d29922;
+  text-shadow: 0 0 4px rgba(210, 153, 34, 0.5);
+}
+.mecha-status-offline {
+  color: #484f58;
 }
