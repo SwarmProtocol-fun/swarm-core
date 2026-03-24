@@ -17,6 +17,7 @@ export interface SkinMeta {
 /** All known skins. Classic is builtin (always available). Others map to marketplace items. */
 export const SKINS: SkinMeta[] = [
   { id: "classic", name: "Classic", description: "Amber & gold — the original Swarm look", colors: ["#FFD700", "#FFA500", "#FF8C00"], builtin: true },
+  { id: "hedera", name: "⚡ HBAR Hashgraph", description: "Emerald & purple — Built on Hedera", colors: ["#10b981", "#a855f7", "#059669"], builtin: true, marketId: "skin-hedera" },
   { id: "futuristic", name: "Futuristic", description: "Cyan & magenta — Arwes-inspired sci-fi", colors: ["#26dafd", "#fc26fa", "#be26fc"], builtin: true, marketId: "skin-futuristic" },
   { id: "retro-terminal", name: "Retro Terminal", description: "CRT phosphor amber with scanlines & vignette", colors: ["#ff6a00", "#994400", "#331a00"], builtin: true, marketId: "skin-retro-terminal" },
   { id: "cyberpunk", name: "Cyberpunk", description: "Neon pink & electric purple — Night City vibes", colors: ["#ff1493", "#8a2be2", "#c026d3"], builtin: true, marketId: "skin-cyberpunk" },
