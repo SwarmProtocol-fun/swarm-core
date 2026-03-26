@@ -36,32 +36,8 @@ import {
   publishJobLogs,
 } from "./redis-state.mjs";
 
-/**
- * SECURITY NOTE: This hub currently uses the Firebase client SDK instead of
- * the Firebase Admin SDK. For production deployments, migrate to firebase-admin
- * to avoid exposing API keys and to get better server-side performance.
- *
- * Migration steps:
- * 1. npm install firebase-admin
- * 2. Replace these imports with: import admin from 'firebase-admin';
- * 3. Add FIREBASE_SERVICE_ACCOUNT env var (base64 JSON service account key)
- * 4. Initialize with: admin.initializeApp({ credential: admin.credential.cert(...) })
- */
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  query,
-  where,
-  orderBy,
-  onSnapshot,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
+// Firebase Admin SDK — server-side Firestore access with service account credentials.
+import admin from "firebase-admin";
 
 // ── Config ──────────────────────────────────────────────────────────────────
 
@@ -96,18 +72,18 @@ const HUB_REGION = optionalEnv("HUB_REGION", "us-east");
 const HUB_GATEWAY_ID = optionalEnv("HUB_GATEWAY_ID", "");
 const GATEWAY_HEARTBEAT_INTERVAL = parseInt(optionalEnv("GATEWAY_HEARTBEAT_INTERVAL_MS", "60000"), 10);
 
-// Firebase — loaded from environment, never hardcoded
-const FIREBASE_CONFIG = {
-  apiKey: requireEnv("FIREBASE_API_KEY"),
-  authDomain: requireEnv("FIREBASE_AUTH_DOMAIN"),
-  projectId: requireEnv("FIREBASE_PROJECT_ID"),
-  storageBucket: optionalEnv("FIREBASE_STORAGE_BUCKET", ""),
-  messagingSenderId: optionalEnv("FIREBASE_MESSAGING_SENDER_ID", ""),
-  appId: requireEnv("FIREBASE_APP_ID"),
-};
+// Firebase Admin — uses service account for server-side auth
+const _serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT
+  ? JSON.parse(Buffer.from(process.env.FIREBASE_SERVICE_ACCOUNT, "base64").toString())
+  : undefined;
 
-const firebaseApp = initializeApp(FIREBASE_CONFIG);
-const db = getFirestore(firebaseApp);
+admin.initializeApp({
+  credential: _serviceAccountJson
+    ? admin.credential.cert(_serviceAccountJson)
+    : admin.credential.applicationDefault(),
+});
+
+const db = admin.firestore();
 
 // ── Logging ─────────────────────────────────────────────────────────────────
 function log(level, msg, meta = {}) {
@@ -223,8 +199,8 @@ async function verifyEd25519(agentId, message, signatureBase64) {
   if (!agentId || !signatureBase64) return null;
 
   try {
-    const agentSnap = await getDoc(doc(db, "agents", agentId));
-    if (!agentSnap.exists()) return null;
+    const agentSnap = await db.collection("agents").doc(agentId).get();
+    if (!agentSnap.exists) return null;
 
     const data = agentSnap.data();
     const publicKeyPem = data.publicKey;
@@ -267,8 +243,8 @@ async function verifyGatewayEd25519(gatewayId, message, signatureBase64) {
   if (!gatewayId || !signatureBase64) return null;
 
   try {
-    const gwSnap = await getDoc(doc(db, "gatewayWorkers", gatewayId));
-    if (!gwSnap.exists()) return null;
+    const gwSnap = await db.collection("gatewayWorkers").doc(gatewayId).get();
+    if (!gwSnap.exists) return null;
 
     const data = gwSnap.data();
     const publicKeyPem = data.publicKey;
@@ -312,13 +288,11 @@ async function checkTailscaleWhitelist(orgId, ip) {
     // Normalize IP (remove ::ffff: prefix if present)
     const normalizedIP = ip.startsWith("::ffff:") ? ip.substring(7) : ip;
 
-    const q = query(
-      collection(db, "tailscaleDevices"),
-      where("orgId", "==", orgId),
-      where("status", "==", "active")
-    );
+    const q = db.collection("tailscaleDevices")
+      .where("orgId", "==", orgId)
+      .where("status", "==", "active");
 
-    const snapshot = await getDocs(q);
+    const snapshot = await q.get();
 
     return snapshot.docs.some((doc) => {
       const device = doc.data();
@@ -334,13 +308,12 @@ async function checkTailscaleWhitelist(orgId, ip) {
 
 async function checkRateLimit(agentId) {
   try {
-    // Use Redis-backed rate limiting for distributed enforcement
+    // Redis-backed rate limiting with in-memory fallback (never fail-open)
     const result = await redisCheckRateLimit(agentId, RATE_LIMIT_MAX, RATE_LIMIT_WINDOW);
     return result.allowed;
   } catch (err) {
-    log("warn", "Redis rate limit check failed, allowing request", { agentId, error: err.message });
-    // Fallback to allowing the request if Redis is unavailable
-    return true;
+    log("warn", "Rate limit check failed", { agentId, error: err.message });
+    return false; // Deny on unexpected errors (defense-in-depth)
   }
 }
 
@@ -496,7 +469,7 @@ function handleCrossInstanceMessage(payload) {
 
 async function persistMessage(agentId, agentName, orgId, channelId, content) {
   try {
-    const ref = await addDoc(collection(db, "messages"), {
+    const ref = await db.collection("messages").add({
       channelId,
       senderId: agentId,
       senderName: agentName || agentId,
@@ -504,17 +477,17 @@ async function persistMessage(agentId, agentName, orgId, channelId, content) {
       content,
       orgId,
       verified: true,
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     });
 
     // Dual-write to agentComms for the Agent Comms dashboard feed
     let channelName = `#${channelId}`;
     try {
-      const chSnap = await getDoc(doc(db, "channels", channelId));
-      if (chSnap.exists()) channelName = `#${chSnap.data().name || channelId}`;
+      const chSnap = await db.collection("channels").doc(channelId).get();
+      if (chSnap.exists) channelName = `#${chSnap.data().name || channelId}`;
     } catch { /* use default */ }
 
-    await addDoc(collection(db, "agentComms"), {
+    await db.collection("agentComms").add({
       orgId,
       fromAgentId: agentId,
       fromAgentName: agentName,
@@ -523,7 +496,7 @@ async function persistMessage(agentId, agentName, orgId, channelId, content) {
       type: "message",
       content,
       metadata: { channelId, messageId: ref.id, verified: true, source: "websocket" },
-      createdAt: serverTimestamp(),
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
     }).catch((err) => {
       // Log dual-write failure (non-blocking)
       log("warn", "Failed to dual-write to agentComms", {
@@ -542,8 +515,8 @@ async function persistMessage(agentId, agentName, orgId, channelId, content) {
 
 async function isAgentPaused(agentId) {
   try {
-    const agentSnap = await getDoc(doc(db, "agents", agentId));
-    if (!agentSnap.exists()) return false;
+    const agentSnap = await db.collection("agents").doc(agentId).get();
+    if (!agentSnap.exists) return false;
     const agentData = agentSnap.data();
     return agentData.status === "paused";
   } catch (err) {
@@ -554,8 +527,8 @@ async function isAgentPaused(agentId) {
 
 async function getAgentChannels(agentId) {
   try {
-    const agentSnap = await getDoc(doc(db, "agents", agentId));
-    if (!agentSnap.exists()) return [];
+    const agentSnap = await db.collection("agents").doc(agentId).get();
+    if (!agentSnap.exists) return [];
     const agentData = agentSnap.data();
     const projectIds = agentData.projectIds || [];
     const orgId = agentData.orgId || agentData.organizationId || "";
@@ -566,11 +539,9 @@ async function getAgentChannels(agentId) {
     // 1. Fetch project-specific channels
     for (let i = 0; i < projectIds.length; i += 10) {
       const batch = projectIds.slice(i, i + 10);
-      const channelsQuery = query(
-        collection(db, "channels"),
-        where("projectId", "in", batch)
-      );
-      const snap = await getDocs(channelsQuery);
+      const channelsQuery = db.collection("channels")
+        .where("projectId", "in", batch);
+      const snap = await channelsQuery.get();
       for (const d of snap.docs) {
         if (!seenIds.has(d.id)) {
           seenIds.add(d.id);
@@ -582,12 +553,10 @@ async function getAgentChannels(agentId) {
     // 2. Always include the org-wide "Agent Hub" channel so all agents
     //    in the same org can communicate regardless of project assignment.
     if (orgId) {
-      const hubQuery = query(
-        collection(db, "channels"),
-        where("orgId", "==", orgId),
-        where("name", "==", "Agent Hub")
-      );
-      const hubSnap = await getDocs(hubQuery);
+      const hubQuery = db.collection("channels")
+        .where("orgId", "==", orgId)
+        .where("name", "==", "Agent Hub");
+      const hubSnap = await hubQuery.get();
       for (const d of hubSnap.docs) {
         if (!seenIds.has(d.id)) {
           seenIds.add(d.id);
@@ -613,16 +582,14 @@ function streamChannel(ws, channelId, channelName, agentId) {
   const state = wsState.get(ws);
   if (!state) return null;
 
-  const q = query(
-    collection(db, "messages"),
-    where("channelId", "==", channelId),
-    orderBy("createdAt", "asc")
-  );
+  const q = db.collection("messages")
+    .where("channelId", "==", channelId)
+    .orderBy("createdAt", "asc");
 
   // Track whether we've seen the initial snapshot (skip initial docs)
   let initialLoad = true;
 
-  const unsub = onSnapshot(q, (snap) => {
+  const unsub = q.onSnapshot((snap) => {
     if (initialLoad) {
       initialLoad = false;
       return; // Skip initial snapshot — replay handles history
@@ -662,14 +629,12 @@ function streamChannel(ws, channelId, channelName, agentId) {
  */
 async function replayChannel(ws, channelId, channelName, agentId, sinceMs) {
   try {
-    const sinceTs = Timestamp.fromMillis(sinceMs);
-    const q = query(
-      collection(db, "messages"),
-      where("channelId", "==", channelId),
-      where("createdAt", ">", sinceTs),
-      orderBy("createdAt", "asc")
-    );
-    const snap = await getDocs(q);
+    const sinceTs = admin.firestore.Timestamp.fromMillis(sinceMs);
+    const q = db.collection("messages")
+      .where("channelId", "==", channelId)
+      .where("createdAt", ">", sinceTs)
+      .orderBy("createdAt", "asc");
+    const snap = await q.get();
     let count = 0;
 
     for (const d of snap.docs) {
@@ -965,9 +930,9 @@ wss.on("connection", async (ws, _req) => {
       // job:status — gateway reports task lifecycle
       if (type === "job:status" && msg.taskId) {
         try {
-          const taskRef = doc(db, "gatewayTaskQueue", msg.taskId);
-          const taskSnap = await getDoc(taskRef);
-          if (!taskSnap.exists()) {
+          const taskRef = db.collection("gatewayTaskQueue").doc(msg.taskId);
+          const taskSnap = await taskRef.get();
+          if (!taskSnap.exists) {
             ws.send(JSON.stringify({ type: "error", error: "Task not found" }));
             return;
           }
@@ -977,12 +942,12 @@ wss.on("connection", async (ws, _req) => {
             return;
           }
 
-          const updates = { updatedAt: serverTimestamp() };
+          const updates = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
           if (msg.status === "running") {
             updates.status = "running";
           } else if (msg.status === "completed") {
             updates.status = "completed";
-            updates.completedAt = serverTimestamp();
+            updates.completedAt = admin.firestore.FieldValue.serverTimestamp();
             if (msg.result !== undefined) updates.result = msg.result;
           } else if (msg.status === "failed") {
             const retriesUsed = (task.retriesUsed || 0) + 1;
@@ -992,7 +957,7 @@ wss.on("connection", async (ws, _req) => {
               updates.retriesUsed = retriesUsed;
             } else {
               updates.status = "failed";
-              updates.completedAt = serverTimestamp();
+              updates.completedAt = admin.firestore.FieldValue.serverTimestamp();
             }
             if (msg.error) updates.error = msg.error;
           }
@@ -1002,15 +967,15 @@ wss.on("connection", async (ws, _req) => {
           // Decrement active tasks on completion/failure
           if (msg.status === "completed" || msg.status === "failed") {
             try {
-              const workerRef = doc(db, "gatewayWorkers", gatewayId);
-              const workerSnap = await getDoc(workerRef);
-              if (workerSnap.exists()) {
+              const workerRef = db.collection("gatewayWorkers").doc(gatewayId);
+              const workerSnap = await workerRef.get();
+              if (workerSnap.exists) {
                 const w = workerSnap.data();
                 const activeTasks = Math.max(0, (w.resources?.activeTasks || 1) - 1);
                 await workerRef.update({
                   "resources.activeTasks": activeTasks,
-                  lastHeartbeat: serverTimestamp(),
-                  updatedAt: serverTimestamp(),
+                  lastHeartbeat: admin.firestore.FieldValue.serverTimestamp(),
+                  updatedAt: admin.firestore.FieldValue.serverTimestamp(),
                 });
               }
             } catch { /* non-fatal */ }
@@ -1047,12 +1012,12 @@ wss.on("connection", async (ws, _req) => {
       if (type === "job:log" && msg.taskId && Array.isArray(msg.lines)) {
         try {
           // Persist to Firestore
-          await addDoc(collection(db, "gatewayJobLogs"), {
+          await db.collection("gatewayJobLogs").add({
             taskId: msg.taskId,
             workerId: gatewayId,
             orgId,
             lines: msg.lines,
-            timestamp: serverTimestamp(),
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
 
           // Publish to Redis for live SSE streaming
@@ -1070,11 +1035,11 @@ wss.on("connection", async (ws, _req) => {
       // heartbeat — gateway reports system metrics
       if (type === "heartbeat" && msg.resources) {
         try {
-          const workerRef = doc(db, "gatewayWorkers", gatewayId);
+          const workerRef = db.collection("gatewayWorkers").doc(gatewayId);
           await workerRef.update({
             resources: msg.resources,
-            lastHeartbeat: serverTimestamp(),
-            updatedAt: serverTimestamp(),
+            lastHeartbeat: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
             status: msg.resources.activeTasks > 0 ? "busy" : "idle",
           });
         } catch (err) {
@@ -1100,8 +1065,8 @@ wss.on("connection", async (ws, _req) => {
 
           // Mark worker as offline
           try {
-            const workerRef = doc(db, "gatewayWorkers", gatewayId);
-            await workerRef.update({ status: "offline", updatedAt: serverTimestamp() });
+            const workerRef = db.collection("gatewayWorkers").doc(gatewayId);
+            await workerRef.update({ status: "offline", updatedAt: admin.firestore.FieldValue.serverTimestamp() });
           } catch { /* ignore */ }
         }
       }
@@ -1124,16 +1089,16 @@ wss.on("connection", async (ws, _req) => {
           const { taskId, taskType } = JSON.parse(message);
 
           // Fetch full task details
-          const taskSnap = await getDoc(doc(db, "gatewayTaskQueue", taskId));
-          if (!taskSnap.exists()) return;
+          const taskSnap = await db.collection("gatewayTaskQueue").doc(taskId).get();
+          if (!taskSnap.exists) return;
           const task = taskSnap.data();
           if (task.status !== "queued") return;
 
           // Check if this gateway can handle the task type
           const gw = gwState.get(ws);
           if (!gw) return;
-          const workerSnap = await getDoc(doc(db, "gatewayWorkers", gatewayId));
-          if (!workerSnap.exists()) return;
+          const workerSnap = await db.collection("gatewayWorkers").doc(gatewayId).get();
+          if (!workerSnap.exists) return;
           const worker = workerSnap.data();
           if (!worker.capabilities?.taskTypes?.includes(taskType)) return;
           if ((worker.resources?.activeTasks || 0) >= (worker.resources?.maxConcurrent || 4)) return;
@@ -1271,7 +1236,7 @@ wss.on("connection", async (ws, _req) => {
           const diskTotalGB = isValidNumber(vitals.diskTotalGB) && vitals.diskTotalGB >= 0 ? vitals.diskTotalGB : undefined;
 
           // Record validated vitals to Firestore
-          await addDoc(collection(db, "agentVitals"), {
+          await db.collection("agentVitals").add({
             orgId,
             agentId,
             agentName,
@@ -1284,7 +1249,7 @@ wss.on("connection", async (ws, _req) => {
               diskUsedGB,
               diskTotalGB,
             },
-            timestamp: serverTimestamp(),
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
           });
         }
       } catch (err) {
@@ -1597,14 +1562,14 @@ async function reportGatewayHeartbeat() {
     };
 
     // Update Firestore
-    const gatewayRef = doc(db, "gateways", HUB_GATEWAY_ID);
-    const gatewayDoc = await getDoc(gatewayRef);
+    const gatewayRef = db.collection("gateways").doc(HUB_GATEWAY_ID);
+    const gatewayDoc = await gatewayRef.get();
 
-    if (gatewayDoc.exists()) {
-      await gatewayDoc.ref.update({
+    if (gatewayDoc.exists) {
+      await gatewayRef.update({
         metrics,
         capacity,
-        lastHeartbeat: serverTimestamp(),
+        lastHeartbeat: admin.firestore.FieldValue.serverTimestamp(),
         status: "connected",
         agentsConnected: totalAgentConnections,
       });
@@ -1623,14 +1588,12 @@ async function reportGatewayHeartbeat() {
 // ── Assignment Notification Listener ────────────────────────────────────────
 // Watch for new assignment notifications and broadcast them via WebSocket
 
-const notificationsQuery = query(
-  collection(db, "assignmentNotifications"),
-  where("read", "==", false),
-  orderBy("createdAt", "desc")
-);
+const notificationsQuery = db.collection("assignmentNotifications")
+  .where("read", "==", false)
+  .orderBy("createdAt", "desc");
 
 let notificationInitialLoad = true;
-onSnapshot(notificationsQuery, (snapshot) => {
+notificationsQuery.onSnapshot((snapshot) => {
   // Skip initial load to avoid broadcasting old notifications on startup
   if (notificationInitialLoad) {
     notificationInitialLoad = false;
@@ -1656,9 +1619,9 @@ onSnapshot(notificationsQuery, (snapshot) => {
     if (type === "new_assignment") {
       // Fetch assignment details to include in notification
       try {
-        const assignmentRef = doc(db, "taskAssignments", assignmentId);
-        const assignmentSnap = await getDoc(assignmentRef);
-        if (assignmentSnap.exists()) {
+        const assignmentRef = db.collection("taskAssignments").doc(assignmentId);
+        const assignmentSnap = await assignmentRef.get();
+        if (assignmentSnap.exists) {
           const assignment = assignmentSnap.data();
           wsMessage = {
             type: "assignment:new",
@@ -1721,6 +1684,34 @@ if (pubsubReady) {
   log("info", `Pub/Sub enabled — instance: ${INSTANCE_ID}, at-least-once delivery active`);
 } else {
   log("warn", "Pub/Sub disabled — cross-instance messaging unavailable (single-instance mode)");
+}
+
+// ── Workflow Tick — Advance running workflows + evaluate cron triggers ──
+const TICK_URL = process.env.APP_DOMAIN
+  ? `https://${process.env.APP_DOMAIN}/api/internal/tick`
+  : null;
+
+if (TICK_URL && process.env.INTERNAL_SERVICE_SECRET) {
+  setInterval(async () => {
+    try {
+      const res = await fetch(TICK_URL, {
+        method: "POST",
+        headers: { "x-service-secret": process.env.INTERNAL_SERVICE_SECRET },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.workflows?.advanced > 0 || data.cron?.fired > 0) {
+          log("info", "Workflow tick", {
+            advanced: data.workflows.advanced,
+            cronFired: data.cron.fired,
+          });
+        }
+      }
+    } catch (err) {
+      log("warn", "Workflow tick failed", { error: err.message });
+    }
+  }, 30_000);
+  log("info", "Workflow tick scheduler started (30s interval)", { url: TICK_URL });
 }
 
 // Graceful shutdown handler

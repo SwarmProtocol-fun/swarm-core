@@ -5,18 +5,7 @@
  * with guaranteed delivery and coordinator pattern support.
  */
 
-import {
-  getFirestore,
-  collection,
-  doc,
-  getDoc,
-  addDoc,
-  updateDoc,
-  serverTimestamp,
-  query,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import admin from "firebase-admin";
 
 /**
  * Route a structured agent message through the hub
@@ -75,7 +64,7 @@ async function routeA2A(db, message, broadcastToAgent, log) {
   const delivered = broadcastToAgent(to, message);
 
   // Persist to Firestore for offline agents
-  const messageRef = await addDoc(collection(db, "agentMessages"), {
+  const messageRef = await db.collection("agentMessages").add({
     id,
     type: "a2a",
     from,
@@ -85,13 +74,13 @@ async function routeA2A(db, message, broadcastToAgent, log) {
     payload,
     metadata,
     deliveryStatus: delivered ? "delivered" : "pending",
-    deliveredAt: delivered ? serverTimestamp() : null,
-    timestamp: serverTimestamp(),
+    deliveredAt: delivered ? admin.firestore.FieldValue.serverTimestamp() : null,
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
     orgId: message.orgId || "",
   });
 
   // Also log to agentComms for dashboard visibility
-  await addDoc(collection(db, "agentComms"), {
+  await db.collection("agentComms").add({
     orgId: message.orgId || "",
     fromAgentId: from,
     fromAgentName: fromName,
@@ -100,7 +89,7 @@ async function routeA2A(db, message, broadcastToAgent, log) {
     type: "a2a",
     content: JSON.stringify(payload),
     metadata: { messageId: id, ...metadata },
-    createdAt: serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   log("info", "A2A message routed", {
@@ -125,13 +114,11 @@ async function routeCoord(db, message, broadcastToAgent, log) {
   const { id, from, fromName, coordinatorId, targetId, action, payload, priority } = message;
 
   // Find coordinator info
-  const coordQuery = query(
-    collection(db, "coordinators"),
-    where("agentId", "==", coordinatorId),
-    where("active", "==", true)
-  );
+  const coordQuery = db.collection("coordinators")
+    .where("agentId", "==", coordinatorId)
+    .where("active", "==", true);
 
-  const coordSnap = await getDocs(coordQuery);
+  const coordSnap = await coordQuery.get();
   if (coordSnap.empty) {
     throw new Error(`No active coordinator found with ID: ${coordinatorId}`);
   }
@@ -152,7 +139,7 @@ async function routeCoord(db, message, broadcastToAgent, log) {
   const delivered = broadcastToAgent(coordinatorId, message);
 
   // Persist message
-  await addDoc(collection(db, "agentMessages"), {
+  await db.collection("agentMessages").add({
     id,
     type: "coord",
     from,
@@ -163,12 +150,12 @@ async function routeCoord(db, message, broadcastToAgent, log) {
     priority: priority || "medium",
     payload,
     deliveryStatus: delivered ? "delivered" : "pending",
-    timestamp: serverTimestamp(),
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
     orgId: message.orgId || "",
   });
 
   // Log to agentComms
-  await addDoc(collection(db, "agentComms"), {
+  await db.collection("agentComms").add({
     orgId: message.orgId || "",
     fromAgentId: from,
     fromAgentName: fromName,
@@ -177,11 +164,11 @@ async function routeCoord(db, message, broadcastToAgent, log) {
     type: "coord",
     content: `[${action.toUpperCase()}] ${JSON.stringify(payload)}`,
     metadata: { messageId: id, action, priority, targetId },
-    createdAt: serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   // Increment coordinator load
-  await updateDoc(coordSnap.docs[0].ref, {
+  await coordSnap.docs[0].ref.update({
     currentLoad: coordinator.currentLoad + 1,
   });
 
@@ -211,20 +198,20 @@ async function routeBroadcast(db, message, broadcastToChannel, log) {
   broadcastToChannel(channelId, message);
 
   // Persist to messages collection (existing)
-  await addDoc(collection(db, "messages"), {
+  await db.collection("messages").add({
     channelId,
     senderId: from,
     senderName: fromName,
     senderType: "agent",
     content: typeof payload === "string" ? payload : JSON.stringify(payload),
     verified: true,
-    createdAt: serverTimestamp(),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   // If mentions, send direct notifications
   if (mentions && mentions.length > 0) {
     for (const mentionedId of mentions) {
-      await addDoc(collection(db, "notifications"), {
+      await db.collection("notifications").add({
         orgId: message.orgId || "",
         agentId: mentionedId,
         type: "mention",
@@ -232,7 +219,7 @@ async function routeBroadcast(db, message, broadcastToChannel, log) {
         channelId,
         messageId: id,
         read: false,
-        createdAt: serverTimestamp(),
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
     }
   }
@@ -259,8 +246,8 @@ async function routeSession(db, message, broadcastToAgent, log) {
   const { id, from, fromName, sessionId, participants, payload, step } = message;
 
   // Verify session exists and is active
-  const sessionDoc = await getDoc(doc(db, "agentSessions", sessionId));
-  if (!sessionDoc.exists()) {
+  const sessionDoc = await db.collection("agentSessions").doc(sessionId).get();
+  if (!sessionDoc.exists) {
     throw new Error(`Session not found: ${sessionId}`);
   }
 
@@ -279,7 +266,7 @@ async function routeSession(db, message, broadcastToAgent, log) {
   }
 
   // Persist message
-  await addDoc(collection(db, "agentMessages"), {
+  await db.collection("agentMessages").add({
     id,
     type: "session",
     from,
@@ -289,13 +276,13 @@ async function routeSession(db, message, broadcastToAgent, log) {
     step: step || session.currentStep,
     payload,
     deliveryStatus: deliveredCount > 0 ? "delivered" : "pending",
-    timestamp: serverTimestamp(),
+    timestamp: admin.firestore.FieldValue.serverTimestamp(),
     orgId: message.orgId || "",
   });
 
   // Update session step if provided
   if (step && step > session.currentStep) {
-    await updateDoc(sessionDoc.ref, {
+    await sessionDoc.ref.update({
       currentStep: step,
     });
   }
@@ -322,19 +309,17 @@ async function routeSession(db, message, broadcastToAgent, log) {
 export async function getCoordinator(db, options) {
   const { orgId, projectId, channelId } = options;
 
-  let q = query(
-    collection(db, "coordinators"),
-    where("orgId", "==", orgId),
-    where("active", "==", true)
-  );
+  let q = db.collection("coordinators")
+    .where("orgId", "==", orgId)
+    .where("active", "==", true);
 
   if (projectId) {
-    q = query(q, where("projectId", "==", projectId));
+    q = q.where("projectId", "==", projectId);
   } else if (channelId) {
-    q = query(q, where("channelId", "==", channelId));
+    q = q.where("channelId", "==", channelId);
   }
 
-  const snap = await getDocs(q);
+  const snap = await q.get();
   if (snap.empty) return null;
 
   // Return coordinator with lowest load
@@ -351,7 +336,7 @@ export async function registerCoordinator(db, coordinator) {
   const { agentId, agentName, orgId, projectId, channelId, responsibilities, maxConcurrentTasks } =
     coordinator;
 
-  const coordRef = await addDoc(collection(db, "coordinators"), {
+  const coordRef = await db.collection("coordinators").add({
     agentId,
     agentName,
     orgId,
@@ -361,7 +346,7 @@ export async function registerCoordinator(db, coordinator) {
     active: true,
     maxConcurrentTasks: maxConcurrentTasks || 10,
     currentLoad: 0,
-    registeredAt: serverTimestamp(),
+    registeredAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   return coordRef.id;
@@ -373,7 +358,7 @@ export async function registerCoordinator(db, coordinator) {
 export async function createSession(db, session) {
   const { name, orgId, createdBy, participants, coordinatorId, metadata, totalSteps } = session;
 
-  const sessionRef = await addDoc(collection(db, "agentSessions"), {
+  const sessionRef = await db.collection("agentSessions").add({
     id: crypto.randomUUID(),
     name,
     orgId,
@@ -384,7 +369,7 @@ export async function createSession(db, session) {
     currentStep: 0,
     totalSteps: totalSteps || null,
     metadata: metadata || {},
-    startedAt: serverTimestamp(),
+    startedAt: admin.firestore.FieldValue.serverTimestamp(),
   });
 
   return sessionRef.id;

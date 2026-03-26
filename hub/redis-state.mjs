@@ -137,28 +137,66 @@ export async function unsubscribeAllChannels(agentId) {
  *  Rate Limiting (Sliding Window)
  * ──────────────────────────────────────────────────────────────────────── */
 
-export async function checkRateLimit(key, limit, windowMs) {
+/** In-memory fallback for when Redis is unavailable */
+const _memoryLimits = new Map(); // key → { count, windowStart }
+
+function checkRateLimitMemory(key, limit, windowMs) {
   const now = Date.now();
-  const windowStart = now - windowMs;
-  const rateLimitKey = `ratelimit:${key}`;
+  let entry = _memoryLimits.get(key);
+  if (!entry || now - entry.windowStart > windowMs) {
+    entry = { count: 0, windowStart: now };
+  }
+  entry.count++;
+  _memoryLimits.set(key, entry);
 
-  // Remove expired entries
-  await redisClient.zremrangebyscore(rateLimitKey, 0, windowStart);
-
-  // Count current requests
-  const count = await redisClient.zcard(rateLimitKey);
-
-  if (count >= limit) {
-    const oldest = await redisClient.zrange(rateLimitKey, 0, 0);
-    const resetAt = oldest.length > 0 ? parseInt(oldest[0]) + windowMs : now + windowMs;
-    return { allowed: false, remaining: 0, resetAt };
+  // Periodically clean stale entries (every 100 checks)
+  if (_memoryLimits.size > 1000) {
+    for (const [k, v] of _memoryLimits) {
+      if (now - v.windowStart > windowMs * 2) _memoryLimits.delete(k);
+    }
   }
 
-  // Add current request
-  await redisClient.zadd(rateLimitKey, now, now.toString());
-  await redisClient.expire(rateLimitKey, Math.ceil(windowMs / 1000));
+  const remaining = Math.max(0, limit - entry.count);
+  return {
+    allowed: entry.count <= limit,
+    remaining,
+    resetAt: entry.windowStart + windowMs,
+  };
+}
 
-  return { allowed: true, remaining: limit - count - 1, resetAt: now + windowMs };
+export async function checkRateLimit(key, limit, windowMs) {
+  // Fallback to in-memory if Redis is unavailable
+  if (!redisClient) {
+    return checkRateLimitMemory(key, limit, windowMs);
+  }
+
+  try {
+    const now = Date.now();
+    const windowStart = now - windowMs;
+    const rateLimitKey = `ratelimit:${key}`;
+
+    // Remove expired entries
+    await redisClient.zremrangebyscore(rateLimitKey, 0, windowStart);
+
+    // Count current requests
+    const count = await redisClient.zcard(rateLimitKey);
+
+    if (count >= limit) {
+      const oldest = await redisClient.zrange(rateLimitKey, 0, 0);
+      const resetAt = oldest.length > 0 ? parseInt(oldest[0]) + windowMs : now + windowMs;
+      return { allowed: false, remaining: 0, resetAt };
+    }
+
+    // Add current request
+    await redisClient.zadd(rateLimitKey, now, now.toString());
+    await redisClient.expire(rateLimitKey, Math.ceil(windowMs / 1000));
+
+    return { allowed: true, remaining: limit - count - 1, resetAt: now + windowMs };
+  } catch (err) {
+    // Redis error — fall back to in-memory rate limiting (not fail-open)
+    console.warn("[Redis] Rate limit check failed, using in-memory fallback:", err.message);
+    return checkRateLimitMemory(key, limit, windowMs);
+  }
 }
 
 export async function resetRateLimit(key) {

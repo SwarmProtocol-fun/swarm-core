@@ -11,11 +11,17 @@ import {
   type DiagnosticCheckType,
   type DiagnosticIssue,
 } from "@/lib/diagnostics";
+import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ checkType: string }> }
 ) {
+  const adminCheck = requirePlatformAdmin(request);
+  if (!adminCheck.ok) {
+    return Response.json({ error: adminCheck.error }, { status: 403 });
+  }
+
   const { checkType } = await params;
 
   let body: Record<string, unknown>;

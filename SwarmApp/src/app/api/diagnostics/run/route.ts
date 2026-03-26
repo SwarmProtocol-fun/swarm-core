@@ -7,8 +7,14 @@
 
 import { NextRequest } from "next/server";
 import { runDiagnostics, type DiagnosticCheckType } from "@/lib/diagnostics";
+import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 export async function POST(request: NextRequest) {
+  const adminCheck = requirePlatformAdmin(request);
+  if (!adminCheck.ok) {
+    return Response.json({ error: adminCheck.error }, { status: 403 });
+  }
+
   let body: Record<string, unknown>;
   try {
     body = await request.json();

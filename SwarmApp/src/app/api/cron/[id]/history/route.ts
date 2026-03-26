@@ -7,11 +7,17 @@
 
 import { NextRequest } from "next/server";
 import { getCronExecutionHistory, calculateCronStats } from "@/lib/cron-history";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const wallet = getWalletAddress(request);
+  if (!wallet) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const { id } = await params;
   const { searchParams } = new URL(request.url);
   const rawLimit = parseInt(searchParams.get("limit") || "50", 10);

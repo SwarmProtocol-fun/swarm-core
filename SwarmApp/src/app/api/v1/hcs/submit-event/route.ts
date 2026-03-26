@@ -10,9 +10,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/session";
 import { submitScoreEvent, isHCSConfigured, type ScoreEvent } from "@/lib/hedera-hcs-client";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function POST(req: NextRequest) {
     try {
+        const wallet = getWalletAddress(req);
+        if (!wallet) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
         const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

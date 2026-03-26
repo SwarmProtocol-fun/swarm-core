@@ -7,8 +7,14 @@
 
 import { NextRequest } from "next/server";
 import { getAllGatewaysWithHealth } from "@/lib/gateways";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function GET(request: NextRequest) {
+  const wallet = getWalletAddress(request);
+  if (!wallet) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(request.url);
   const orgId = searchParams.get("orgId");
 

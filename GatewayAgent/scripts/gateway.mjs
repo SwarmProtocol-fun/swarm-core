@@ -445,8 +445,44 @@ class GatewayWSClient {
       process.emit("SIGTERM");
     } else if (msg.type === "job:cancel" && msg.taskId) {
       log("info", `Job cancel received: ${msg.taskId}`);
-      // Cancel handling will be added with executor registry
+      this.handleJobCancel(msg.taskId);
     }
+  }
+
+  /** Handle job cancellation — kill running process and report cancelled */
+  handleJobCancel(taskId) {
+    // _activeTasks is set externally by the daemon after construction
+    const entry = this._activeTasks?.get(taskId);
+    if (!entry) {
+      log("warn", `Cancel: task ${taskId} not found in active tasks`);
+      // Still report cancelled in case it was queued/claimed on the hub side
+      this.sendJobStatus(taskId, "cancelled");
+      return;
+    }
+
+    log("info", `Cancelling task ${taskId}...`);
+
+    // Kill the process if one is tracked (shell/docker executor)
+    if (entry.proc && typeof entry.proc.kill === "function") {
+      try {
+        entry.proc.kill("SIGTERM");
+        // Force-kill after 5s if still alive
+        setTimeout(() => {
+          try { entry.proc.kill("SIGKILL"); } catch { /* already dead */ }
+        }, 5000);
+      } catch {
+        // Process may have already exited
+      }
+    }
+
+    // Report cancelled status to hub
+    this.sendJobStatus(taskId, "cancelled");
+    this.sendJobLog(taskId, [`[system] Task cancelled by hub`]);
+
+    // Clean up from active tasks
+    this._activeTasks?.delete(taskId);
+
+    log("info", `Task ${taskId} cancelled`);
   }
 
   /** Send job status update via WebSocket */
@@ -838,6 +874,8 @@ async function cmdDaemon() {
   // Try WebSocket connection (non-blocking — falls back to polling)
   const { privateKey } = ensureKeypair();
   wsClient = new GatewayWSClient(config, privateKey, handleWSJobDispatch);
+  // Share the active tasks map so the WS client can cancel running tasks
+  wsClient._activeTasks = activeTasks;
   wsClient.connect();
 
   // Graceful shutdown

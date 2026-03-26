@@ -11,6 +11,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, query, where } from "firebase/firestore";
+import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 const HEDERA_RPC = "https://testnet.hashio.io/api";
 
@@ -18,6 +19,11 @@ const HEDERA_RPC = "https://testnet.hashio.io/api";
 const AVG_REGISTRATION_COST_HBAR = 0.15;
 
 export async function GET(_req: NextRequest) {
+  const adminCheck = requirePlatformAdmin(_req);
+  if (!adminCheck.ok) {
+    return NextResponse.json({ error: adminCheck.error }, { status: 403 });
+  }
+
   const privateKey = process.env.HEDERA_PLATFORM_KEY;
   if (!privateKey) {
     return NextResponse.json(

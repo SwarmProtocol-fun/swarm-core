@@ -23,6 +23,7 @@ import {
   updateWorker,
   heartbeatWorker,
   getQueuedTasks,
+  getWorkerTasks,
 } from "./store";
 import type {
   GatewayWorker,
@@ -238,6 +239,13 @@ export async function reportTaskFailed(
       error,
       completedAt: Date.now(),
     });
+
+    // Move to dead letter queue for later inspection / retry
+    try {
+      await moveToDeadLetter(task, error);
+    } catch {
+      // DLQ write failure is non-fatal — the task is already marked failed
+    }
   }
 
   // Decrement worker active tasks
@@ -323,4 +331,123 @@ export async function reapTimedOutTasks(orgId: string): Promise<number> {
   }
 
   return reaped;
+}
+
+// ── Dead Letter Queue ──────────────────────────────────────────────────────
+
+const DLQ_COLLECTION = "gatewayDeadLetterQueue";
+
+/**
+ * Move a permanently failed task to the dead letter queue.
+ * Called when a task exhausts max retries.
+ */
+export async function moveToDeadLetter(
+  task: QueuedTask,
+  reason: string,
+): Promise<string> {
+  const { addDoc, collection, serverTimestamp } = await import("firebase/firestore");
+  const { db } = await import("@/lib/firebase");
+
+  const entry = {
+    taskId: task.id,
+    orgId: task.orgId,
+    taskType: task.taskType,
+    payload: task.payload,
+    error: reason,
+    retriesUsed: task.retriesUsed || 0,
+    maxRetries: task.maxRetries || 0,
+    originalCreatedAt: task.createdAt,
+    movedAt: serverTimestamp(),
+  };
+  const ref = await addDoc(collection(db, DLQ_COLLECTION), entry);
+  return ref.id;
+}
+
+// ── Stale Worker Detection ─────────────────────────────────────────────────
+
+/**
+ * Detect stale workers and mark them offline.
+ * Reassigns their claimed/running tasks back to the queue.
+ *
+ * A worker is considered stale when its lastHeartbeat is older than
+ * the threshold (default 3 minutes = 3x the 60s heartbeat interval).
+ *
+ * Should be called periodically (e.g., every 60s by a cron job).
+ */
+export async function reapStaleWorkers(
+  orgId: string,
+  heartbeatThresholdMs = 180_000, // 3 minutes (3x default 60s heartbeat)
+): Promise<{ markedOffline: number; tasksReassigned: number }> {
+  const { getDocs, collection, query, where } = await import("firebase/firestore");
+  const { db } = await import("@/lib/firebase");
+
+  // 1. Query workers that should be alive (idle or busy) for this org
+  const q = query(
+    collection(db, "gatewayWorkers"),
+    where("orgId", "==", orgId),
+    where("status", "in", ["idle", "busy"]),
+  );
+  const snap = await getDocs(q);
+  const now = Date.now();
+  let markedOffline = 0;
+  let tasksReassigned = 0;
+
+  for (const d of snap.docs) {
+    const worker = { id: d.id, ...d.data() } as GatewayWorker;
+
+    // Resolve lastHeartbeat to milliseconds (Firestore Timestamp or number)
+    const hb = typeof worker.lastHeartbeat === "number"
+      ? worker.lastHeartbeat
+      : (worker.lastHeartbeat as { toMillis?: () => number })?.toMillis?.() || 0;
+
+    // Skip workers whose heartbeat is fresh
+    if (hb && now - hb <= heartbeatThresholdMs) continue;
+
+    // 2a. Mark worker offline
+    await updateWorker(worker.id, { status: "offline" });
+    markedOffline++;
+
+    // 2b. Get their claimed/running tasks
+    const staleTasks = await getWorkerTasks(worker.id);
+
+    // 2c. Re-queue those tasks
+    for (const task of staleTasks) {
+      if (task.retriesUsed < task.maxRetries) {
+        await updateTask(task.id, {
+          status: "queued" as const,
+          claimedBy: undefined,
+          error: `Worker ${worker.id} went offline (stale heartbeat)`,
+          retriesUsed: task.retriesUsed + 1,
+        });
+      } else {
+        // Max retries exhausted — mark failed and move to DLQ
+        await updateTask(task.id, {
+          status: "failed",
+          error: `Worker ${worker.id} went offline (stale heartbeat, max retries exhausted)`,
+          completedAt: now,
+        });
+        try {
+          await moveToDeadLetter(
+            task,
+            `Worker ${worker.id} went offline (stale heartbeat, max retries exhausted)`,
+          );
+        } catch {
+          // DLQ write failure is non-fatal
+        }
+      }
+      tasksReassigned++;
+
+      // Release claim lock in Redis
+      const redis = getRedis();
+      if (redis) {
+        try {
+          await redis.del(`gateway:claim:${task.id}`);
+        } catch {
+          // ignore
+        }
+      }
+    }
+  }
+
+  return { markedOffline, tasksReassigned };
 }

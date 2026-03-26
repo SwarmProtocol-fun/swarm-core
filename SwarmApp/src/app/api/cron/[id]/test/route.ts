@@ -9,11 +9,17 @@ import { NextRequest } from "next/server";
 import { getCronJob } from "@/lib/cron";
 import { getAgent } from "@/lib/firestore";
 import { recordCronExecution, type AgentExecutionResult } from "@/lib/cron-history";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const wallet = getWalletAddress(request);
+  if (!wallet) {
+    return Response.json({ error: "Authentication required" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   try {

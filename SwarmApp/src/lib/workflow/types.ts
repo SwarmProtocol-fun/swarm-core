@@ -137,8 +137,38 @@ export interface WorkflowDefinition {
   /** Version counter (incremented on edit) */
   version: number;
   enabled: boolean;
+  /** QA gates — evaluated after specific nodes complete */
+  qaGates?: QAGate[];
   createdAt: unknown;
   updatedAt: unknown;
+}
+
+// ── QA Gates ─────────────────────────────────────────────────────────────────
+
+/** A quality assurance gate evaluated after a node completes */
+export interface QAGateRule {
+  /** Human-readable name */
+  name: string;
+  /** Field in node output to validate */
+  field: string;
+  /** Comparison operator */
+  operator: "exists" | "not_empty" | "eq" | "gte" | "lte" | "min_length" | "max_length" | "contains" | "not_contains" | "matches" | "regex";
+  /** Expected value (depends on operator) */
+  value?: unknown;
+  /** What to do if the rule fails */
+  onFail: "block" | "warn" | "retry" | "route_to";
+  /** Target node ID for route_to action */
+  failTargetNodeId?: string;
+  /** Max retries for retry action */
+  maxRetries?: number;
+}
+
+export interface QAGate {
+  /** Node ID this gate applies to (evaluated after node completes) */
+  afterNodeId: string;
+  /** "all" = every rule must pass, "any" = at least one must pass */
+  mode: "all" | "any";
+  rules: QAGateRule[];
 }
 
 // ── Workflow Run (execution instance) ────────────────────────────────────────

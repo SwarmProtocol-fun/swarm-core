@@ -9,15 +9,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/session";
 import { createReputationTopic } from "@/lib/hedera-hcs-client";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function POST(req: NextRequest) {
     try {
+        const wallet = getWalletAddress(req);
+        if (!wallet) {
+            return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+        }
+
         const session = await validateSession();
         if (!session?.address) {
             return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
         }
-
-        // TODO: Add admin check - only platform admins should be able to create topics
 
         const topicId = await createReputationTopic();
 

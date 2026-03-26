@@ -22,6 +22,7 @@ import type {
   NodeExecutionResult,
   RunStatus,
   WorkflowNodeType,
+  QAGate,
 } from "./types";
 import {
   getWorkflowDefinition,
@@ -31,6 +32,7 @@ import {
   addStepLog,
 } from "./store";
 import { getNodeHandler } from "./nodes";
+import { evaluateGate } from "./packs";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -399,6 +401,48 @@ export async function advanceRun(
         log(runId, nextId, node.label, node.type, "info", "Node completed", {
           hasOutput: result.output !== undefined,
         });
+
+        // ── QA Gate evaluation ──────────────────────────────────────────
+        if (def.qaGates?.length) {
+          const gate = def.qaGates.find((g) => g.afterNodeId === nextId);
+          if (gate && result.output && typeof result.output === "object") {
+            const { passed, failures } = evaluateGate(
+              gate as Parameters<typeof evaluateGate>[0],
+              result.output as Record<string, unknown>,
+            );
+
+            if (!passed) {
+              for (const rule of failures) {
+                log(runId, nextId, node.label, node.type, "warn",
+                  `QA gate: "${rule.name}" failed on field "${rule.field}"`,
+                  { operator: rule.operator, expected: rule.value, onFail: rule.onFail },
+                );
+
+                if (rule.onFail === "block") {
+                  nodeStates[nextId] = {
+                    ...nodeStates[nextId],
+                    status: "failed",
+                    error: `QA gate blocked: ${rule.name}`,
+                    completedAt: Date.now(),
+                  };
+                } else if (
+                  rule.onFail === "retry" &&
+                  nodeStates[nextId].retriesUsed < (rule.maxRetries ?? 1)
+                ) {
+                  nodeStates[nextId] = {
+                    ...nodeStates[nextId],
+                    status: "ready",
+                    retriesUsed: nodeStates[nextId].retriesUsed + 1,
+                    error: undefined,
+                    output: undefined,
+                  };
+                }
+                // "warn" — log only, no status change
+                // "route_to" — future: mark target node as ready
+              }
+            }
+          }
+        }
       }
 
       // Handle retry on failure

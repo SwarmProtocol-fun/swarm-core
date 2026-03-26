@@ -8,15 +8,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { validateSession } from "@/lib/session";
 import { startSlashingService } from "@/lib/hedera-slashing";
+import { requirePlatformAdmin, requireInternalService } from "@/lib/auth-guard";
 
 export async function POST(req: NextRequest) {
     try {
-        const session = await validateSession();
-        if (!session?.address) {
-            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        const adminCheck = requirePlatformAdmin(req);
+        const serviceCheck = requireInternalService(req);
+        if (!adminCheck.ok && !serviceCheck.ok) {
+            return NextResponse.json({ error: "Platform admin or internal service access required" }, { status: 403 });
         }
 
-        // TODO: Add admin check
+        const session = await validateSession();
+        if (!session?.address && !serviceCheck.ok) {
+            return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+        }
 
         startSlashingService();
 

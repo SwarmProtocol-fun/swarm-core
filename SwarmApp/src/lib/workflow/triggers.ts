@@ -215,7 +215,7 @@ function idempotencyKey(policyId: string, eventId: string): string {
 /**
  * Check cooldown — returns true if the trigger is allowed (not in cooldown).
  */
-async function checkCooldown(policy: TriggerPolicy): Promise<boolean> {
+export async function checkCooldownFor(policy: TriggerPolicy): Promise<boolean> {
   if (policy.cooldownMs <= 0) return true;
 
   const redis = getRedis();
@@ -246,7 +246,7 @@ async function checkCooldown(policy: TriggerPolicy): Promise<boolean> {
 /**
  * Check idempotency — returns true if this event hasn't been processed yet.
  */
-async function checkIdempotency(policyId: string, eventId: string): Promise<boolean> {
+export async function checkIdempotencyFor(policyId: string, eventId: string): Promise<boolean> {
   const redis = getRedis();
   if (!redis) return true; // No Redis — allow (at-most-once protection disabled)
 
@@ -318,10 +318,20 @@ export async function fireEvent(
     }
 
     // Idempotency check
-    if (!(await checkIdempotency(policy.id, eventId))) continue;
+    if (!(await checkIdempotencyFor(policy.id, eventId))) continue;
 
     // Cooldown check
-    if (!(await checkCooldown(policy))) continue;
+    if (!(await checkCooldownFor(policy))) continue;
+
+    // Concurrent run limit check
+    if (policy.maxConcurrentRuns && policy.maxConcurrentRuns > 0) {
+      const { getWorkflowActiveRunCount } = await import("./store");
+      const activeCount = await getWorkflowActiveRunCount(policy.workflowId);
+      if (activeCount >= policy.maxConcurrentRuns) {
+        console.warn(`[triggers] Skipping policy ${policy.id}: max concurrent runs (${policy.maxConcurrentRuns}) reached`);
+        continue;
+      }
+    }
 
     // Start workflow run
     try {
@@ -398,10 +408,10 @@ export async function checkAlertTriggers(
     if (!triggered) continue;
 
     // Cooldown check
-    if (!(await checkCooldown(policy))) continue;
+    if (!(await checkCooldownFor(policy))) continue;
 
     const eventId = `alert:${metricName}:${Date.now()}`;
-    if (!(await checkIdempotency(policy.id, eventId))) continue;
+    if (!(await checkIdempotencyFor(policy.id, eventId))) continue;
 
     try {
       const triggerInput = {

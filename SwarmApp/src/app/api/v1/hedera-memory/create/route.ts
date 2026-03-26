@@ -9,9 +9,15 @@ import { validateSession } from "@/lib/session";
 import { updateDoc, doc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createPrivateMemoryTopic } from "@/lib/hedera-agent-memory";
+import { getWalletAddress } from "@/lib/auth-guard";
 
 export async function POST(req: NextRequest) {
   try {
+    const wallet = getWalletAddress(req);
+    if (!wallet) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const session = await validateSession();
     if (!session?.sub) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

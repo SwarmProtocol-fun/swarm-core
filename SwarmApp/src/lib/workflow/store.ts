@@ -171,6 +171,36 @@ export async function getActiveRuns(orgId: string): Promise<WorkflowRun[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WorkflowRun);
 }
 
+/**
+ * Get all running/pending workflow runs globally (cross-org).
+ * Used by the autonomous tick handler to advance workflows server-side.
+ */
+export async function getGlobalActiveRuns(max = 50): Promise<WorkflowRun[]> {
+  const q = query(
+    collection(db, RUNS),
+    where("status", "in", ["pending", "running"]),
+    orderBy("updatedAt", "asc"), // oldest first = fairness
+    firestoreLimit(max),
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WorkflowRun);
+}
+
+/**
+ * Count active (running/pending) runs for a specific workflow definition.
+ * Used by trigger system to enforce maxConcurrentRuns.
+ */
+export async function getWorkflowActiveRunCount(workflowId: string): Promise<number> {
+  const q = query(
+    collection(db, RUNS),
+    where("workflowId", "==", workflowId),
+    where("status", "in", ["pending", "running"]),
+    firestoreLimit(100),
+  );
+  const snap = await getDocs(q);
+  return snap.size;
+}
+
 /** Update a single node's state within a run */
 export async function updateNodeState(
   runId: string,
