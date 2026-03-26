@@ -571,7 +571,7 @@ export default function KanbanPage() {
                     <LayoutGrid className="h-16 w-16 opacity-20 mb-4" />
                     <p className="text-lg font-medium mb-1">No boards yet</p>
                     <p className="text-sm mb-4">Create your first board to start organizing tasks</p>
-                    <Button onClick={() => setShowCreateBoard(true)} className="bg-amber-600 hover:bg-amber-700 text-black gap-1.5">
+                    <Button onClick={() => setShowCreateBoard(true)} className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5">
                         <Plus className="h-4 w-4" />
                         Create Board
                     </Button>
@@ -687,7 +687,7 @@ export default function KanbanPage() {
                             <Button
                                 onClick={handleCreateBoard}
                                 disabled={!newBoardName.trim()}
-                                className="bg-amber-600 hover:bg-amber-700 text-black"
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
                             >
                                 Create Board
                             </Button>
@@ -740,7 +740,7 @@ export default function KanbanPage() {
                             <Button
                                 onClick={handleUpdateBoard}
                                 disabled={!editBoardName.trim()}
-                                className="bg-amber-600 hover:bg-amber-700 text-black"
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
                             >
                                 Save Changes
                             </Button>

@@ -1,8 +1,9 @@
-/** Price Summary — Cost estimation panel for the current workflow based on model pricing. */
+/** Price Summary — Cost estimation + execution controls for the workflow canvas. */
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Loader2, Square } from 'lucide-react';
 import { type WorkflowValidation, formatCostCents } from '@/lib/swarm-workflow';
 
 interface PriceSummaryProps {
@@ -10,10 +11,10 @@ interface PriceSummaryProps {
   agentCount: number;
   onExecute: () => void;
   executing: boolean;
-  isPreview?: boolean;
+  onCancel?: () => void;
 }
 
-export function PriceSummary({ validation, agentCount, onExecute, executing, isPreview }: PriceSummaryProps) {
+export function PriceSummary({ validation, agentCount, onExecute, executing, onCancel }: PriceSummaryProps) {
   return (
     <div className="border-t border-border bg-card px-4 py-3 flex items-center justify-between gap-4">
       <div className="flex items-center gap-4">
@@ -32,23 +33,34 @@ export function PriceSummary({ validation, agentCount, onExecute, executing, isP
             {validation.errors[0]}
           </Badge>
         )}
-        {isPreview && (
-          <Badge className="bg-amber-50 text-amber-700 border-amber-200 text-xs">
-            Preview — execution engine coming soon
-          </Badge>
-        )}
       </div>
-      <Button
-        onClick={onExecute}
-        disabled={!validation.isValid || executing}
-        className="bg-amber-600 hover:bg-amber-700 text-black disabled:opacity-50"
-      >
-        {executing
-          ? 'Executing...'
-          : isPreview
-            ? `Save Preview (${formatCostCents(validation.totalCostCents)})`
-            : `Execute Swarm (${formatCostCents(validation.totalCostCents)})`}
-      </Button>
+      <div className="flex items-center gap-2">
+        {onCancel && executing && (
+          <Button
+            onClick={onCancel}
+            variant="outline"
+            size="sm"
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            <Square className="h-3 w-3 mr-1.5" />
+            Cancel
+          </Button>
+        )}
+        <Button
+          onClick={onExecute}
+          disabled={!validation.isValid || executing}
+          className="bg-amber-600 hover:bg-amber-700 text-black disabled:opacity-50"
+        >
+          {executing ? (
+            <span className="flex items-center gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Executing...
+            </span>
+          ) : (
+            `Execute Swarm (${formatCostCents(validation.totalCostCents)})`
+          )}
+        </Button>
+      </div>
     </div>
   );
 }

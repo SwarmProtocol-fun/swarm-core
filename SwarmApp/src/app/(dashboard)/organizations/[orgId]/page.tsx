@@ -202,7 +202,7 @@ export default function OrgProfilePage() {
                 <div className="flex gap-2 shrink-0">
                     {canMessage && (
                         <Button
-                            className="bg-amber-600 hover:bg-amber-700 text-black"
+                            className="bg-amber-600 hover:bg-amber-700 text-white"
                             onClick={() => setShowMessageDialog(true)}
                         >
                             Send Message
@@ -404,7 +404,7 @@ export default function OrgProfilePage() {
                                 <Button
                                     onClick={handleSendMessage}
                                     disabled={sendingMessage || !messageContent.trim()}
-                                    className="bg-amber-600 hover:bg-amber-700 text-black"
+                                    className="bg-amber-600 hover:bg-amber-700 text-white"
                                 >
                                     {sendingMessage ? "Sending..." : "Send Message"}
                                 </Button>

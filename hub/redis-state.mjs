@@ -231,3 +231,57 @@ export async function checkRedisHealth() {
     return { healthy: false, error: err.message };
   }
 }
+
+/* ────────────────────────────────────────────────────────────────────────
+ *  Gateway Connections (Presence Tracking)
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function trackGatewayConnection(gatewayId, orgId, workerName) {
+  const key = `gateway:${gatewayId}:instance`;
+  const metadata = JSON.stringify({ orgId, workerName, connectedAt: Date.now() });
+
+  await redisClient.setex(key, 300, INSTANCE_ID);
+  await redisClient.setex(`gateway:${gatewayId}:meta`, 300, metadata);
+  await redisClient.sadd(`instance:${INSTANCE_ID}:gateways`, gatewayId);
+  await redisClient.sadd(`org:${orgId}:gateways`, gatewayId);
+
+  console.log(`[Redis] Gateway ${gatewayId} connected to ${INSTANCE_ID}`);
+}
+
+export async function untrackGatewayConnection(gatewayId) {
+  const metaJson = await redisClient.get(`gateway:${gatewayId}:meta`);
+  const metadata = metaJson ? JSON.parse(metaJson) : {};
+
+  await redisClient.del(`gateway:${gatewayId}:instance`, `gateway:${gatewayId}:meta`);
+  await redisClient.srem(`instance:${INSTANCE_ID}:gateways`, gatewayId);
+  if (metadata.orgId) {
+    await redisClient.srem(`org:${metadata.orgId}:gateways`, gatewayId);
+  }
+
+  console.log(`[Redis] Gateway ${gatewayId} disconnected from ${INSTANCE_ID}`);
+}
+
+export async function refreshGatewayPresence(gatewayId) {
+  await redisClient.expire(`gateway:${gatewayId}:instance`, 300);
+  await redisClient.expire(`gateway:${gatewayId}:meta`, 300);
+}
+
+export async function getGatewayInstance(gatewayId) {
+  return await redisClient.get(`gateway:${gatewayId}:instance`);
+}
+
+export async function getOrgGateways(orgId) {
+  return await redisClient.smembers(`org:${orgId}:gateways`);
+}
+
+/* ────────────────────────────────────────────────────────────────────────
+ *  Gateway Job Log Pub/Sub
+ * ──────────────────────────────────────────────────────────────────────── */
+
+export async function publishJobLogs(taskId, lines) {
+  await pubClient.publish(`gateway:logs:${taskId}`, JSON.stringify({ taskId, lines, ts: Date.now() }));
+}
+
+export async function publishNewTask(orgId, taskId, taskType) {
+  await pubClient.publish(`gateway:new-task:${orgId}`, JSON.stringify({ taskId, taskType, ts: Date.now() }));
+}

@@ -27,7 +27,7 @@ export type CameraMode = "orbit" | "follow" | "cinematic";
 
 export type ViewMode = "2d" | "3d" | "background";
 
-export type PanelType = "agent-detail" | "task-board" | "cost-metrics" | null;
+export type PanelType = "agent-detail" | "task-board" | "cost-metrics" | "decision-inbox" | "reports" | null;
 
 /** Visual severity tier driven by utilization */
 export type StressTier = "normal" | "busy" | "stressed" | "overloaded";

@@ -226,3 +226,22 @@ export interface NodeHandler {
     run: WorkflowRun,
   ): Promise<NodeExecutionResult>;
 }
+
+// ── Step Logs ────────────────────────────────────────────────────────────────
+
+/** Persistent log entry for a single node execution step */
+export interface StepLog {
+  id: string;
+  runId: string;
+  nodeId: string;
+  /** Node label at execution time (for display even if definition changes) */
+  nodeLabel: string;
+  nodeType: WorkflowNodeType;
+  /** Log level */
+  level: "info" | "warn" | "error" | "debug";
+  message: string;
+  /** Structured metadata (inputs, outputs, HTTP status, etc.) */
+  metadata?: Record<string, unknown>;
+  /** Timestamp in ms */
+  timestamp: number;
+}

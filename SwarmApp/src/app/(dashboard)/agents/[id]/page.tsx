@@ -1212,7 +1212,7 @@ function AgentDetailPage() {
               ) : (
                 <div className="pl-2 border-l-2 border-muted">
                   <p className="text-xs text-muted-foreground">Not registered on Hedera</p>
-                  <Button onClick={handleRegisterOpen} size="sm" className="mt-2 bg-amber-600 hover:bg-amber-700 text-black text-xs h-7">
+                  <Button onClick={handleRegisterOpen} size="sm" className="mt-2 bg-amber-600 hover:bg-amber-700 text-white text-xs h-7">
                     Register on Hedera
                   </Button>
                 </div>
@@ -1579,7 +1579,7 @@ function AgentDetailPage() {
             </div>
             <div className="flex gap-2 justify-end">
               <Button variant="outline" onClick={() => setShowEdit(false)} disabled={saving}>Cancel</Button>
-              <Button onClick={handleEditSave} disabled={saving || !editName.trim()} className="bg-amber-600 hover:bg-amber-700 text-black">
+              <Button onClick={handleEditSave} disabled={saving || !editName.trim()} className="bg-amber-600 hover:bg-amber-700 text-white">
                 {saving ? 'Saving...' : 'Save'}
               </Button>
             </div>
@@ -1690,7 +1690,7 @@ function AgentDetailPage() {
                 <Button
                   onClick={handleRegisterSubmit}
                   disabled={swarmWrite.state.isLoading || !registerName.trim()}
-                  className="bg-amber-600 hover:bg-amber-700 text-black"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   {swarmWrite.state.isLoading ? 'Registering...' : '⛓️ Register'}
                 </Button>

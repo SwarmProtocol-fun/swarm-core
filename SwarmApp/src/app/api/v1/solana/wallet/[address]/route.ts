@@ -1,10 +1,12 @@
 /**
- * GET /api/v1/solana/wallet/[address]
+ * GET /api/v1/solana/wallet/[address]?cluster=devnet
  *
  * Returns wallet info for any Solana address (agent wallet or other):
  * public key, SOL balance, token accounts with balances, and stake accounts.
  */
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { createConnection } from "@/lib/solana-keys";
+import { clusterFromRequest } from "@/lib/solana-cluster";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +21,8 @@ export async function GET(
       return Response.json({ error: "Address parameter required" }, { status: 400 });
     }
 
-    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
-    const connection = new Connection(rpcUrl, "confirmed");
+    const cluster = clusterFromRequest(request);
+    const connection = createConnection(cluster);
 
     let pubkey: PublicKey;
     try {
@@ -50,7 +52,6 @@ export async function GET(
       return sum + (acc.account.lamports || 0);
     }, 0);
 
-    // Parse token accounts
     const tokenAccounts = tokenAccountsResponse.value.map(acc => {
       const parsed = acc.account.data.parsed?.info;
       return {
@@ -67,7 +68,7 @@ export async function GET(
       tokenAccounts,
       tokenAccountCount: tokenAccounts.length,
       stakedSol: Number((stakedLamports / LAMPORTS_PER_SOL).toFixed(4)),
-      cluster: rpcUrl.includes("devnet") ? "devnet" : rpcUrl.includes("testnet") ? "testnet" : "mainnet-beta",
+      cluster,
     });
   } catch (err) {
     console.error("Solana wallet lookup error:", err);

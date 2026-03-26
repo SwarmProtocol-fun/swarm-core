@@ -93,7 +93,7 @@ export default function ProfilePage() {
             <Button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-[#d4a853] hover:bg-[#c49a48] text-black font-semibold"
+              className="w-full bg-[#d4a853] hover:bg-[#c49a48] text-white font-semibold"
             >
               {saving ? "Saving..." : saved ? "✓ Saved!" : "Save Profile"}
             </Button>

@@ -192,7 +192,7 @@ export default function OrganizationsPage() {
                                 </CardContent>
                                 <CardFooter className="border-t border-border/50 pt-4">
                                     <Button
-                                        className="w-full bg-amber-600 hover:bg-amber-700 text-black"
+                                        className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                                         disabled={openingChannel === org.id || !currentOrg || currentOrg.id === org.id}
                                         onClick={(e) => handleStartChannel(e, org)}
                                     >

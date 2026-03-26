@@ -248,7 +248,7 @@ export default function PublisherPage() {
                         variant="default"
                         size="sm"
                         onClick={() => setShowSubmitDialog(true)}
-                        className="bg-amber-600 hover:bg-amber-700 text-black"
+                        className="bg-amber-600 hover:bg-amber-700 text-white"
                     >
                         <Upload className="h-4 w-4 mr-2" />
                         Submit to Marketplace
@@ -457,7 +457,7 @@ export default function PublisherPage() {
                                 size="sm"
                                 onClick={submitAppeal}
                                 disabled={!appealComment.trim() || appealLoading}
-                                className="bg-amber-600 hover:bg-amber-700 text-black gap-1"
+                                className="bg-amber-600 hover:bg-amber-700 text-white gap-1"
                             >
                                 {appealLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <MessageSquare className="h-3 w-3" />}
                                 Submit Appeal
@@ -608,7 +608,7 @@ export default function PublisherPage() {
                             <Button
                                 onClick={handleSubmitToMarketplace}
                                 disabled={!submitForm.name.trim() || !submitForm.description.trim() || !submitForm.category.trim() || submitting}
-                                className="bg-amber-600 hover:bg-amber-700 text-black"
+                                className="bg-amber-600 hover:bg-amber-700 text-white"
                             >
                                 {submitting ? (
                                     <>

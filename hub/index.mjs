@@ -29,6 +29,11 @@ import {
   checkRateLimit as redisCheckRateLimit,
   getInstanceId,
   checkRedisHealth,
+  trackGatewayConnection,
+  untrackGatewayConnection,
+  refreshGatewayPresence,
+  getOrgGateways,
+  publishJobLogs,
 } from "./redis-state.mjs";
 
 /**
@@ -120,6 +125,12 @@ const channelSubscribers = new Map();
 const wsState = new Map();
 // agentId → { timestamps: number[] }
 const rateLimits = new Map();
+
+// ── Gateway State ────────────────────────────────────────────────────────────
+// gatewayId → Set<ws>
+const gatewayConnections = new Map();
+// ws → { gatewayId, orgId, workerName }
+const gwState = new Map();
 
 // ── Selective WebSocket Batching ────────────────────────────────────────────
 // High-frequency event types get batched; status/message events go immediate.
@@ -243,6 +254,50 @@ async function verifyEd25519(agentId, message, signatureBase64) {
     };
   } catch (err) {
     log("error", "Ed25519 verify failed", { agentId, error: err.message });
+    return null;
+  }
+}
+
+/**
+ * Verify an Ed25519 signature for a gateway worker.
+ * Looks up public key from gatewayWorkers collection.
+ * Returns gateway data on success, null on failure.
+ */
+async function verifyGatewayEd25519(gatewayId, message, signatureBase64) {
+  if (!gatewayId || !signatureBase64) return null;
+
+  try {
+    const gwSnap = await getDoc(doc(db, "gatewayWorkers", gatewayId));
+    if (!gwSnap.exists()) return null;
+
+    const data = gwSnap.data();
+    const publicKeyPem = data.publicKey;
+    if (!publicKeyPem) return null;
+
+    const publicKey = crypto.createPublicKey({
+      key: publicKeyPem,
+      format: "pem",
+      type: "spki",
+    });
+
+    const valid = crypto.verify(
+      null,
+      Buffer.from(message, "utf-8"),
+      publicKey,
+      Buffer.from(signatureBase64, "base64")
+    );
+
+    if (!valid) return null;
+
+    return {
+      gatewayId,
+      workerName: data.name || gatewayId,
+      orgId: data.orgId || "",
+      region: data.region || "",
+      capabilities: data.capabilities || {},
+    };
+  } catch (err) {
+    log("error", "Gateway Ed25519 verify failed", { gatewayId, error: err.message });
     return null;
   }
 }
@@ -694,6 +749,7 @@ app.get("/health", async (_req, res) => {
     auth: "ed25519",
     uptime: process.uptime(),
     agents: agentConnections.size,
+    gateways: gatewayConnections.size,
     connections: totalConnections,
     channels: channelSubscribers.size,
     pubsub: typeof pubsubHealth === "object"
@@ -739,19 +795,27 @@ server.on("upgrade", async (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const pathParts = url.pathname.split("/").filter(Boolean);
 
-  // Expect: /ws/agents/{agentId}
-  if (pathParts.length !== 3 || pathParts[0] !== "ws" || pathParts[1] !== "agents") {
+  // Expect: /ws/{type}/{id} where type is "agents" or "gateways"
+  if (pathParts.length !== 3 || pathParts[0] !== "ws") {
     log("warn", "WS upgrade rejected — invalid path", { path: url.pathname });
     socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
     socket.destroy();
     return;
   }
 
-  const agentId = pathParts[2];
+  const wsType = pathParts[1]; // "agents" or "gateways"
+  const entityId = pathParts[2];
 
-  // Validate agentId format (alphanumeric, hyphens, underscores, max 128 chars)
-  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(agentId)) {
-    log("warn", "WS upgrade rejected — invalid agentId format", { agentId });
+  if (wsType !== "agents" && wsType !== "gateways") {
+    log("warn", "WS upgrade rejected — unknown type", { path: url.pathname });
+    socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+    socket.destroy();
+    return;
+  }
+
+  // Validate ID format (alphanumeric, hyphens, underscores, max 128 chars)
+  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(entityId)) {
+    log("warn", "WS upgrade rejected — invalid ID format", { entityId, wsType });
     socket.write("HTTP/1.1 400 Bad Request\r\n\r\n");
     socket.destroy();
     return;
@@ -759,10 +823,9 @@ server.on("upgrade", async (req, socket, head) => {
 
   const sig = url.searchParams.get("sig");
   const ts = url.searchParams.get("ts");
-  const sinceParam = url.searchParams.get("since") || "0";
 
   if (!sig || !ts) {
-    log("warn", "WS upgrade rejected — missing sig or ts", { agentId });
+    log("warn", "WS upgrade rejected — missing sig or ts", { entityId, wsType });
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
     return;
@@ -771,11 +834,45 @@ server.on("upgrade", async (req, socket, head) => {
   // Check timestamp freshness (prevent replay of connection URLs)
   const tsMs = parseInt(ts, 10);
   if (Math.abs(Date.now() - tsMs) > AUTH_WINDOW_MS) {
-    log("warn", "WS upgrade rejected — stale timestamp", { agentId });
+    log("warn", "WS upgrade rejected — stale timestamp", { entityId, wsType });
     socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
     socket.destroy();
     return;
   }
+
+  // ── Gateway WebSocket ────────────────────────────────────────────────────
+  if (wsType === "gateways") {
+    const gatewayId = entityId;
+    const signedMessage = `WS:connect:${gatewayId}:${ts}`;
+    const gatewayData = await verifyGatewayEd25519(gatewayId, signedMessage, sig);
+
+    if (!gatewayData) {
+      log("warn", "WS upgrade rejected — invalid gateway signature", { gatewayId });
+      socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    // Check max connections (1 per gateway is typical)
+    const existingGw = gatewayConnections.get(gatewayId);
+    if (existingGw && existingGw.size >= 2) {
+      log("warn", "WS upgrade rejected — gateway max connections", { gatewayId });
+      socket.write("HTTP/1.1 429 Too Many Requests\r\n\r\n");
+      socket.destroy();
+      return;
+    }
+
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      ws._gatewayData = gatewayData;
+      ws._isGateway = true;
+      wss.emit("connection", ws, req);
+    });
+    return;
+  }
+
+  // ── Agent WebSocket ──────────────────────────────────────────────────────
+  const agentId = entityId;
+  const sinceParam = url.searchParams.get("since") || "0";
 
   // Verify Ed25519 signature: agent signed "WS:connect:{agentId}:{ts}"
   const signedMessage = `WS:connect:${agentId}:${ts}`;
@@ -825,6 +922,248 @@ server.on("upgrade", async (req, socket, head) => {
 // ── WebSocket Connection Handler ────────────────────────────────────────────
 
 wss.on("connection", async (ws, _req) => {
+  // ── Gateway Connection Handler ──────────────────────────────────────────
+  if (ws._isGateway) {
+    const { gatewayId, orgId, workerName } = ws._gatewayData;
+    delete ws._gatewayData;
+    delete ws._isGateway;
+
+    // Track connection locally
+    if (!gatewayConnections.has(gatewayId)) gatewayConnections.set(gatewayId, new Set());
+    gatewayConnections.get(gatewayId).add(ws);
+    gwState.set(ws, { gatewayId, orgId, workerName });
+
+    // Track in Redis
+    try {
+      await trackGatewayConnection(gatewayId, orgId, workerName);
+    } catch (err) {
+      log("warn", "Failed to track gateway in Redis", { gatewayId, error: err.message });
+    }
+
+    log("info", "Gateway connected (Ed25519)", { gatewayId, workerName, orgId });
+
+    // Send welcome
+    ws.send(JSON.stringify({ type: "connected", gatewayId, workerName, ts: Date.now() }));
+
+    // Heartbeat pong
+    ws._pongPending = false;
+    ws.on("pong", async () => {
+      ws._pongPending = false;
+      try { await refreshGatewayPresence(gatewayId); } catch { /* ignore */ }
+    });
+
+    // ── Gateway Message Handler ───────────────────────────────────────────
+    ws.on("message", async (raw) => {
+      let msg;
+      try { msg = JSON.parse(raw.toString()); } catch {
+        ws.send(JSON.stringify({ error: "Invalid JSON" }));
+        return;
+      }
+
+      const { type } = msg;
+
+      // job:status — gateway reports task lifecycle
+      if (type === "job:status" && msg.taskId) {
+        try {
+          const taskRef = doc(db, "gatewayTaskQueue", msg.taskId);
+          const taskSnap = await getDoc(taskRef);
+          if (!taskSnap.exists()) {
+            ws.send(JSON.stringify({ type: "error", error: "Task not found" }));
+            return;
+          }
+          const task = taskSnap.data();
+          if (task.claimedBy !== gatewayId) {
+            ws.send(JSON.stringify({ type: "error", error: "Task not claimed by this gateway" }));
+            return;
+          }
+
+          const updates = { updatedAt: serverTimestamp() };
+          if (msg.status === "running") {
+            updates.status = "running";
+          } else if (msg.status === "completed") {
+            updates.status = "completed";
+            updates.completedAt = serverTimestamp();
+            if (msg.result !== undefined) updates.result = msg.result;
+          } else if (msg.status === "failed") {
+            const retriesUsed = (task.retriesUsed || 0) + 1;
+            if (retriesUsed < (task.maxRetries || 0)) {
+              updates.status = "queued";
+              updates.claimedBy = null;
+              updates.retriesUsed = retriesUsed;
+            } else {
+              updates.status = "failed";
+              updates.completedAt = serverTimestamp();
+            }
+            if (msg.error) updates.error = msg.error;
+          }
+
+          await taskRef.update(updates);
+
+          // Decrement active tasks on completion/failure
+          if (msg.status === "completed" || msg.status === "failed") {
+            try {
+              const workerRef = doc(db, "gatewayWorkers", gatewayId);
+              const workerSnap = await getDoc(workerRef);
+              if (workerSnap.exists()) {
+                const w = workerSnap.data();
+                const activeTasks = Math.max(0, (w.resources?.activeTasks || 1) - 1);
+                await workerRef.update({
+                  "resources.activeTasks": activeTasks,
+                  lastHeartbeat: serverTimestamp(),
+                  updatedAt: serverTimestamp(),
+                });
+              }
+            } catch { /* non-fatal */ }
+
+            // Fire callback if configured
+            if (task.callbackUrl) {
+              try {
+                await fetch(task.callbackUrl, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    taskId: msg.taskId,
+                    status: msg.status,
+                    result: msg.result,
+                    error: msg.error,
+                    completedAt: Date.now(),
+                  }),
+                  signal: AbortSignal.timeout(5000),
+                });
+              } catch { /* callback failure is non-fatal */ }
+            }
+          }
+
+          ws.send(JSON.stringify({ type: "job:status:ack", taskId: msg.taskId, status: msg.status, ts: Date.now() }));
+          log("info", "Gateway job status", { gatewayId, taskId: msg.taskId, status: msg.status });
+        } catch (err) {
+          log("error", "Gateway job:status handling failed", { gatewayId, taskId: msg.taskId, error: err.message });
+          ws.send(JSON.stringify({ type: "error", error: err.message }));
+        }
+        return;
+      }
+
+      // job:log — gateway streams execution logs
+      if (type === "job:log" && msg.taskId && Array.isArray(msg.lines)) {
+        try {
+          // Persist to Firestore
+          await addDoc(collection(db, "gatewayJobLogs"), {
+            taskId: msg.taskId,
+            workerId: gatewayId,
+            orgId,
+            lines: msg.lines,
+            timestamp: serverTimestamp(),
+          });
+
+          // Publish to Redis for live SSE streaming
+          try {
+            await publishJobLogs(msg.taskId, msg.lines);
+          } catch { /* Redis failure is non-fatal */ }
+
+          ws.send(JSON.stringify({ type: "job:log:ack", taskId: msg.taskId, ts: Date.now() }));
+        } catch (err) {
+          log("error", "Gateway job:log persist failed", { gatewayId, taskId: msg.taskId, error: err.message });
+        }
+        return;
+      }
+
+      // heartbeat — gateway reports system metrics
+      if (type === "heartbeat" && msg.resources) {
+        try {
+          const workerRef = doc(db, "gatewayWorkers", gatewayId);
+          await workerRef.update({
+            resources: msg.resources,
+            lastHeartbeat: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+            status: msg.resources.activeTasks > 0 ? "busy" : "idle",
+          });
+        } catch (err) {
+          log("warn", "Gateway heartbeat update failed", { gatewayId, error: err.message });
+        }
+        return;
+      }
+
+      ws.send(JSON.stringify({ error: "Unknown gateway message type", type: "error" }));
+    });
+
+    // ── Gateway Disconnect ────────────────────────────────────────────────
+    ws.on("close", async () => {
+      log("info", "Gateway disconnected", { gatewayId, workerName });
+      cleanupBatchBuffer(ws);
+
+      const conns = gatewayConnections.get(gatewayId);
+      if (conns) {
+        conns.delete(ws);
+        if (conns.size === 0) {
+          gatewayConnections.delete(gatewayId);
+          try { await untrackGatewayConnection(gatewayId); } catch { /* ignore */ }
+
+          // Mark worker as offline
+          try {
+            const workerRef = doc(db, "gatewayWorkers", gatewayId);
+            await workerRef.update({ status: "offline", updatedAt: serverTimestamp() });
+          } catch { /* ignore */ }
+        }
+      }
+      gwState.delete(ws);
+    });
+
+    ws.on("error", (err) => {
+      log("error", "Gateway WebSocket error", { gatewayId, error: err.message });
+    });
+
+    // ── Subscribe to job dispatch for this org ───────────────────────────
+    // Listen for new tasks via Redis and push to gateway
+    try {
+      const { sub } = getRedis();
+      const channel = `gateway:new-task:${orgId}`;
+      await sub.subscribe(channel);
+      sub.on("message", async (ch, message) => {
+        if (ch !== channel) return;
+        try {
+          const { taskId, taskType } = JSON.parse(message);
+
+          // Fetch full task details
+          const taskSnap = await getDoc(doc(db, "gatewayTaskQueue", taskId));
+          if (!taskSnap.exists()) return;
+          const task = taskSnap.data();
+          if (task.status !== "queued") return;
+
+          // Check if this gateway can handle the task type
+          const gw = gwState.get(ws);
+          if (!gw) return;
+          const workerSnap = await getDoc(doc(db, "gatewayWorkers", gatewayId));
+          if (!workerSnap.exists()) return;
+          const worker = workerSnap.data();
+          if (!worker.capabilities?.taskTypes?.includes(taskType)) return;
+          if ((worker.resources?.activeTasks || 0) >= (worker.resources?.maxConcurrent || 4)) return;
+
+          // Push job to gateway
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({
+              type: "job:dispatch",
+              taskId,
+              taskType: task.taskType,
+              payload: task.payload,
+              priority: task.priority,
+              timeoutMs: task.timeoutMs || 60000,
+              resources: task.resources || {},
+              ts: Date.now(),
+            }));
+            log("info", "Job dispatched to gateway via WS", { gatewayId, taskId });
+          }
+        } catch (err) {
+          log("warn", "Gateway job dispatch failed", { gatewayId, error: err.message });
+        }
+      });
+    } catch (err) {
+      log("warn", "Failed to subscribe to job dispatch channel", { gatewayId, orgId, error: err.message });
+    }
+
+    return; // Gateway connection fully handled
+  }
+
+  // ── Agent Connection Handler ────────────────────────────────────────────
   const { agentId, orgId, agentName, agentType } = ws._agentData;
   const sinceMs = ws._sinceMs || 0;
   delete ws._agentData;
@@ -1409,7 +1748,8 @@ server.listen(PORT, () => {
     log("info", `Gateway ID: ${HUB_GATEWAY_ID}`);
   }
   log("info", `Health: http://localhost:${PORT}/health`);
-  log("info", `WebSocket: ws://localhost:${PORT}/ws/agents/{agentId}?sig=...&ts=...`);
+  log("info", `WebSocket (agents):   ws://localhost:${PORT}/ws/agents/{agentId}?sig=...&ts=...`);
+  log("info", `WebSocket (gateways): ws://localhost:${PORT}/ws/gateways/{gatewayId}?sig=...&ts=...`);
 
   // Start gateway heartbeat
   if (HUB_GATEWAY_ID) {

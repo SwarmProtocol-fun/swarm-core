@@ -50,8 +50,7 @@ export async function POST(req: NextRequest) {
         try {
             // Execute USDC transfer from server wallet to treasury
             const result = await executeTransfer({
-                cdpWalletId: wallet.cdpWalletId,
-                addressId: wallet.address,
+                address: wallet.address,
                 toAddress: treasuryAddress,
                 tokenAddress: cycle.tokenAddress,
                 amount: cycle.amountUsd.toString(),

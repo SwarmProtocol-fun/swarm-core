@@ -1182,7 +1182,7 @@ export default function ChainlinkPage() {
                                                             </li>
                                                         ))}
                                                     </ol>
-                                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-black gap-1.5">
+                                                    <Button size="sm" className="bg-amber-600 hover:bg-amber-700 text-white gap-1.5">
                                                         <Rocket className="h-3 w-3" /> Use Template
                                                     </Button>
                                                 </div>

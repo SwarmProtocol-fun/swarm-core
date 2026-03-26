@@ -383,7 +383,7 @@ export default function DoctorPage() {
                         onClick={runChecks}
                         disabled={running}
                         size="sm"
-                        className="gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-black"
+                        className="gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white"
                     >
                         {running ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
                         {running ? "Running..." : "Run Diagnostics"}

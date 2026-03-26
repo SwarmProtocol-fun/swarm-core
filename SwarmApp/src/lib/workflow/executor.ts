@@ -21,14 +21,23 @@ import type {
   NodeRunStatus,
   NodeExecutionResult,
   RunStatus,
+  WorkflowNodeType,
 } from "./types";
 import {
   getWorkflowDefinition,
   getWorkflowRun,
   updateWorkflowRun,
   createWorkflowRun,
+  addStepLog,
 } from "./store";
 import { getNodeHandler } from "./nodes";
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+/** Default per-node timeout if none specified (5 minutes) */
+const DEFAULT_NODE_TIMEOUT_MS = 5 * 60 * 1000;
+/** Default global run timeout (30 minutes) */
+const DEFAULT_RUN_TIMEOUT_MS = 30 * 60 * 1000;
 
 // ── DAG utilities ────────────────────────────────────────────────────────────
 
@@ -196,6 +205,28 @@ export async function startRun(
   return runId;
 }
 
+/** Fire-and-forget step log — never crashes execution */
+function log(
+  runId: string,
+  nodeId: string,
+  nodeLabel: string,
+  nodeType: WorkflowNodeType,
+  level: "info" | "warn" | "error" | "debug",
+  message: string,
+  metadata?: Record<string, unknown>,
+): void {
+  void addStepLog({
+    runId,
+    nodeId,
+    nodeLabel,
+    nodeType,
+    level,
+    message,
+    metadata,
+    timestamp: Date.now(),
+  }).catch(() => {});
+}
+
 /**
  * Advance a workflow run by one step.
  *
@@ -223,8 +254,56 @@ export async function advanceRun(
   const def = await getWorkflowDefinition(run.workflowId);
   if (!def) throw new Error("Workflow definition not found");
 
+  // ── Global run timeout check ──────────────────────────────────────────────
+  const runCreatedMs =
+    typeof run.createdAt === "number"
+      ? run.createdAt
+      : (run.createdAt as { toMillis?: () => number })?.toMillis?.() ?? Date.now();
+  if (Date.now() - runCreatedMs > DEFAULT_RUN_TIMEOUT_MS) {
+    await cancelRun(runId);
+    return (await getWorkflowRun(runId))!;
+  }
+
   const nodeMap = new Map(def.nodes.map((n) => [n.id, n]));
   const nodeStates = { ...run.nodeStates };
+
+  // ── Timeout enforcement for stale "running" nodes ─────────────────────────
+  for (const [nodeId, state] of Object.entries(nodeStates)) {
+    if (state.status === "running" && state.startedAt) {
+      const node = nodeMap.get(nodeId);
+      const nodeTimeout =
+        (node?.config as { timeoutMs?: number })?.timeoutMs || DEFAULT_NODE_TIMEOUT_MS;
+
+      // Check for delay nodes that have elapsed
+      const output = state.output as { _delayUntil?: number } | undefined;
+      if (node?.type === "delay" && output?._delayUntil) {
+        if (Date.now() >= output._delayUntil) {
+          nodeStates[nodeId] = {
+            ...state,
+            status: "completed",
+            completedAt: Date.now(),
+          };
+          log(runId, nodeId, node.label, node.type, "info", "Delay elapsed — node completed");
+          continue;
+        }
+      }
+
+      // Timeout check
+      if (Date.now() - state.startedAt > nodeTimeout) {
+        const timeoutSec = Math.round(nodeTimeout / 1000);
+        nodeStates[nodeId] = {
+          ...state,
+          status: "failed",
+          error: `Node timed out after ${timeoutSec}s`,
+          completedAt: Date.now(),
+        };
+        log(
+          runId, nodeId, node?.label || nodeId, node?.type || "transform",
+          "error", `Node timed out after ${timeoutSec}s`,
+        );
+      }
+    }
+  }
 
   // Compute ready set
   const readyIds = computeReadySet(def.nodes, def.edges, nodeStates);
@@ -282,6 +361,7 @@ export async function advanceRun(
       status: "skipped",
       completedAt: Date.now(),
     };
+    log(runId, nextId, node.label, node.type, "info", "Node skipped — upstream dependency failed");
   } else {
     // Execute the node
     const inputs = collectInputs(nextId, def.edges, nodeStates);
@@ -298,6 +378,9 @@ export async function advanceRun(
       inputs,
       startedAt: Date.now(),
     };
+    log(runId, nextId, node.label, node.type, "info", "Node started", {
+      inputKeys: Object.keys(inputs),
+    });
 
     try {
       const handler = getNodeHandler(node.type);
@@ -312,31 +395,52 @@ export async function advanceRun(
         completedAt: isTerminal(result.status) ? Date.now() : undefined,
       };
 
+      if (result.status === "completed") {
+        log(runId, nextId, node.label, node.type, "info", "Node completed", {
+          hasOutput: result.output !== undefined,
+        });
+      }
+
       // Handle retry on failure
       if (result.status === "failed" && node.retries && nodeStates[nextId].retriesUsed < node.retries) {
+        const attempt = nodeStates[nextId].retriesUsed + 1;
         nodeStates[nextId] = {
           ...nodeStates[nextId],
           status: "ready", // Re-queue for retry
-          retriesUsed: nodeStates[nextId].retriesUsed + 1,
+          retriesUsed: attempt,
           error: undefined,
         };
+        log(runId, nextId, node.label, node.type, "warn",
+          `Node retrying (attempt ${attempt}/${node.retries})`,
+          { previousError: result.error },
+        );
+      } else if (result.status === "failed") {
+        log(runId, nextId, node.label, node.type, "error", `Node failed: ${result.error}`);
       }
     } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
       nodeStates[nextId] = {
         ...nodeStates[nextId],
         status: "failed",
-        error: err instanceof Error ? err.message : "Unknown error",
+        error: errorMsg,
         completedAt: Date.now(),
       };
 
       // Retry logic
       if (node.retries && nodeStates[nextId].retriesUsed < node.retries) {
+        const attempt = nodeStates[nextId].retriesUsed + 1;
         nodeStates[nextId] = {
           ...nodeStates[nextId],
           status: "ready",
-          retriesUsed: nodeStates[nextId].retriesUsed + 1,
+          retriesUsed: attempt,
           error: undefined,
         };
+        log(runId, nextId, node.label, node.type, "warn",
+          `Node retrying (attempt ${attempt}/${node.retries})`,
+          { previousError: errorMsg },
+        );
+      } else {
+        log(runId, nextId, node.label, node.type, "error", `Node failed: ${errorMsg}`);
       }
     }
   }
@@ -470,4 +574,83 @@ export function validateWorkflow(
   }
 
   return errors;
+}
+
+// ── Rerun from step ─────────────────────────────────────────────────────────
+
+/** BFS forward through edges to collect the target node + all transitive downstream dependents */
+function getDownstream(
+  startId: string,
+  edges: WorkflowEdge[],
+  nodes: WorkflowNode[],
+): Set<string> {
+  const adj = new Map<string, string[]>();
+  for (const node of nodes) adj.set(node.id, []);
+  for (const edge of edges) adj.get(edge.from)?.push(edge.to);
+
+  const visited = new Set<string>();
+  const queue = [startId];
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+    if (visited.has(current)) continue;
+    visited.add(current);
+    for (const child of adj.get(current) || []) {
+      queue.push(child);
+    }
+  }
+  return visited;
+}
+
+/**
+ * Create a new run that replays from a specific node.
+ *
+ * Copies completed node states from the original run up to (but not including)
+ * the target node and its downstream dependents, which reset to pending/ready.
+ */
+export async function rerunFromStep(
+  originalRunId: string,
+  fromNodeId: string,
+  triggeredBy: string,
+): Promise<string> {
+  const originalRun = await getWorkflowRun(originalRunId);
+  if (!originalRun) throw new Error("Original run not found");
+
+  const def = await getWorkflowDefinition(originalRun.workflowId);
+  if (!def) throw new Error("Workflow definition not found");
+
+  if (!def.nodes.some((n) => n.id === fromNodeId)) {
+    throw new Error(`Node ${fromNodeId} not found in workflow`);
+  }
+
+  const downstream = getDownstream(fromNodeId, def.edges, def.nodes);
+
+  const nodeStates: Record<string, NodeRunState> = {};
+  for (const node of def.nodes) {
+    if (downstream.has(node.id)) {
+      // Reset — mark as ready if all parents are outside the downstream set
+      const parents = getParents(node.id, def.edges);
+      const allParentsUpstream = parents.every((pid) => !downstream.has(pid));
+      nodeStates[node.id] = {
+        nodeId: node.id,
+        status: allParentsUpstream ? "ready" : "pending",
+        retriesUsed: 0,
+      };
+    } else {
+      // Preserve from original run
+      nodeStates[node.id] = { ...originalRun.nodeStates[node.id] };
+    }
+  }
+
+  const runId = await createWorkflowRun({
+    workflowId: originalRun.workflowId,
+    workflowVersion: def.version,
+    orgId: originalRun.orgId,
+    status: "running",
+    nodeStates,
+    triggerInput: originalRun.triggerInput,
+    progress: 0,
+    triggeredBy,
+  });
+
+  return runId;
 }

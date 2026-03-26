@@ -7,7 +7,7 @@
 import { NextRequest } from "next/server";
 import { requireOrgAdmin, forbidden } from "@/lib/auth-guard";
 import { createServerWallet, getServerWallets, logCdpAudit } from "@/lib/cdp-firestore";
-import { createCdpWallet } from "@/lib/cdp-client";
+import { createCdpAccount } from "@/lib/cdp-client";
 import { CdpWalletType, CdpWalletStatus } from "@/lib/cdp";
 
 export async function GET(req: NextRequest) {
@@ -35,10 +35,10 @@ export async function POST(req: NextRequest) {
 
         const type = walletType === "eoa" ? CdpWalletType.EOA : CdpWalletType.SmartAccount;
 
-        // Create wallet via CDP API
-        const result = await createCdpWallet({ walletType: type, label });
+        // Create account via CDP SDK
+        const result = await createCdpAccount({ name: label });
 
-        // Persist to Firestore
+        // Persist to Firestore (address IS the account ID in SDK v2)
         const walletId = await createServerWallet({
             orgId,
             agentId: agentId || undefined,
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             label,
             chainId: result.chainId,
             status: CdpWalletStatus.Active,
-            cdpWalletId: result.cdpWalletId,
+            cdpWalletId: result.address,
             createdBy: auth.walletAddress || "",
         });
 

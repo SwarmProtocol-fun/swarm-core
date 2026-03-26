@@ -309,6 +309,51 @@ export async function requirePlatformAdminOrAgent(
   return { ok: false, error: "Platform admin credentials or agent authentication required" };
 }
 
+// ─── Gateway auth (Ed25519 signature) ───────────────────
+
+export interface GatewayAuthResult {
+  ok: boolean;
+  gateway?: { gatewayId: string; workerName: string; orgId: string; region: string };
+  error?: string;
+}
+
+/**
+ * Authenticate a gateway worker via Ed25519 signature.
+ *
+ * Query params: gateway, sig, ts
+ * Signed message format: "{prefix}:{ts}"
+ */
+export async function requireGatewayAuth(
+  req: NextRequest,
+  signedMessagePrefix: string,
+): Promise<GatewayAuthResult> {
+  const { verifyGatewayRequest, isTimestampFresh } = await import(
+    "@/app/api/v1/gateway/verify"
+  );
+
+  const url = req.nextUrl;
+  const gatewayId = url.searchParams.get("gateway");
+  const sig = url.searchParams.get("sig");
+  const ts = url.searchParams.get("ts");
+
+  if (!gatewayId || !sig || !ts) {
+    return { ok: false, error: "Missing gateway, sig, or ts query params" };
+  }
+
+  const tsNum = parseInt(ts, 10);
+  if (!isTimestampFresh(tsNum)) {
+    return { ok: false, error: "Stale timestamp" };
+  }
+
+  const message = `${signedMessagePrefix}:${ts}`;
+  const result = await verifyGatewayRequest(gatewayId, message, sig);
+  if (!result) {
+    return { ok: false, error: "Invalid gateway signature" };
+  }
+
+  return { ok: true, gateway: result };
+}
+
 // ─── Credit Policy Resolution ──────────────────────────────
 
 export interface PolicyGuardResult {

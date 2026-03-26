@@ -56,7 +56,7 @@ function assignPositions(
 
     const partial = {
       status,
-      toolCallCount: 0,
+      toolCallCount: status === "working" ? 3 : status === "thinking" ? 1 : 0,
       childAgentIds: [] as string[],
     };
     const utilization = computeUtilization(partial);
@@ -139,6 +139,15 @@ export function OfficeProvider({ children }: { children: React.ReactNode }) {
       }
 
       const visual = assignPositions(raw, state.layout.desks);
+
+      // Preserve lastActiveAt from existing agents so uptime doesn't reset every fetch
+      for (const agent of visual) {
+        const existing = state.agents.get(agent.id);
+        if (existing) {
+          agent.lastActiveAt = existing.lastActiveAt;
+          agent.toolCallCount = existing.toolCallCount;
+        }
+      }
 
       // Merge avatar assets from plugins API
       if (avatarRes?.ok) {

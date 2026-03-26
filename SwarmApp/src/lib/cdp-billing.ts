@@ -43,8 +43,7 @@ export async function executeCharge(billingCycleId: string): Promise<ChargeResul
 
     try {
         const result = await executeTransfer({
-            cdpWalletId: wallet.cdpWalletId,
-            addressId: wallet.address,
+            address: wallet.address,
             toAddress: treasuryAddress,
             tokenAddress: cycle.tokenAddress,
             amount: cycle.amountUsd.toString(),

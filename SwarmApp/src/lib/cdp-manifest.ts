@@ -74,6 +74,24 @@ export const CDP_TOOLS: ModTool[] = [
         category: "Security",
         status: "active",
     },
+    {
+        id: "cdp-balance",
+        name: "Balance Checker",
+        description:
+            "Check token balances for any CDP server wallet across supported networks via the CDP SDK.",
+        icon: "Coins",
+        category: "Wallets",
+        status: "active",
+    },
+    {
+        id: "cdp-faucet",
+        name: "Testnet Faucet",
+        description:
+            "Request testnet funds (ETH, USDC) for CDP server wallets on supported testnets like Base Sepolia.",
+        icon: "Droplets",
+        category: "Wallets",
+        status: "active",
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -219,6 +237,24 @@ export const CDP_AGENT_SKILLS: ModAgentSkill[] = [
         invocation: "cdp.secret.rotate",
         exampleInput: '{ "secretType": "cdp_api_key" }',
         exampleOutput: '{ "rotated": true, "newKeyPrefix": "cdp_..." }',
+    },
+    {
+        id: "cdp-skill-balance",
+        name: "Check Balance",
+        description: "Check token balances for a CDP server wallet",
+        type: "skill",
+        invocation: "cdp.balance.check",
+        exampleInput: '{ "walletId": "wallet-abc" }',
+        exampleOutput: '{ "balances": [{ "token": "ETH", "amount": "0.5" }, { "token": "USDC", "amount": "100.00" }] }',
+    },
+    {
+        id: "cdp-skill-faucet",
+        name: "Request Faucet",
+        description: "Request testnet funds for a CDP server wallet (testnet only)",
+        type: "skill",
+        invocation: "cdp.faucet.request",
+        exampleInput: '{ "walletId": "wallet-abc", "token": "eth" }',
+        exampleOutput: '{ "txHash": "0x...", "token": "eth", "network": "base-sepolia" }',
     },
 ];
 

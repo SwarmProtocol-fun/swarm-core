@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Plus, Copy, Snowflake, Archive, Loader2 } from "lucide-react";
+import { Plus, Copy, Snowflake, Archive, Loader2, RefreshCw, Droplets } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useOrg } from "@/contexts/OrgContext";
-import { shortCdpAddr, CdpWalletStatus, type CdpServerWallet } from "@/lib/cdp";
+import { shortCdpAddr, CdpWalletStatus, CDP_TESTNET_CHAIN_IDS, type CdpServerWallet, type CdpTokenBalance } from "@/lib/cdp";
 
 export default function ServerWalletList() {
     const { currentOrg } = useOrg();
@@ -20,6 +20,9 @@ export default function ServerWalletList() {
     const [creating, setCreating] = useState(false);
     const [label, setLabel] = useState("");
     const [walletType, setWalletType] = useState("smart_account");
+    const [balances, setBalances] = useState<Record<string, CdpTokenBalance[]>>({});
+    const [balanceLoading, setBalanceLoading] = useState<Record<string, boolean>>({});
+    const [faucetLoading, setFaucetLoading] = useState<Record<string, boolean>>({});
 
     const fetchWallets = useCallback(async () => {
         if (!orgId) return;
@@ -35,6 +38,42 @@ export default function ServerWalletList() {
     }, [orgId]);
 
     useEffect(() => { fetchWallets(); }, [fetchWallets]);
+
+    const fetchBalance = useCallback(async (walletId: string) => {
+        if (!orgId) return;
+        setBalanceLoading((prev) => ({ ...prev, [walletId]: true }));
+        try {
+            const res = await fetch(`/api/v1/mods/cdp-addon/wallets/${walletId}/balance?orgId=${orgId}`);
+            const data = await res.json();
+            if (data.balances) {
+                setBalances((prev) => ({ ...prev, [walletId]: data.balances }));
+            }
+        } catch (err) {
+            console.error("Failed to fetch balance:", err);
+        } finally {
+            setBalanceLoading((prev) => ({ ...prev, [walletId]: false }));
+        }
+    }, [orgId]);
+
+    const handleFaucet = async (walletId: string) => {
+        if (!orgId) return;
+        setFaucetLoading((prev) => ({ ...prev, [walletId]: true }));
+        try {
+            const res = await fetch(`/api/v1/mods/cdp-addon/wallets/${walletId}/faucet`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ orgId, token: "eth" }),
+            });
+            if (res.ok) {
+                // Refresh balance after faucet
+                setTimeout(() => fetchBalance(walletId), 3000);
+            }
+        } catch (err) {
+            console.error("Faucet request error:", err);
+        } finally {
+            setFaucetLoading((prev) => ({ ...prev, [walletId]: false }));
+        }
+    };
 
     const handleCreate = async () => {
         if (!orgId || !label.trim()) return;
@@ -72,6 +111,12 @@ export default function ServerWalletList() {
         fetchWallets();
     };
 
+    const formatBalance = (bal: CdpTokenBalance) => {
+        const val = Number(BigInt(bal.amount)) / 10 ** bal.decimals;
+        const display = val < 0.0001 && val > 0 ? "<0.0001" : val.toFixed(4);
+        return `${display} ${bal.symbol || bal.token}`;
+    };
+
     const statusColor: Record<string, string> = {
         active: "bg-green-500/10 text-green-500",
         frozen: "bg-blue-500/10 text-blue-500",
@@ -107,8 +152,9 @@ export default function ServerWalletList() {
                                     <th className="pb-2 font-medium">Label</th>
                                     <th className="pb-2 font-medium">Address</th>
                                     <th className="pb-2 font-medium">Type</th>
+                                    <th className="pb-2 font-medium">Network</th>
                                     <th className="pb-2 font-medium">Status</th>
-                                    <th className="pb-2 font-medium">Agent</th>
+                                    <th className="pb-2 font-medium">Balance</th>
                                     <th className="pb-2 font-medium">Actions</th>
                                 </tr>
                             </thead>
@@ -131,15 +177,78 @@ export default function ServerWalletList() {
                                             </Badge>
                                         </td>
                                         <td className="py-2">
+                                            <Badge variant="outline" className="text-xs">
+                                                {CDP_TESTNET_CHAIN_IDS.has(w.chainId) ? "Testnet" : "Mainnet"}
+                                            </Badge>
+                                        </td>
+                                        <td className="py-2">
                                             <span className={`text-xs px-2 py-0.5 rounded-full ${statusColor[w.status] || ""}`}>
                                                 {w.status}
                                             </span>
                                         </td>
-                                        <td className="py-2 text-xs text-muted-foreground">
-                                            {w.agentId || "—"}
+                                        <td className="py-2">
+                                            {balances[w.id] ? (
+                                                <div className="space-y-0.5">
+                                                    {balances[w.id].length === 0 ? (
+                                                        <span className="text-xs text-muted-foreground">No tokens</span>
+                                                    ) : (
+                                                        balances[w.id].slice(0, 3).map((b, i) => (
+                                                            <div key={i} className="text-xs font-mono">
+                                                                {formatBalance(b)}
+                                                            </div>
+                                                        ))
+                                                    )}
+                                                </div>
+                                            ) : (
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-6 text-xs"
+                                                    onClick={() => fetchBalance(w.id)}
+                                                    disabled={balanceLoading[w.id]}
+                                                >
+                                                    {balanceLoading[w.id] ? (
+                                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                                    ) : (
+                                                        <><RefreshCw className="h-3 w-3 mr-1" /> Check</>
+                                                    )}
+                                                </Button>
+                                            )}
                                         </td>
                                         <td className="py-2">
                                             <div className="flex gap-1">
+                                                {balances[w.id] && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        onClick={() => fetchBalance(w.id)}
+                                                        disabled={balanceLoading[w.id]}
+                                                        title="Refresh balance"
+                                                    >
+                                                        {balanceLoading[w.id] ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <RefreshCw className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </Button>
+                                                )}
+                                                {CDP_TESTNET_CHAIN_IDS.has(w.chainId) && (
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-7 w-7"
+                                                        onClick={() => handleFaucet(w.id)}
+                                                        disabled={faucetLoading[w.id]}
+                                                        title="Request testnet funds"
+                                                    >
+                                                        {faucetLoading[w.id] ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <Droplets className="h-3.5 w-3.5" />
+                                                        )}
+                                                    </Button>
+                                                )}
                                                 {w.status === CdpWalletStatus.Active && (
                                                     <Button
                                                         variant="ghost"

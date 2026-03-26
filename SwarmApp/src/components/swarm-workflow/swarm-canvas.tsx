@@ -1,4 +1,4 @@
-/** Swarm Canvas — React Flow visual workflow editor for building agent orchestration pipelines. */
+/** Swarm Canvas — React Flow visual workflow editor with integrated execution. */
 'use client';
 
 import { useCallback, useRef, useState, useMemo } from 'react';
@@ -20,23 +20,58 @@ import '@xyflow/react/dist/style.css';
 
 import type { Agent } from '@/lib/firestore';
 import { validateWorkflow } from '@/lib/swarm-workflow';
+import { canvasToWorkflow, workflowToCanvas } from '@/lib/workflow/canvas-transform';
+import type { WorkflowNode, WorkflowEdge } from '@/lib/workflow/types';
+import { useWorkflowRun } from '@/hooks/useWorkflowRun';
 import { nodeTypes } from './nodes';
 import { NodePalette } from './node-palette';
 import { PriceSummary } from './price-summary';
+import { RunProgressOverlay } from './run-detail-panel';
 
 interface SwarmCanvasProps {
   agents: Agent[];
+  orgId?: string;
+  /** Existing workflow ID (for edit mode) */
+  workflowId?: string;
+  /** Pre-loaded nodes + edges (for edit mode) */
+  initialNodes?: WorkflowNode[];
+  initialEdges?: WorkflowEdge[];
+  /** Callback when workflow is saved */
+  onSaved?: (workflowId: string) => void;
 }
 
 let nodeId = 0;
 const getNodeId = () => `swarm_node_${nodeId++}`;
 
-function SwarmCanvasInner({ agents }: SwarmCanvasProps) {
+function SwarmCanvasInner({
+  agents,
+  orgId,
+  workflowId: existingWorkflowId,
+  initialNodes,
+  initialEdges,
+  onSaved,
+}: SwarmCanvasProps) {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
+
+  // Convert initial engine data to RF format if provided
+  const initialRf = useMemo(() => {
+    if (initialNodes && initialEdges) {
+      return workflowToCanvas(initialNodes, initialEdges);
+    }
+    return { rfNodes: [] as Node[], rfEdges: [] as Edge[] };
+  }, [initialNodes, initialEdges]);
+
+  const [nodes, setNodes, onNodesChange] = useNodesState<Node>(initialRf.rfNodes);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(initialRf.rfEdges);
   const [reactFlowInstance, setReactFlowInstance] = useState<ReturnType<typeof Object> | null>(null);
-  const [showPreviewBanner, setShowPreviewBanner] = useState(false);
+
+  // Execution state
+  const [executingRunId, setExecutingRunId] = useState<string | null>(null);
+  const [workflowId, setWorkflowId] = useState<string | undefined>(existingWorkflowId);
+  const [executing, setExecuting] = useState(false);
+  const [execError, setExecError] = useState<string | null>(null);
+
+  const { run, isPolling, cancel } = useWorkflowRun(executingRunId, orgId || "");
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -63,7 +98,6 @@ function SwarmCanvasInner({ agents }: SwarmCanvasProps) {
 
       if (!type || !reactFlowInstance) return;
 
-       
       const position = (reactFlowInstance as any).screenToFlowPosition({
         x: event.clientX,
         y: event.clientY,
@@ -90,16 +124,73 @@ function SwarmCanvasInner({ agents }: SwarmCanvasProps) {
 
   const agentNodeCount = nodes.filter(n => n.type === 'agent').length;
 
-  const handleSavePreview = () => {
-    if (!validation.isValid) return;
-    setShowPreviewBanner(true);
-    setTimeout(() => setShowPreviewBanner(false), 4000);
+  const handleExecute = async () => {
+    if (!validation.isValid || !orgId || executing) return;
+
+    setExecuting(true);
+    setExecError(null);
+
+    try {
+      const { nodes: engineNodes, edges: engineEdges } = canvasToWorkflow(nodes, edges);
+
+      // Create or update workflow definition
+      let wfId = workflowId;
+      if (!wfId) {
+        const createRes = await fetch("/api/workflows", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orgId,
+            name: `Workflow ${new Date().toLocaleString()}`,
+            nodes: engineNodes,
+            edges: engineEdges,
+            enabled: true,
+          }),
+        });
+        if (!createRes.ok) {
+          const data = await createRes.json().catch(() => ({}));
+          throw new Error(data.error || "Failed to save workflow");
+        }
+        const createData = await createRes.json();
+        wfId = createData.id;
+        setWorkflowId(wfId);
+        onSaved?.(wfId!);
+      } else {
+        await fetch(`/api/workflows/${wfId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orgId, nodes: engineNodes, edges: engineEdges }),
+        });
+      }
+
+      // Start a run
+      const runRes = await fetch(`/api/workflows/${wfId}/runs`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId }),
+      });
+      if (!runRes.ok) {
+        const data = await runRes.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to start run");
+      }
+      const runData = await runRes.json();
+      setExecutingRunId(runData.runId);
+    } catch (err) {
+      setExecError(err instanceof Error ? err.message : "Execution failed");
+    } finally {
+      setExecuting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    await cancel();
+    setExecutingRunId(null);
   };
 
   return (
     <div className="flex flex-col h-[calc(100vh-16rem)] rounded-lg border border-border overflow-hidden bg-card">
       <div className="flex flex-1 min-h-0">
-        <div className="flex-1" ref={reactFlowWrapper}>
+        <div className="flex-1 relative" ref={reactFlowWrapper}>
           <ReactFlow
             nodes={nodes}
             edges={edges}
@@ -139,32 +230,42 @@ function SwarmCanvasInner({ agents }: SwarmCanvasProps) {
               </Panel>
             )}
           </ReactFlow>
+
+          {/* Execution progress overlay */}
+          {run && executingRunId && (
+            <RunProgressOverlay
+              run={run}
+              isPolling={isPolling}
+              onCancel={handleCancel}
+              onClose={() => setExecutingRunId(null)}
+            />
+          )}
         </div>
 
         <NodePalette agents={agents} />
       </div>
 
-      {showPreviewBanner && (
-        <div className="bg-amber-50 border-t border-amber-200 px-4 py-2 text-sm text-amber-800 text-center">
-          Workflow validated and saved as preview. Execution engine coming soon.
+      {execError && (
+        <div className="bg-red-50 border-t border-red-200 px-4 py-2 text-sm text-red-800 text-center">
+          {execError}
         </div>
       )}
 
       <PriceSummary
         validation={validation}
         agentCount={agentNodeCount}
-        onExecute={handleSavePreview}
-        executing={false}
-        isPreview
+        onExecute={handleExecute}
+        executing={executing || isPolling}
+        onCancel={isPolling ? handleCancel : undefined}
       />
     </div>
   );
 }
 
-export function SwarmCanvas({ agents }: SwarmCanvasProps) {
+export function SwarmCanvas(props: SwarmCanvasProps) {
   return (
     <ReactFlowProvider>
-      <SwarmCanvasInner agents={agents} />
+      <SwarmCanvasInner {...props} />
     </ReactFlowProvider>
   );
 }

@@ -451,29 +451,21 @@ function CameraController({
 
     // Follow mode: lerp to selected agent
     if (mode === "follow" && selectedAgent && controlsRef.current) {
-      const agents = Array.from(
-        document.querySelectorAll("[data-agent-id]"),
-      );
-      // Use desk position index to find target
-      const idx = deskPositions.findIndex(
-        (_, i) => i === deskPositions.length, // dummy, we use the actual target
-      );
       const target = controlsRef.current.target;
-      // Find the agent's desk position
-      const agentIdx = deskPositions.findIndex((_, i) => {
-        // We receive selectedAgent, match by comparing position data
-        return true; // Will be refined below
-      });
 
-      // Lerp the controls target towards the agent position
       if (selectedAgent.position) {
-        // Map 2D position to 3D space approximately
+        // Map 2D grid position to 3D world space
         const targetX =
           ((selectedAgent.position.x - 320) / 160) * 2;
         const targetZ =
           ((selectedAgent.position.y - 280) / 160) * 3;
         target.lerp(
           new THREE.Vector3(targetX, 0.5, targetZ),
+          0.05,
+        );
+        // Also nudge camera closer to the agent
+        camera.position.lerp(
+          new THREE.Vector3(targetX + 3, 4, targetZ + 5),
           0.02,
         );
       }

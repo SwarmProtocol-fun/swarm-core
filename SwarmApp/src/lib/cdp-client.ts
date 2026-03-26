@@ -1,115 +1,76 @@
 /**
  * CDP SDK Client — Server-side only
  *
- * Wraps the Coinbase CDP SDK for server wallet operations,
- * paymaster proxy, and trade execution.
+ * Wraps @coinbase/cdp-sdk for server wallet operations,
+ * paymaster proxy, swap execution, and balance/faucet features.
  *
  * NEVER import this file from client components.
  * All functions are called exclusively from API routes.
  */
 
-import { CDP_CHAIN_ID, CDP_TESTNET_CHAIN_ID, CdpWalletType } from "./cdp";
+import { CdpClient } from "@coinbase/cdp-sdk";
+import { encodeFunctionData, parseAbi } from "viem";
+import {
+    CDP_NETWORK_CHAIN_IDS,
+    CDP_TESTNET_CHAIN_ID,
+    type CdpNetwork,
+    type CdpTokenBalance,
+} from "./cdp";
 
 // ═══════════════════════════════════════════════════════════════
-// Configuration
+// Singleton
 // ═══════════════════════════════════════════════════════════════
 
-interface CdpConfig {
-    apiKeyName: string;
-    apiKeySecret: string;
-    paymasterUrl: string;
-    network: "base" | "base-sepolia";
+let _cdp: CdpClient | null = null;
+
+/**
+ * Get or create the CdpClient singleton.
+ * The SDK reads CDP_API_KEY_ID (falls back to CDP_API_KEY_NAME),
+ * CDP_API_KEY_SECRET, and CDP_WALLET_SECRET from env.
+ */
+function getCdp(): CdpClient {
+    if (!_cdp) {
+        _cdp = new CdpClient({
+            apiKeyId: process.env.CDP_API_KEY_ID || process.env.CDP_API_KEY_NAME,
+            apiKeySecret: process.env.CDP_API_KEY_SECRET,
+            walletSecret: process.env.CDP_WALLET_SECRET,
+        });
+    }
+    return _cdp;
 }
 
-function getCdpConfig(): CdpConfig | null {
-    const apiKeyName = process.env.CDP_API_KEY_NAME;
-    const apiKeySecret = process.env.CDP_API_KEY_SECRET;
-    const paymasterUrl = process.env.CDP_PAYMASTER_URL || "";
-    const network = (process.env.CDP_NETWORK as "base" | "base-sepolia") || "base-sepolia";
-
-    if (!apiKeyName || !apiKeySecret) {
-        console.warn("[CDP] CDP_API_KEY_NAME and CDP_API_KEY_SECRET not configured — CDP operations will fail");
-        return null;
-    }
-
-    return { apiKeyName, apiKeySecret, paymasterUrl, network };
+function getCdpNetwork(): CdpNetwork {
+    return (process.env.CDP_NETWORK as CdpNetwork) || "base-sepolia";
 }
 
 function getChainId(): number {
-    const config = getCdpConfig();
-    return config?.network === "base" ? CDP_CHAIN_ID : CDP_TESTNET_CHAIN_ID;
+    const network = getCdpNetwork();
+    return CDP_NETWORK_CHAIN_IDS[network] ?? CDP_TESTNET_CHAIN_ID;
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Server Wallet Operations
+// Account Creation
 // ═══════════════════════════════════════════════════════════════
 
-export interface CreateWalletResult {
-    cdpWalletId: string;
+export interface CreateAccountResult {
     address: string;
     chainId: number;
 }
 
 /**
- * Create a new CDP server wallet (smart account or EOA).
- * Calls the CDP API server-side — private keys never leave CDP infrastructure.
+ * Create a new CDP server account.
+ * In SDK v2 the address IS the account identifier (no separate walletId).
  */
-export async function createCdpWallet(options: {
-    walletType: CdpWalletType;
-    label: string;
-}): Promise<CreateWalletResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
-
-    const chainId = getChainId();
-    const networkId = config.network === "base" ? "base-mainnet" : "base-sepolia";
-
-    // CDP Server Wallet v2 API call
-    const res = await fetch("https://api.developer.coinbase.com/platform/v1/wallets", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${config.apiKeyName}:${config.apiKeySecret}`,
-        },
-        body: JSON.stringify({
-            wallet: {
-                network_id: networkId,
-                use_server_signer: true,
-            },
-        }),
-    });
-
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`CDP wallet creation failed (${res.status}): ${body}`);
-    }
-
-    const result = await res.json();
-    const walletId = result.id || result.wallet?.id;
-
-    // Create default address for the wallet
-    const addrRes = await fetch(
-        `https://api.developer.coinbase.com/platform/v1/wallets/${walletId}/addresses`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${config.apiKeyName}:${config.apiKeySecret}`,
-            },
-        },
-    );
-
-    if (!addrRes.ok) {
-        const body = await addrRes.text();
-        throw new Error(`CDP address creation failed (${addrRes.status}): ${body}`);
-    }
-
-    const addrResult = await addrRes.json();
-
+export async function createCdpAccount(options: {
+    name?: string;
+}): Promise<CreateAccountResult> {
+    const cdp = getCdp();
+    const account = options.name
+        ? await cdp.evm.getOrCreateAccount({ name: options.name })
+        : await cdp.evm.createAccount();
     return {
-        cdpWalletId: walletId,
-        address: addrResult.address_id || addrResult.address || "",
-        chainId,
+        address: account.address,
+        chainId: getChainId(),
     };
 }
 
@@ -123,37 +84,20 @@ export interface SignResult {
 }
 
 /**
- * Sign arbitrary data using a CDP server wallet.
+ * Sign an EIP-191 message using a CDP server account.
  */
-export async function signWithWallet(
-    cdpWalletId: string,
-    addressId: string,
+export async function signWithAccount(
+    address: string,
     message: string,
 ): Promise<SignResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
-
-    const res = await fetch(
-        `https://api.developer.coinbase.com/platform/v1/wallets/${cdpWalletId}/addresses/${addressId}/sign_message`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${config.apiKeyName}:${config.apiKeySecret}`,
-            },
-            body: JSON.stringify({ message }),
-        },
-    );
-
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`CDP signing failed (${res.status}): ${body}`);
-    }
-
-    const result = await res.json();
+    const cdp = getCdp();
+    const result = await cdp.evm.signMessage({
+        address: address as `0x${string}`,
+        message,
+    });
     return {
-        signature: result.signature || "",
-        walletAddress: addressId,
+        signature: result.signature,
+        walletAddress: address,
     };
 }
 
@@ -177,14 +121,15 @@ export interface SponsorGasResult {
 /**
  * Sponsor gas for a transaction via the CDP paymaster.
  * The paymaster URL is NEVER returned or exposed to the caller.
+ *
+ * Note: This remains a raw fetch — the SDK doesn't wrap custom
+ * paymaster JSON-RPC proxy endpoints directly.
  */
 export async function sponsorGas(params: SponsorGasParams): Promise<SponsorGasResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
-    if (!config.paymasterUrl) throw new Error("CDP paymaster URL not configured");
+    const paymasterUrl = process.env.CDP_PAYMASTER_URL;
+    if (!paymasterUrl) throw new Error("CDP paymaster URL not configured");
 
-    // Call paymaster endpoint server-side
-    const res = await fetch(config.paymasterUrl, {
+    const res = await fetch(paymasterUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -207,7 +152,6 @@ export async function sponsorGas(params: SponsorGasParams): Promise<SponsorGasRe
     });
 
     if (!res.ok) {
-        const body = await res.text();
         // CRITICAL: Never include the paymaster URL in error messages
         throw new Error(`Gas sponsorship failed (${res.status})`);
     }
@@ -220,67 +164,54 @@ export async function sponsorGas(params: SponsorGasParams): Promise<SponsorGasRe
     return {
         txHash: result.result?.txHash || "",
         gasSponsored: true,
-        gasCostUsd: 0, // Will be calculated from gas receipt
+        gasCostUsd: 0,
     };
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Trade / Swap Execution
+// Swap Execution
 // ═══════════════════════════════════════════════════════════════
 
-export interface ExecuteTradeParams {
-    cdpWalletId: string;
-    addressId: string;
+export interface ExecuteSwapParams {
+    address: string;
     fromToken: string;
     toToken: string;
     fromAmount: string;
     slippageBps: number;
 }
 
-export interface ExecuteTradeResult {
-    cdpTradeId: string;
+export interface ExecuteSwapResult {
     txHash: string;
     toAmount: string;
     status: "submitted" | "confirmed" | "failed";
 }
 
 /**
- * Execute a token swap via CDP Trade API using a server wallet.
+ * Execute a token swap via CDP Swap API.
+ * Uses the two-step createSwapQuote → execute pattern.
  */
-export async function executeTrade(params: ExecuteTradeParams): Promise<ExecuteTradeResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
+export async function executeSwap(params: ExecuteSwapParams): Promise<ExecuteSwapResult> {
+    const cdp = getCdp();
+    const network = getCdpNetwork();
 
-    const networkId = config.network === "base" ? "base-mainnet" : "base-sepolia";
+    const quoteResult = await cdp.evm.createSwapQuote({
+        network,
+        fromToken: params.fromToken as `0x${string}`,
+        toToken: params.toToken as `0x${string}`,
+        fromAmount: BigInt(params.fromAmount),
+        taker: params.address as `0x${string}`,
+        slippageBps: params.slippageBps,
+    });
 
-    const res = await fetch(
-        `https://api.developer.coinbase.com/platform/v1/wallets/${params.cdpWalletId}/addresses/${params.addressId}/trades`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${config.apiKeyName}:${config.apiKeySecret}`,
-            },
-            body: JSON.stringify({
-                amount: params.fromAmount,
-                from_asset_id: params.fromToken,
-                to_asset_id: params.toToken,
-                network_id: networkId,
-            }),
-        },
-    );
-
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`CDP trade failed (${res.status}): ${body}`);
+    if (!("liquidityAvailable" in quoteResult) || !quoteResult.liquidityAvailable) {
+        throw new Error("Swap liquidity unavailable");
     }
 
-    const result = await res.json();
+    const result = await quoteResult.execute();
     return {
-        cdpTradeId: result.trade_id || result.id || "",
-        txHash: result.transaction?.transaction_hash || "",
-        toAmount: result.to_amount || "0",
-        status: result.status === "complete" ? "confirmed" : "submitted",
+        txHash: result.transactionHash || "",
+        toAmount: quoteResult.toAmount.toString(),
+        status: "submitted",
     };
 }
 
@@ -289,8 +220,7 @@ export async function executeTrade(params: ExecuteTradeParams): Promise<ExecuteT
 // ═══════════════════════════════════════════════════════════════
 
 export interface TransferParams {
-    cdpWalletId: string;
-    addressId: string;
+    address: string;
     toAddress: string;
     tokenAddress: string;
     amount: string;
@@ -302,40 +232,91 @@ export interface TransferResult {
 }
 
 /**
- * Execute a token transfer from a server wallet (used for billing charges).
+ * Execute an ERC-20 transfer from a server account.
+ * Used for billing charges and token sends.
  */
 export async function executeTransfer(params: TransferParams): Promise<TransferResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
+    const cdp = getCdp();
+    const network = getCdpNetwork();
 
-    const networkId = config.network === "base" ? "base-mainnet" : "base-sepolia";
+    const data = encodeFunctionData({
+        abi: parseAbi(["function transfer(address to, uint256 amount) returns (bool)"]),
+        functionName: "transfer",
+        args: [params.toAddress as `0x${string}`, BigInt(params.amount)],
+    });
 
-    const res = await fetch(
-        `https://api.developer.coinbase.com/platform/v1/wallets/${params.cdpWalletId}/addresses/${params.addressId}/transfers`,
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${config.apiKeyName}:${config.apiKeySecret}`,
-            },
-            body: JSON.stringify({
-                amount: params.amount,
-                asset_id: params.tokenAddress,
-                destination: params.toAddress,
-                network_id: networkId,
-            }),
+    const result = await cdp.evm.sendTransaction({
+        address: params.address as `0x${string}`,
+        transaction: {
+            to: params.tokenAddress as `0x${string}`,
+            value: 0n,
+            data,
         },
-    );
+        network,
+    });
 
-    if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`CDP transfer failed (${res.status}): ${body}`);
-    }
-
-    const result = await res.json();
     return {
-        txHash: result.transaction?.transaction_hash || "",
-        status: result.status === "complete" ? "confirmed" : "submitted",
+        txHash: result.transactionHash,
+        status: "submitted",
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Balance
+// ═══════════════════════════════════════════════════════════════
+
+/**
+ * List token balances for a CDP server account.
+ */
+export async function getTokenBalances(
+    address: string,
+    network?: CdpNetwork,
+): Promise<CdpTokenBalance[]> {
+    const cdp = getCdp();
+    const net = network || getCdpNetwork();
+
+    const result = await cdp.evm.listTokenBalances({
+        address: address as `0x${string}`,
+        network: net,
+    });
+
+    return result.balances.map((b) => ({
+        token: b.token?.contractAddress || "native",
+        amount: b.amount?.amount || "0",
+        decimals: Number(b.amount?.decimals ?? 18),
+        symbol: b.token?.symbol,
+        name: b.token?.name,
+    }));
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Faucet
+// ═══════════════════════════════════════════════════════════════
+
+export interface FaucetResult {
+    transactionHash: string;
+}
+
+/**
+ * Request testnet funds from the CDP faucet.
+ * Only works on testnet networks (e.g. base-sepolia).
+ */
+export async function requestTestnetFaucet(
+    address: string,
+    token: string,
+    network?: CdpNetwork,
+): Promise<FaucetResult> {
+    const cdp = getCdp();
+    const net = network || getCdpNetwork();
+
+    const result = await cdp.evm.requestFaucet({
+        address: address as `0x${string}`,
+        network: net,
+        token,
+    });
+
+    return {
+        transactionHash: result.transactionHash,
     };
 }
 
@@ -350,29 +331,21 @@ export interface RotateSecretResult {
 }
 
 /**
- * Rotate a CDP secret. The actual rotation depends on the secret type:
- * - cdp_api_key: Calls CDP to regenerate API key
- * - wallet_secret: Rotates server-signer key for a wallet
+ * Rotate a CDP secret. The actual rotation depends on the secret type.
+ * Admin must rotate via CDP Portal and update env vars afterward.
  */
 export async function rotateSecret(secretType: "cdp_api_key" | "wallet_secret"): Promise<RotateSecretResult> {
-    const config = getCdpConfig();
-    if (!config) throw new Error("CDP not configured");
-
-    // For CDP API key rotation, the admin must update env vars after rotation.
-    // This endpoint initiates the rotation on the CDP side.
     if (secretType === "cdp_api_key") {
-        // In production, this would call CDP's key rotation API
-        // For now, we return guidance that the admin must rotate via CDP dashboard
         return {
             rotated: false,
             secretType,
-            newKeyPrefix: "Rotate via CDP Dashboard → API Keys",
+            newKeyPrefix: "Rotate via CDP Portal → API Keys",
         };
     }
 
     return {
         rotated: false,
         secretType,
-        newKeyPrefix: "Rotate via CDP Dashboard → Wallet Settings",
+        newKeyPrefix: "Rotate via CDP Portal → Wallet Settings",
     };
 }

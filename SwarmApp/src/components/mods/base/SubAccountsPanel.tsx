@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    Users, Plus, Snowflake, XCircle, Wallet, RefreshCw, ExternalLink,
+    Users, Plus, Snowflake, XCircle, Wallet, RefreshCw, ExternalLink, Play,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -12,7 +12,9 @@ interface Props {
     loading: boolean;
     actionLoading: string | null;
     onCreate: () => void;
+    onFund: (id: string) => void;
     onFreeze: (id: string) => void;
+    onUnfreeze: (id: string) => void;
     onClose: (id: string) => void;
     onRefresh: () => void;
 }
@@ -27,7 +29,7 @@ const statusStyles: Record<string, string> = {
     closed: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 };
 
-export default function SubAccountsPanel({ accounts, loading, actionLoading, onCreate, onFreeze, onClose, onRefresh }: Props) {
+export default function SubAccountsPanel({ accounts, loading, actionLoading, onCreate, onFund, onFreeze, onUnfreeze, onClose, onRefresh }: Props) {
     if (loading) {
         return (
             <div className="flex items-center justify-center py-20">
@@ -66,78 +68,123 @@ export default function SubAccountsPanel({ accounts, loading, actionLoading, onC
                     </Button>
                 </div>
             ) : (
-                accounts.map((acct) => (
-                    <div key={acct.id} className="rounded-lg border border-border bg-card p-4">
-                        <div className="flex items-start justify-between">
-                            <div className="flex items-center gap-3">
-                                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
-                                    <Wallet className="h-4 w-4 text-blue-400" />
+                accounts.map((acct) => {
+                    const spendRatio = acct.monthlyLimit > 0 ? acct.totalSpent / acct.monthlyLimit : 0;
+                    return (
+                        <div key={acct.id} className="rounded-lg border border-border bg-card p-4">
+                            <div className="flex items-start justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-500/10">
+                                        <Wallet className="h-4 w-4 text-blue-400" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <span className="font-medium">{acct.label}</span>
+                                            <span className={cn("text-xs px-2 py-0.5 rounded-full border", statusStyles[acct.status])}>
+                                                {acct.status.toUpperCase()}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                            <code className="text-xs text-muted-foreground bg-muted px-1 rounded">
+                                                {shortAddr(acct.address)}
+                                            </code>
+                                            <a
+                                                href={`https://basescan.org/address/${acct.address}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-xs text-blue-400 hover:text-blue-300"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                            </a>
+                                            {acct.agentId && (
+                                                <span className="text-xs text-muted-foreground">Agent: {acct.agentId}</span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-medium">{acct.label}</span>
-                                        <span className={cn("text-xs px-2 py-0.5 rounded-full border", statusStyles[acct.status])}>
-                                            {acct.status.toUpperCase()}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                        <code className="text-xs text-muted-foreground bg-muted px-1 rounded">
-                                            {shortAddr(acct.address)}
-                                        </code>
-                                        <a
-                                            href={`https://basescan.org/address/${acct.address}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-blue-400 hover:text-blue-300"
-                                        >
-                                            <ExternalLink className="h-3 w-3" />
-                                        </a>
-                                        {acct.agentId && (
-                                            <span className="text-xs text-muted-foreground">Agent: {acct.agentId}</span>
-                                        )}
-                                    </div>
+                                <div className="text-right">
+                                    <p className="font-mono font-medium text-blue-400">{acct.balance.toFixed(2)} USDC</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Spent: {acct.totalSpent.toFixed(2)} USDC
+                                    </p>
                                 </div>
                             </div>
-                            <div className="text-right">
-                                <p className="font-mono font-medium text-blue-400">{acct.balance.toFixed(2)} USDC</p>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Spent: {acct.totalSpent.toFixed(2)} USDC
-                                </p>
-                            </div>
-                        </div>
 
-                        <div className="mt-3 flex items-center justify-between">
-                            <div className="flex gap-4 text-xs text-muted-foreground">
-                                <span>Daily limit: {acct.dailyLimit > 0 ? `${acct.dailyLimit} USDC` : "None"}</span>
-                                <span>Monthly limit: {acct.monthlyLimit > 0 ? `${acct.monthlyLimit} USDC` : "None"}</span>
-                            </div>
-                            {acct.status === "active" && (
-                                <div className="flex items-center gap-1.5">
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
-                                        onClick={() => onFreeze(acct.id)}
-                                        disabled={actionLoading === `freeze-${acct.id}`}
-                                    >
-                                        <Snowflake className="h-3.5 w-3.5 mr-1" />
-                                        Freeze
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                        onClick={() => onClose(acct.id)}
-                                        disabled={actionLoading === `close-${acct.id}`}
-                                    >
-                                        <XCircle className="h-3.5 w-3.5 mr-1" />
-                                        Close
-                                    </Button>
+                            {/* Spending progress bar */}
+                            {acct.monthlyLimit > 0 && (
+                                <div className="mt-3">
+                                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                                        <span>Monthly: {acct.totalSpent.toFixed(2)} / {acct.monthlyLimit} USDC</span>
+                                        <span>{(spendRatio * 100).toFixed(0)}%</span>
+                                    </div>
+                                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                                        <div
+                                            className={cn(
+                                                "h-full rounded-full transition-all",
+                                                spendRatio > 0.9 ? "bg-red-500" : spendRatio > 0.7 ? "bg-yellow-500" : "bg-blue-500",
+                                            )}
+                                            style={{ width: `${Math.min(100, spendRatio * 100)}%` }}
+                                        />
+                                    </div>
                                 </div>
                             )}
+
+                            <div className="mt-3 flex items-center justify-between">
+                                <div className="flex gap-4 text-xs text-muted-foreground">
+                                    <span>Daily limit: {acct.dailyLimit > 0 ? `${acct.dailyLimit} USDC` : "None"}</span>
+                                    <span>Monthly limit: {acct.monthlyLimit > 0 ? `${acct.monthlyLimit} USDC` : "None"}</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    {acct.status === "active" && (
+                                        <>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                                onClick={() => onFund(acct.id)}
+                                            >
+                                                <Wallet className="h-3.5 w-3.5 mr-1" />
+                                                Fund
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/10"
+                                                onClick={() => onFreeze(acct.id)}
+                                                disabled={actionLoading === `freeze-${acct.id}`}
+                                            >
+                                                <Snowflake className="h-3.5 w-3.5 mr-1" />
+                                                Freeze
+                                            </Button>
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                                onClick={() => onClose(acct.id)}
+                                                disabled={actionLoading === `close-${acct.id}`}
+                                            >
+                                                <XCircle className="h-3.5 w-3.5 mr-1" />
+                                                Close
+                                            </Button>
+                                        </>
+                                    )}
+                                    {acct.status === "frozen" && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                            onClick={() => onUnfreeze(acct.id)}
+                                            disabled={actionLoading === `unfreeze-${acct.id}`}
+                                        >
+                                            <Play className="h-3.5 w-3.5 mr-1" />
+                                            Unfreeze
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div>
-                ))
+                    );
+                })
             )}
         </div>
     );

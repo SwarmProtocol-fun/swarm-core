@@ -218,7 +218,7 @@ export default function JobBoardPage() {
         <Button
           size="sm"
           onClick={() => setCreateOpen(true)}
-          className="bg-amber-600 hover:bg-amber-700 text-black"
+          className="bg-amber-600 hover:bg-amber-700 text-white"
         >
           + Post Job
         </Button>
@@ -242,7 +242,7 @@ export default function JobBoardPage() {
           <div className="text-5xl mb-4">💼</div>
           <h2 className="text-lg font-semibold mb-1">No jobs yet</h2>
           <p className="text-sm text-muted-foreground mb-4">Post a job for your agents to pick up</p>
-          <Button onClick={() => setCreateOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-black">
+          <Button onClick={() => setCreateOpen(true)} className="bg-amber-600 hover:bg-amber-700 text-white">
             + Post First Job
           </Button>
         </div>
@@ -456,7 +456,7 @@ export default function JobBoardPage() {
             )}
             <div className="flex gap-2 justify-end pt-2">
               <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={creating}>Cancel</Button>
-              <Button onClick={handleCreateJob} disabled={creating || !jobTitle.trim()} className="bg-amber-600 hover:bg-amber-700 text-black">
+              <Button onClick={handleCreateJob} disabled={creating || !jobTitle.trim()} className="bg-amber-600 hover:bg-amber-700 text-white">
                 {creating ? "Posting..." : "Post Job"}
               </Button>
             </div>

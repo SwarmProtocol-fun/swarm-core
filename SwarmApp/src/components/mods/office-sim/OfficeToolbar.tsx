@@ -14,6 +14,7 @@ import {
   ListTodo,
   Inbox,
   BarChart3,
+  DollarSign,
   Settings,
   X,
 } from "lucide-react";
@@ -46,18 +47,21 @@ const STATUS_OPTIONS: (AgentVisualStatus | "all")[] = [
 ];
 
 /** Panels the toolbar can toggle open */
-export type ToolbarPanel = "task-board" | "decision-inbox" | "reports" | null;
+export type ToolbarPanel = "agent-detail" | "task-board" | "decision-inbox" | "reports" | "cost-metrics" | null;
 
 interface OfficeToolbarProps {
   view: "2d" | "3d";
-  /** Currently-open panel (lifted to parent so overlays render outside toolbar) */
   openPanel?: ToolbarPanel;
   onPanelChange?: (panel: ToolbarPanel) => void;
+  /** Badge counts for panel buttons */
+  decisionCount?: number;
+  taskCount?: number;
+  reportCount?: number;
 }
 
-export function OfficeToolbar({ view, openPanel, onPanelChange }: OfficeToolbarProps) {
+export function OfficeToolbar({ view, openPanel, onPanelChange, decisionCount = 0, taskCount = 0, reportCount = 0 }: OfficeToolbarProps) {
   const { state, dispatch } = useOffice();
-  const { activeCount, errorCount, taskCount } = state.metrics;
+  const { activeCount, errorCount } = state.metrics;
   const agentCount = state.agents.size;
   const [searchValue, setSearchValue] = useState(state.filter.searchQuery);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -225,55 +229,47 @@ export function OfficeToolbar({ view, openPanel, onPanelChange }: OfficeToolbarP
         {/* Right: Panels | Settings | Actions */}
         <div className="flex items-center gap-1">
           {/* Panel buttons */}
-          <Button
-            variant={openPanel === "task-board" ? "default" : "outline"}
-            size="sm"
-            className={`text-xs gap-1.5 h-7 px-2.5 ${
-              openPanel === "task-board"
-                ? "bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
-                : ""
-            }`}
+          <PanelButton
+            active={openPanel === "task-board"}
             onClick={() => togglePanel("task-board")}
             title="Task Board"
-          >
-            <ListTodo className="h-3.5 w-3.5" />
-            Tasks
-            {taskCount > 0 && (
-              <span className="ml-0.5 rounded-full bg-cyan-500/20 px-1.5 py-0 text-[10px] font-medium text-cyan-300 leading-tight">
-                {taskCount}
-              </span>
-            )}
-          </Button>
+            icon={<ListTodo className="h-3.5 w-3.5" />}
+            label="Tasks"
+            count={taskCount}
+            activeClass="bg-cyan-500/20 text-cyan-400 border-cyan-500/30"
+            countClass="bg-cyan-500/20 text-cyan-300"
+          />
 
-          <Button
-            variant={openPanel === "decision-inbox" ? "default" : "outline"}
-            size="sm"
-            className={`text-xs gap-1.5 h-7 px-2.5 ${
-              openPanel === "decision-inbox"
-                ? "bg-amber-500/20 text-amber-400 border-amber-500/30"
-                : ""
-            }`}
+          <PanelButton
+            active={openPanel === "decision-inbox"}
             onClick={() => togglePanel("decision-inbox")}
             title="CEO Decision Inbox"
-          >
-            <Inbox className="h-3.5 w-3.5" />
-            Inbox
-          </Button>
+            icon={<Inbox className="h-3.5 w-3.5" />}
+            label="Inbox"
+            count={decisionCount}
+            activeClass="bg-amber-500/20 text-amber-400 border-amber-500/30"
+            countClass="bg-red-500/20 text-red-300"
+          />
 
-          <Button
-            variant={openPanel === "reports" ? "default" : "outline"}
-            size="sm"
-            className={`text-xs gap-1.5 h-7 px-2.5 ${
-              openPanel === "reports"
-                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                : ""
-            }`}
+          <PanelButton
+            active={openPanel === "reports"}
             onClick={() => togglePanel("reports")}
             title="Report History"
-          >
-            <BarChart3 className="h-3.5 w-3.5" />
-            Reports
-          </Button>
+            icon={<BarChart3 className="h-3.5 w-3.5" />}
+            label="Reports"
+            count={reportCount}
+            activeClass="bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+            countClass="bg-emerald-500/20 text-emerald-300"
+          />
+
+          <PanelButton
+            active={openPanel === "cost-metrics"}
+            onClick={() => togglePanel("cost-metrics")}
+            title="Cost & Performance"
+            icon={<DollarSign className="h-3.5 w-3.5" />}
+            label="Costs"
+            activeClass="bg-purple-500/20 text-purple-400 border-purple-500/30"
+          />
 
           {/* Separator */}
           <div className="h-4 w-px bg-border mx-1" />
@@ -403,5 +399,47 @@ export function OfficeToolbar({ view, openPanel, onPanelChange }: OfficeToolbarP
         </div>
       )}
     </div>
+  );
+}
+
+/* ═══════════════════════════════════════
+   PanelButton — Toolbar panel toggle with optional badge
+   ═══════════════════════════════════════ */
+
+function PanelButton({
+  active,
+  onClick,
+  title,
+  icon,
+  label,
+  count,
+  activeClass,
+  countClass,
+}: {
+  active: boolean;
+  onClick: () => void;
+  title: string;
+  icon: React.ReactNode;
+  label: string;
+  count?: number;
+  activeClass: string;
+  countClass?: string;
+}) {
+  return (
+    <Button
+      variant={active ? "default" : "outline"}
+      size="sm"
+      className={`text-xs gap-1.5 h-7 px-2.5 ${active ? activeClass : ""}`}
+      onClick={onClick}
+      title={title}
+    >
+      {icon}
+      {label}
+      {count != null && count > 0 && (
+        <span className={`ml-0.5 rounded-full px-1.5 py-0 text-[10px] font-medium leading-tight ${countClass || "bg-slate-500/20 text-slate-300"}`}>
+          {count}
+        </span>
+      )}
+    </Button>
   );
 }

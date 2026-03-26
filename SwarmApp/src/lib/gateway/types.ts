@@ -56,6 +56,8 @@ export interface GatewayWorker {
   region?: string;
   /** IP address (for logging, not routing) */
   ipAddress?: string;
+  /** Ed25519 public key in PEM SPKI format (for WS auth) */
+  publicKey?: string;
   /** Last heartbeat timestamp */
   lastHeartbeat: unknown;
   /** Registration timestamp */
@@ -135,3 +137,88 @@ export const PRIORITY_WEIGHT: Record<TaskPriority, number> = {
   normal: 50,
   low: 25,
 };
+
+// ── Job Log types ───────────────────────────────────────────────────────────
+
+/** Persisted batch of log lines from a gateway job execution */
+export interface JobLogEntry {
+  id: string;
+  taskId: string;
+  workerId: string;
+  orgId: string;
+  /** Batch of log lines (stdout/stderr prefixed) */
+  lines: string[];
+  /** Firestore Timestamp */
+  timestamp: unknown;
+}
+
+// ── Gateway WebSocket message types ─────────────────────────────────────────
+
+export type GatewayWSMessageType =
+  | "job:dispatch"
+  | "job:status"
+  | "job:status:ack"
+  | "job:log"
+  | "job:log:ack"
+  | "job:cancel"
+  | "heartbeat"
+  | "drain"
+  | "connected"
+  | "error";
+
+/** Hub → Gateway: dispatch a job */
+export interface JobDispatchMessage {
+  type: "job:dispatch";
+  taskId: string;
+  taskType: string;
+  payload: Record<string, unknown>;
+  priority: TaskPriority;
+  timeoutMs: number;
+  resources: TaskResourceRequirements;
+  ts: number;
+}
+
+/** Gateway → Hub: report job status */
+export interface JobStatusMessage {
+  type: "job:status";
+  taskId: string;
+  status: "running" | "completed" | "failed";
+  result?: unknown;
+  error?: string;
+}
+
+/** Gateway → Hub: stream log lines */
+export interface JobLogMessage {
+  type: "job:log";
+  taskId: string;
+  lines: string[];
+  ts: number;
+}
+
+/** Gateway → Hub: heartbeat with system metrics */
+export interface GatewayHeartbeatMessage {
+  type: "heartbeat";
+  resources: WorkerResources;
+}
+
+// ── Task result types ───────────────────────────────────────────────────────
+
+/** Artifact produced by a task execution */
+export interface TaskArtifact {
+  name: string;
+  url: string;
+  /** MIME type */
+  type: string;
+  /** Size in bytes */
+  size: number;
+  /** SHA-256 hash */
+  hash?: string;
+}
+
+/** Structured task result */
+export interface TaskResult {
+  data?: unknown;
+  artifacts?: TaskArtifact[];
+  executionTimeMs: number;
+  exitCode?: number;
+}

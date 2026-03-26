@@ -1,7 +1,7 @@
 "use client";
 
 import {
-    KeyRound, Bot, CheckCircle2, XCircle, AlertTriangle, RefreshCw,
+    KeyRound, Bot, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Plus, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ interface Props {
     onApprove: (id: string) => void;
     onDeny: (id: string) => void;
     onRevoke: (id: string) => void;
+    onRequestPermission: () => void;
     onRefresh: () => void;
 }
 
@@ -25,7 +26,19 @@ const statusStyles: Record<string, string> = {
     expired: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 };
 
-export default function PermissionsPanel({ permissions, loading, actionLoading, onApprove, onDeny, onRevoke, onRefresh }: Props) {
+function formatCountdown(expiresAt: Date | null): string | null {
+    if (!expiresAt) return null;
+    const diff = new Date(expiresAt).getTime() - Date.now();
+    if (diff <= 0) return "Expired";
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (days > 0) return `${days}d ${hours}h remaining`;
+    const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours > 0) return `${hours}h ${mins}m remaining`;
+    return `${mins}m remaining`;
+}
+
+export default function PermissionsPanel({ permissions, loading, actionLoading, onApprove, onDeny, onRevoke, onRequestPermission, onRefresh }: Props) {
     const pending = permissions.filter((p) => p.status === "pending");
     const active = permissions.filter((p) => p.status === "approved");
     const inactive = permissions.filter((p) => p.status !== "pending" && p.status !== "approved");
@@ -40,104 +53,130 @@ export default function PermissionsPanel({ permissions, loading, actionLoading, 
 
     if (permissions.length === 0) {
         return (
-            <div className="rounded-lg border border-dashed border-border p-12 text-center">
-                <Bot className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                <h3 className="text-lg font-medium mb-1">No spend permissions</h3>
-                <p className="text-sm text-muted-foreground">
-                    When agents request spending authorization, their requests will appear here.
-                </p>
+            <div className="space-y-3">
+                <div className="flex items-center justify-end">
+                    <Button variant="outline" size="sm" onClick={onRequestPermission}>
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        Request Permission
+                    </Button>
+                </div>
+                <div className="rounded-lg border border-dashed border-border p-12 text-center">
+                    <Bot className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+                    <h3 className="text-lg font-medium mb-1">No spend permissions</h3>
+                    <p className="text-sm text-muted-foreground">
+                        When agents request spending authorization, their requests will appear here.
+                    </p>
+                </div>
             </div>
         );
     }
 
-    const renderPermission = (perm: BaseSpendPermission) => (
-        <div key={perm.id} className="rounded-lg border border-border bg-card p-4">
-            <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
-                        <Bot className="h-4 w-4 text-purple-400" />
-                    </div>
-                    <div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">{perm.agentName}</span>
-                            <span className={cn("text-xs px-2 py-0.5 rounded-full border", statusStyles[perm.status])}>
-                                {perm.status.toUpperCase()}
-                            </span>
+    const renderPermission = (perm: BaseSpendPermission) => {
+        const countdown = perm.status === "approved" ? formatCountdown(perm.expiresAt) : null;
+
+        return (
+            <div key={perm.id} className="rounded-lg border border-border bg-card p-4">
+                <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10">
+                            <Bot className="h-4 w-4 text-purple-400" />
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">{perm.reason}</p>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium">{perm.agentName}</span>
+                                <span className={cn("text-xs px-2 py-0.5 rounded-full border", statusStyles[perm.status])}>
+                                    {perm.status.toUpperCase()}
+                                </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-0.5">{perm.reason}</p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-mono font-medium">{perm.amount} USDC</p>
+                        <p className="text-xs text-muted-foreground">{perm.period}</p>
                     </div>
                 </div>
-                <div className="text-right">
-                    <p className="font-mono font-medium">{perm.amount} USDC</p>
-                    <p className="text-xs text-muted-foreground">{perm.period}</p>
-                </div>
-            </div>
 
-            {perm.status === "approved" && (
-                <div className="mt-3">
-                    <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                        <span>Used: {perm.usedAmount.toFixed(2)} / {perm.amount} USDC</span>
-                        <span>{((perm.usedAmount / perm.amount) * 100).toFixed(0)}%</span>
+                {perm.status === "approved" && (
+                    <div className="mt-3">
+                        <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>Used: {perm.usedAmount.toFixed(2)} / {perm.amount} USDC</span>
+                            <span>{((perm.usedAmount / perm.amount) * 100).toFixed(0)}%</span>
+                        </div>
+                        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                                className={cn(
+                                    "h-full rounded-full transition-all",
+                                    perm.amount > 0 && (perm.usedAmount / perm.amount) > 0.9 ? "bg-red-500"
+                                        : perm.amount > 0 && (perm.usedAmount / perm.amount) > 0.7 ? "bg-yellow-500"
+                                        : "bg-blue-500",
+                                )}
+                                style={{ width: `${Math.min(100, (perm.usedAmount / perm.amount) * 100)}%` }}
+                            />
+                        </div>
                     </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                        <div
-                            className="h-full rounded-full bg-blue-500 transition-all"
-                            style={{ width: `${Math.min(100, (perm.usedAmount / perm.amount) * 100)}%` }}
-                        />
-                    </div>
-                </div>
-            )}
+                )}
 
-            <div className="mt-3 flex items-center justify-between">
-                <div className="text-xs text-muted-foreground">
-                    {perm.createdAt && <span>Requested: {new Date(perm.createdAt).toLocaleDateString()}</span>}
-                    {perm.grantedBy && (
-                        <span className="ml-3">
-                            Approved by {perm.grantedBy.slice(0, 6)}...{perm.grantedBy.slice(-4)}
-                        </span>
-                    )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                    {perm.status === "pending" && (
-                        <>
+                <div className="mt-3 flex items-center justify-between">
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        {perm.createdAt && <span>Requested: {new Date(perm.createdAt).toLocaleDateString()}</span>}
+                        {perm.grantedBy && (
+                            <span>
+                                Approved by {perm.grantedBy.slice(0, 6)}...{perm.grantedBy.slice(-4)}
+                            </span>
+                        )}
+                        {countdown && (
+                            <span className={cn(
+                                "inline-flex items-center gap-1",
+                                countdown === "Expired" ? "text-red-400" : "text-yellow-400",
+                            )}>
+                                <Clock className="h-3 w-3" />
+                                {countdown}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                        {perm.status === "pending" && (
+                            <>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
+                                    onClick={() => onApprove(perm.id)}
+                                    disabled={actionLoading === `approve-${perm.id}`}
+                                >
+                                    <CheckCircle2 className="h-4 w-4 mr-1" />
+                                    Approve
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                    onClick={() => onDeny(perm.id)}
+                                    disabled={actionLoading === `deny-${perm.id}`}
+                                >
+                                    <XCircle className="h-4 w-4 mr-1" />
+                                    Deny
+                                </Button>
+                            </>
+                        )}
+                        {perm.status === "approved" && (
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="text-green-400 hover:text-green-300 hover:bg-green-500/10"
-                                onClick={() => onApprove(perm.id)}
-                                disabled={actionLoading === `approve-${perm.id}`}
+                                className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
+                                onClick={() => onRevoke(perm.id)}
+                                disabled={actionLoading === `revoke-${perm.id}`}
                             >
-                                <CheckCircle2 className="h-4 w-4 mr-1" />
-                                Approve
+                                <AlertTriangle className="h-4 w-4 mr-1" />
+                                Revoke
                             </Button>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                                onClick={() => onDeny(perm.id)}
-                                disabled={actionLoading === `deny-${perm.id}`}
-                            >
-                                <XCircle className="h-4 w-4 mr-1" />
-                                Deny
-                            </Button>
-                        </>
-                    )}
-                    {perm.status === "approved" && (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-orange-400 hover:text-orange-300 hover:bg-orange-500/10"
-                            onClick={() => onRevoke(perm.id)}
-                            disabled={actionLoading === `revoke-${perm.id}`}
-                        >
-                            <AlertTriangle className="h-4 w-4 mr-1" />
-                            Revoke
-                        </Button>
-                    )}
+                        )}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
+    };
 
     return (
         <div className="space-y-4">
@@ -145,9 +184,15 @@ export default function PermissionsPanel({ permissions, loading, actionLoading, 
                 <p className="text-sm text-muted-foreground">
                     {pending.length} pending, {active.length} active
                 </p>
-                <Button variant="ghost" size="sm" onClick={onRefresh}>
-                    <RefreshCw className="h-3.5 w-3.5" />
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={onRefresh}>
+                        <RefreshCw className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={onRequestPermission}>
+                        <Plus className="h-4 w-4 mr-1.5" />
+                        Request Permission
+                    </Button>
+                </div>
             </div>
 
             {pending.length > 0 && (

@@ -45,6 +45,7 @@ export default function SettingsPage() {
 
   // User profile state
   const [displayName, setDisplayName] = useState('');
+  const [email, setEmail] = useState('');
   const [userBio, setUserBio] = useState('');
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
@@ -70,6 +71,7 @@ export default function SettingsPage() {
         const profile = await getProfile(address);
         if (profile) {
           setDisplayName(profile.displayName || '');
+          setEmail(profile.email || '');
           setUserBio(profile.bio || '');
           setUserAvatar(profile.avatar || null);
         }
@@ -88,6 +90,7 @@ export default function SettingsPage() {
     try {
       await setProfile(address, {
         displayName: displayName.trim(),
+        email: email.trim(),
         bio: userBio.trim(),
         ...(userAvatar ? { avatar: userAvatar } : {}),
       });
@@ -351,6 +354,19 @@ export default function SettingsPage() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium mb-1.5">Email</label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Contact email — used for platform notifications
+                </p>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium mb-1.5">Bio</label>
                 <Textarea
                   value={userBio}
@@ -375,7 +391,7 @@ export default function SettingsPage() {
                 <Button
                   type="submit"
                   disabled={savingProfile || !profileLoaded}
-                  className="bg-amber-600 hover:bg-amber-700 text-black"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   {savingProfile ? 'Saving...' : 'Save Profile'}
                 </Button>
@@ -467,8 +483,8 @@ export default function SettingsPage() {
 
               {message && (
                 <div className={`text-sm rounded-md p-3 ${message.type === 'success'
-                  ? 'bg-emerald-50 text-emerald-600 border border-green-200'
-                  : 'bg-red-50 text-red-600 border border-red-200'
+                  ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800'
+                  : 'bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800'
                   }`}>
                   {message.text}
                 </div>
@@ -478,7 +494,7 @@ export default function SettingsPage() {
                 <Button
                   type="submit"
                   disabled={saving || !name.trim() || (name === currentOrg.name && description === (currentOrg.description || ''))}
-                  className="bg-amber-600 hover:bg-amber-700 text-black"
+                  className="bg-amber-600 hover:bg-amber-700 text-white"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </Button>
@@ -511,7 +527,7 @@ export default function SettingsPage() {
                 <Input value={telegram} onChange={(e) => setTelegram(e.target.value)} placeholder="https://t.me/yourchannel" />
               </div>
               <div className="flex justify-end">
-                <Button type="submit" disabled={savingSocials} className="bg-amber-600 hover:bg-amber-700 text-black">
+                <Button type="submit" disabled={savingSocials} className="bg-amber-600 hover:bg-amber-700 text-white">
                   {savingSocials ? 'Saving...' : 'Save Social Links'}
                 </Button>
               </div>
@@ -709,14 +725,14 @@ export default function SettingsPage() {
             )}
             <div className="space-y-3">
               {/* Owner */}
-              <div className="flex items-center justify-between p-3 rounded-md bg-amber-50 border border-amber-200">
+              <div className="flex items-center justify-between p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
                 <div>
                   <p className="text-sm font-medium">
                     {currentOrg.ownerAddress.slice(0, 8)}...{currentOrg.ownerAddress.slice(-6)}
                   </p>
                   <p className="text-xs text-muted-foreground">Owner</p>
                 </div>
-                <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full">
+                <span className="text-xs bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-400 px-2 py-1 rounded-full">
                   Admin
                 </span>
               </div>
@@ -777,7 +793,7 @@ export default function SettingsPage() {
                    </code>
                    <Button
                      type="button"
-                     className="bg-amber-600 hover:bg-amber-700 text-black"
+                     className="bg-amber-600 hover:bg-amber-700 text-white"
                      onClick={() => {
                        navigator.clipboard.writeText(currentOrg.inviteCode || '');
                        setMessage({ type: 'success', text: 'Invite code copied to clipboard!' });

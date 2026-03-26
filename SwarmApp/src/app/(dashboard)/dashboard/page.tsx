@@ -1289,7 +1289,7 @@ export default function DashboardPage() {
                     size="sm"
                     onClick={handleBriefingSetup}
                     disabled={briefingSaving || !briefingPrompt.trim()}
-                    className="bg-amber-500 hover:bg-amber-600 text-black"
+                    className="bg-amber-500 hover:bg-amber-600 text-white"
                   >
                     {briefingSaving ? (
                       <><Loader2 className="h-3 w-3 animate-spin mr-1" /> Saving...</>
@@ -1332,7 +1332,7 @@ export default function DashboardPage() {
                     <Button
                       size="sm"
                       onClick={() => { setBriefingAgentId(slot?.agentId || ""); setBriefingSetupMode(true); }}
-                      className="bg-amber-500 hover:bg-amber-600 text-black"
+                      className="bg-amber-500 hover:bg-amber-600 text-white"
                     >
                       Set Up
                     </Button>
@@ -2105,7 +2105,7 @@ export default function DashboardPage() {
                 </div>
                 <p className="text-lg font-medium mb-1">No widgets on your dashboard</p>
                 <p className="text-sm text-muted-foreground/60 mb-6">Add some widgets to customize your command center</p>
-                <Button onClick={() => setShowCatalog(true)} className="bg-amber-600 hover:bg-amber-700 text-black gap-2 px-6">
+                <Button onClick={() => setShowCatalog(true)} className="bg-amber-600 hover:bg-amber-700 text-white gap-2 px-6">
                   <Plus className="w-4 h-4" />
                   Add Widgets
                 </Button>
@@ -2187,7 +2187,7 @@ export default function DashboardPage() {
                             <p className="text-xs text-muted-foreground/70">{entry.description}</p>
                           </div>
                           <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-colors ${isActive ? "bg-amber-500 border-amber-500" : "border-border"}`}>
-                            {isActive && <Check className="w-3 h-3 text-black" />}
+                            {isActive && <Check className="w-3 h-3 text-white" />}
                           </div>
                         </button>
                       );

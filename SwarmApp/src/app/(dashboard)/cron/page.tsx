@@ -281,7 +281,7 @@ function TaskDialog({
                         <Button
                             onClick={handleSubmit}
                             disabled={!name.trim() || !message.trim() || saving}
-                            className="bg-amber-500 hover:bg-amber-600 text-black"
+                            className="bg-amber-500 hover:bg-amber-600 text-white"
                         >
                             {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Saving...</> : job ? "Update Task" : "Create Task"}
                         </Button>
@@ -410,7 +410,7 @@ export default function CronPage() {
                 </div>
                 <Button
                     onClick={() => { setEditingJob(undefined); setShowDialog(true); }}
-                    className="bg-amber-500 hover:bg-amber-600 text-black gap-2"
+                    className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
                 >
                     <Plus className="h-4 w-4" /> New Task
                 </Button>
@@ -461,7 +461,7 @@ export default function CronPage() {
                     </p>
                     <Button
                         onClick={() => { setEditingJob(undefined); setShowDialog(true); }}
-                        className="bg-amber-500 hover:bg-amber-600 text-black gap-2"
+                        className="bg-amber-500 hover:bg-amber-600 text-white gap-2"
                     >
                         <Plus className="h-4 w-4" /> Create First Task
                     </Button>

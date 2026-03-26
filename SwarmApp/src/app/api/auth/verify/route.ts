@@ -15,6 +15,7 @@ import { getOrganizationsByWallet } from "@/lib/firestore";
 import { getCachedOrgs, cacheOrgs } from "@/lib/org-cache";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit-firestore";
 import { getThirdwebAuth, getDomainFromRequest } from "../thirdweb-auth";
+import { recordLogin } from "@/lib/platform-analytics";
 
 export async function POST(req: Request) {
   try {
@@ -156,6 +157,11 @@ export async function POST(req: Request) {
       console.error("[auth/verify] setSessionCookie error:", err);
       // Don't fail - cookie might still work
     }
+
+    // 4. Record login for platform analytics (non-blocking)
+    recordLogin(address, role, sessionId, req).catch((err) => {
+      console.warn("[auth/verify] analytics recordLogin error:", err);
+    });
 
     return Response.json({
       success: true,

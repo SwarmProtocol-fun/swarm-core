@@ -8,7 +8,7 @@ import { NextRequest } from "next/server";
 import { requireOrgAdmin, requireAgentAuth, forbidden, unauthorized } from "@/lib/auth-guard";
 import { createTradeRecord, getTradeRecords, updateTradeRecord, getServerWallet, logCdpAudit } from "@/lib/cdp-firestore";
 import { deductSpendPermission, getSpendPermissions } from "@/lib/cdp-firestore";
-import { executeTrade } from "@/lib/cdp-client";
+import { executeSwap } from "@/lib/cdp-client";
 import { evaluateCdpPolicy } from "@/lib/cdp-policy-engine";
 import { CdpTradeStatus, CDP_CAPABILITIES, SpendPermissionStatus } from "@/lib/cdp";
 
@@ -106,9 +106,8 @@ export async function POST(req: NextRequest) {
 
         // Execute trade
         try {
-            const result = await executeTrade({
-                cdpWalletId: wallet.cdpWalletId,
-                addressId: wallet.address,
+            const result = await executeSwap({
+                address: wallet.address,
                 fromToken,
                 toToken,
                 fromAmount,
@@ -119,7 +118,6 @@ export async function POST(req: NextRequest) {
                 status: result.status === "confirmed" ? CdpTradeStatus.Confirmed : CdpTradeStatus.Submitted,
                 toAmount: result.toAmount,
                 txHash: result.txHash,
-                cdpTradeId: result.cdpTradeId,
                 executedAt: new Date(),
             });
 

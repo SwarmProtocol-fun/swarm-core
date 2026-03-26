@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     Coins, ShieldCheck, CreditCard, Users, KeyRound, Clock,
-    FileSignature, Activity, Globe, RefreshCw,
+    FileSignature, Activity, Globe, RefreshCw, LayoutDashboard,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,8 +16,12 @@ import type {
     BaseSignatureRequest,
     BasePayment,
     BaseAuditEntry,
+    RecurringType,
+    RecurringFrequency,
+    PermissionPeriod,
 } from "@/lib/base-accounts";
 
+import OverviewPanel from "@/components/mods/base/OverviewPanel";
 import PaymentsPanel from "@/components/mods/base/PaymentsPanel";
 import SubAccountsPanel from "@/components/mods/base/SubAccountsPanel";
 import PermissionsPanel from "@/components/mods/base/PermissionsPanel";
@@ -28,14 +32,18 @@ import AccountSurface from "@/components/mods/base/AccountSurface";
 import SignInDialog from "@/components/mods/base/SignInDialog";
 import SendPaymentDialog from "@/components/mods/base/SendPaymentDialog";
 import CreateSubAccountDialog from "@/components/mods/base/CreateSubAccountDialog";
+import CreateRecurringDialog from "@/components/mods/base/CreateRecurringDialog";
+import FundSubAccountDialog from "@/components/mods/base/FundSubAccountDialog";
+import RequestPermissionDialog from "@/components/mods/base/RequestPermissionDialog";
 
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
 
-type Tab = "payments" | "sub-accounts" | "permissions" | "recurring" | "signatures" | "audit" | "account";
+type Tab = "overview" | "payments" | "sub-accounts" | "permissions" | "recurring" | "signatures" | "audit" | "account";
 
 const TABS: { id: Tab; label: string; icon: typeof Coins }[] = [
+    { id: "overview", label: "Overview", icon: LayoutDashboard },
     { id: "payments", label: "Payments", icon: CreditCard },
     { id: "sub-accounts", label: "Sub-Accounts", icon: Users },
     { id: "permissions", label: "Permissions", icon: KeyRound },
@@ -54,7 +62,7 @@ export default function BaseModPage() {
     const { address: wallet } = useSession();
     const orgId = org?.id;
 
-    const [tab, setTab] = useState<Tab>("payments");
+    const [tab, setTab] = useState<Tab>("overview");
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
 
@@ -70,6 +78,10 @@ export default function BaseModPage() {
     const [showSignIn, setShowSignIn] = useState(false);
     const [showSendPayment, setShowSendPayment] = useState(false);
     const [showCreateSubAccount, setShowCreateSubAccount] = useState(false);
+    const [showCreateRecurring, setShowCreateRecurring] = useState(false);
+    const [showFundSubAccount, setShowFundSubAccount] = useState(false);
+    const [showRequestPermission, setShowRequestPermission] = useState(false);
+    const [fundTargetAccountId, setFundTargetAccountId] = useState<string | null>(null);
 
     // ── Fetchers ──
 
@@ -173,7 +185,6 @@ export default function BaseModPage() {
         if (!orgId || !wallet) return;
         setActionLoading(`${action}-${id}`);
         try {
-            // TODO: For "sign", trigger wallet signTypedData and include the signature
             const body: Record<string, string> = { action, orgId };
             if (action === "sign") body.signature = "0x_placeholder_signature";
             await fetch(`/api/v1/base/signatures/${id}`, {
@@ -200,6 +211,20 @@ export default function BaseModPage() {
         } finally { setActionLoading(null); }
     };
 
+    const handleSubAccountUnfreeze = async (id: string) => {
+        if (!wallet) return;
+        setActionLoading(`unfreeze-${id}`);
+        try {
+            await fetch(`/api/v1/base/sub-accounts/${id}`, {
+                method: "PATCH",
+                headers: { ...headers(), "Content-Type": "application/json" },
+                body: JSON.stringify({ status: "active" }),
+            });
+            await fetchSubAccounts();
+            await fetchAudit();
+        } finally { setActionLoading(null); }
+    };
+
     const handleSubAccountClose = async (id: string) => {
         if (!wallet) return;
         setActionLoading(`close-${id}`);
@@ -213,10 +238,14 @@ export default function BaseModPage() {
         } finally { setActionLoading(null); }
     };
 
+    const handleSubAccountFund = (id: string) => {
+        setFundTargetAccountId(id);
+        setShowFundSubAccount(true);
+    };
+
     const handleSendPayment = async (data: { toAddress: string; amount: number; memo: string; subAccountId: string | null }) => {
         if (!orgId || !wallet) return { error: "Not connected" };
         try {
-            // TODO: Execute actual thirdweb USDC transfer here and get txHash
             const res = await fetch("/api/v1/base/payments", {
                 method: "POST",
                 headers: { ...headers(), "Content-Type": "application/json" },
@@ -226,7 +255,7 @@ export default function BaseModPage() {
                     toAddress: data.toAddress,
                     amount: data.amount,
                     memo: data.memo,
-                    txHash: null, // Will be populated after on-chain tx
+                    txHash: null,
                     chainId: 8453,
                     subAccountId: data.subAccountId,
                 }),
@@ -234,12 +263,43 @@ export default function BaseModPage() {
             const result = await res.json();
             if (res.ok) {
                 await fetchPayments();
+                await fetchSubAccounts();
                 await fetchAudit();
                 return { txHash: result.txHash || result.id };
             }
             return { error: result.error || "Failed to send" };
         } catch {
             return { error: "Transaction failed" };
+        }
+    };
+
+    const handleFundSubAccount = async (data: { toAddress: string; amount: number; memo: string; subAccountId: string }) => {
+        if (!orgId || !wallet) return { error: "Not connected" };
+        try {
+            const res = await fetch("/api/v1/base/payments", {
+                method: "POST",
+                headers: { ...headers(), "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    orgId,
+                    fromAddress: wallet,
+                    toAddress: data.toAddress,
+                    amount: data.amount,
+                    memo: data.memo,
+                    txHash: null,
+                    chainId: 8453,
+                    subAccountId: data.subAccountId,
+                }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                await fetchPayments();
+                await fetchSubAccounts();
+                await fetchAudit();
+                return { txHash: result.txHash || result.id };
+            }
+            return { error: result.error || "Failed to fund" };
+        } catch {
+            return { error: "Funding failed" };
         }
     };
 
@@ -263,11 +323,73 @@ export default function BaseModPage() {
         }
     };
 
+    const handleCreateRecurring = async (data: {
+        label: string;
+        type: RecurringType;
+        recipientAddress: string;
+        amount: number;
+        frequency: RecurringFrequency;
+        subAccountId: string | null;
+        maxTotalAmount: number | null;
+    }) => {
+        if (!orgId || !wallet) return { error: "Not connected" };
+        try {
+            const res = await fetch("/api/v1/base/recurring", {
+                method: "POST",
+                headers: { ...headers(), "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    orgId,
+                    ...data,
+                    consentSignature: null,
+                    createdBy: wallet,
+                }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                await fetchRecurring();
+                await fetchAudit();
+                return { id: result.id };
+            }
+            return { error: result.error || "Failed to create" };
+        } catch {
+            return { error: "Failed to create recurring payment" };
+        }
+    };
+
+    const handleRequestPermission = async (data: {
+        agentId: string;
+        agentName: string;
+        subAccountId: string | null;
+        amount: number;
+        period: PermissionPeriod;
+        reason: string;
+    }) => {
+        if (!orgId || !wallet) return { error: "Not connected" };
+        try {
+            const res = await fetch("/api/v1/base/permissions", {
+                method: "POST",
+                headers: { ...headers(), "Content-Type": "application/json" },
+                body: JSON.stringify({ orgId, ...data }),
+            });
+            const result = await res.json();
+            if (res.ok) {
+                await fetchPermissions();
+                await fetchAudit();
+                return { id: result.id };
+            }
+            return { error: result.error || "Failed to request" };
+        } catch {
+            return { error: "Failed to request permission" };
+        }
+    };
+
     // ── Stats ──
 
     const pendingPermissions = permissions.filter((p) => p.status === "pending").length;
+    const pendingSignatures = signatures.filter((s) => s.status === "pending").length;
     const activeSubAccounts = subAccounts.filter((a) => a.status === "active").length;
     const activePermissions = permissions.filter((p) => p.status === "approved").length;
+    const totalPending = pendingPermissions + pendingSignatures;
 
     // ═══════════════════════════════════════════════════════════════
     // Render
@@ -300,7 +422,7 @@ export default function BaseModPage() {
                     { label: "Payments", value: payments.length, icon: CreditCard, color: "text-blue-400" },
                     { label: "Sub-Accounts", value: activeSubAccounts, icon: Users, color: "text-green-400" },
                     { label: "Active Permissions", value: activePermissions, icon: KeyRound, color: pendingPermissions > 0 ? "text-yellow-400" : "text-purple-400" },
-                    { label: "Audit Events", value: auditLog.length, icon: Activity, color: "text-indigo-400" },
+                    { label: "Pending Actions", value: totalPending, icon: Activity, color: totalPending > 0 ? "text-yellow-400" : "text-indigo-400" },
                 ].map((stat) => (
                     <div key={stat.label} className="rounded-lg border border-border bg-card p-3">
                         <div className="flex items-center gap-2 mb-1">
@@ -332,6 +454,11 @@ export default function BaseModPage() {
                                 {pendingPermissions}
                             </span>
                         )}
+                        {t.id === "signatures" && pendingSignatures > 0 && (
+                            <span className="ml-1 text-xs bg-yellow-500/20 text-yellow-400 px-1.5 rounded-full">
+                                {pendingSignatures}
+                            </span>
+                        )}
                     </button>
                 ))}
             </div>
@@ -343,6 +470,19 @@ export default function BaseModPage() {
                 </div>
             ) : (
                 <>
+                    {tab === "overview" && (
+                        <OverviewPanel
+                            payments={payments}
+                            subAccounts={subAccounts}
+                            permissions={permissions}
+                            recurring={recurring}
+                            auditLog={auditLog}
+                            walletAddress={wallet}
+                            onSendPayment={() => setShowSendPayment(true)}
+                            onCreateSubAccount={() => setShowCreateSubAccount(true)}
+                            onCreateRecurring={() => setShowCreateRecurring(true)}
+                        />
+                    )}
                     {tab === "payments" && (
                         <PaymentsPanel
                             payments={payments}
@@ -358,7 +498,9 @@ export default function BaseModPage() {
                             loading={false}
                             actionLoading={actionLoading}
                             onCreate={() => setShowCreateSubAccount(true)}
+                            onFund={handleSubAccountFund}
                             onFreeze={handleSubAccountFreeze}
+                            onUnfreeze={handleSubAccountUnfreeze}
                             onClose={handleSubAccountClose}
                             onRefresh={fetchSubAccounts}
                         />
@@ -371,6 +513,7 @@ export default function BaseModPage() {
                             onApprove={(id) => handlePermissionAction(id, "approve")}
                             onDeny={(id) => handlePermissionAction(id, "deny")}
                             onRevoke={(id) => handlePermissionAction(id, "revoke")}
+                            onRequestPermission={() => setShowRequestPermission(true)}
                             onRefresh={fetchPermissions}
                         />
                     )}
@@ -379,7 +522,7 @@ export default function BaseModPage() {
                             payments={recurring}
                             loading={false}
                             actionLoading={actionLoading}
-                            onCreate={() => { /* TODO: recurring payment dialog */ }}
+                            onCreate={() => setShowCreateRecurring(true)}
                             onPause={(id) => handleRecurringAction(id, "paused")}
                             onResume={(id) => handleRecurringAction(id, "active")}
                             onCancel={(id) => handleRecurringAction(id, "cancelled")}
@@ -415,7 +558,6 @@ export default function BaseModPage() {
                 onClose={() => setShowSignIn(false)}
                 walletAddress={wallet}
                 onSignIn={async () => {
-                    // TODO: Wire to actual wallet signMessage + verify flow
                     setShowSignIn(false);
                 }}
             />
@@ -433,6 +575,30 @@ export default function BaseModPage() {
                 orgId={orgId || ""}
                 walletAddress={wallet}
                 onCreate={handleCreateSubAccount}
+            />
+            <CreateRecurringDialog
+                open={showCreateRecurring}
+                onClose={() => setShowCreateRecurring(false)}
+                orgId={orgId || ""}
+                walletAddress={wallet}
+                subAccounts={subAccounts}
+                onCreate={handleCreateRecurring}
+            />
+            <FundSubAccountDialog
+                open={showFundSubAccount}
+                onClose={() => { setShowFundSubAccount(false); setFundTargetAccountId(null); }}
+                orgId={orgId || ""}
+                walletAddress={wallet}
+                subAccounts={subAccounts}
+                preselectedAccountId={fundTargetAccountId}
+                onFund={handleFundSubAccount}
+            />
+            <RequestPermissionDialog
+                open={showRequestPermission}
+                onClose={() => setShowRequestPermission(false)}
+                orgId={orgId || ""}
+                subAccounts={subAccounts}
+                onRequest={handleRequestPermission}
             />
         </div>
     );

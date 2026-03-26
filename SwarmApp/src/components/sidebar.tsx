@@ -195,6 +195,7 @@ const ADMIN_SECTION: NavSection = {
     { id: "admin-marketplace", href: "/admin/marketplace", label: "Marketplace", icon: Store },
     { id: "admin-credit-ops", href: "/admin/credit-ops", label: "Credit Ops", icon: DollarSign },
     { id: "admin-risk", href: "/admin/risk", label: "Risk", icon: Flag },
+    { id: "admin-analytics", href: "/admin/analytics", label: "Analytics", icon: BarChart3 },
     { id: "admin-compute", href: "/compute/admin", label: "Compute", icon: HardDrive },
   ],
 };

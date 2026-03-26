@@ -63,7 +63,17 @@ export type ActivityEventType =
     | "creditops.model_promoted"
     | "creditops.dispute_filed"
     | "creditops.dispute_adjudicated"
-    | "creditops.agent_flagged";
+    | "creditops.agent_flagged"
+    | "slot.policy_created"
+    | "slot.policy_updated"
+    | "slot.policy_deleted"
+    | "slot.policy_enabled"
+    | "slot.policy_disabled"
+    | "slot.execution_started"
+    | "slot.execution_succeeded"
+    | "slot.execution_failed"
+    | "slot.execution_retried"
+    | "slot.test_run";
 
 export type ActivityActor = "agent" | "user" | "system" | "cron";
 
@@ -132,6 +142,16 @@ export const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: string; co
     "creditops.dispute_filed": { label: "Dispute Filed", icon: "⚖️", color: "text-amber-400" },
     "creditops.dispute_adjudicated": { label: "Dispute Adjudicated", icon: "🔨", color: "text-emerald-400" },
     "creditops.agent_flagged": { label: "Agent Flagged", icon: "🚩", color: "text-red-400" },
+    "slot.policy_created": { label: "Slot Policy Created", icon: "🔧", color: "text-purple-400" },
+    "slot.policy_updated": { label: "Slot Policy Updated", icon: "🔧", color: "text-purple-400" },
+    "slot.policy_deleted": { label: "Slot Policy Deleted", icon: "🗑️", color: "text-muted-foreground" },
+    "slot.policy_enabled": { label: "Slot Policy Enabled", icon: "▶️", color: "text-emerald-400" },
+    "slot.policy_disabled": { label: "Slot Policy Disabled", icon: "⏸️", color: "text-amber-400" },
+    "slot.execution_started": { label: "Slot Triggered", icon: "⚡", color: "text-amber-400" },
+    "slot.execution_succeeded": { label: "Slot Action Complete", icon: "✅", color: "text-emerald-400" },
+    "slot.execution_failed": { label: "Slot Action Failed", icon: "❌", color: "text-red-400" },
+    "slot.execution_retried": { label: "Slot Retried", icon: "🔄", color: "text-amber-400" },
+    "slot.test_run": { label: "Slot Test Run", icon: "🧪", color: "text-cyan-400" },
 };
 
 export const ACTOR_ICONS: Record<ActivityActor, string> = {

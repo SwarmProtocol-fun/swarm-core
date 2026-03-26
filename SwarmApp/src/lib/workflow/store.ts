@@ -26,12 +26,14 @@ import type {
   WorkflowRun,
   RunStatus,
   NodeRunState,
+  StepLog,
 } from "./types";
 
 // ── Collections ──────────────────────────────────────────────────────────────
 
 const DEFINITIONS = "workflowDefinitions";
 const RUNS = "workflowRuns";
+const STEP_LOGS = "workflowStepLogs";
 
 // ── Workflow Definitions ─────────────────────────────────────────────────────
 
@@ -185,4 +187,29 @@ export async function updateNodeState(
     nodeStates,
     updatedAt: serverTimestamp(),
   });
+}
+
+// ── Step Logs ─────────────────────────────────────────────────────────────────
+
+export async function addStepLog(
+  log: Omit<StepLog, "id">,
+): Promise<string> {
+  const ref = await addDoc(collection(db, STEP_LOGS), log);
+  return ref.id;
+}
+
+export async function getStepLogs(
+  runId: string,
+  nodeId?: string,
+  max = 200,
+): Promise<StepLog[]> {
+  const constraints = [
+    where("runId", "==", runId),
+    ...(nodeId ? [where("nodeId", "==", nodeId)] : []),
+    orderBy("timestamp", "asc"),
+    firestoreLimit(max),
+  ];
+  const q = query(collection(db, STEP_LOGS), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as StepLog);
 }

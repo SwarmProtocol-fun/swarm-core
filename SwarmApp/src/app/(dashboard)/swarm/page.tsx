@@ -1,7 +1,7 @@
 /** Swarm — Diablo-style agent inventory for the Swarm Protocol. */
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,9 +12,12 @@ import { getAgentsByOrg, getOrganization, updateOrganization, ensureAgentGroupCh
 import { getAgentAvatarUrl } from "@/lib/agent-avatar";
 import { cn } from "@/lib/utils";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
+import SlotPolicyBuilder from "@/components/slots/SlotPolicyBuilder";
+import SlotExecutionHistory from "@/components/slots/SlotExecutionHistory";
+import type { SlotPolicy } from "@/lib/slots/types";
 import {
   FileText, Shield, GitBranch, BarChart3, MessageSquare, Wrench,
-  Zap, X, Search,
+  Zap, X, Search, Plus, History, Power, Trash2,
 } from "lucide-react";
 
 // ═══════════════════════════════════════════════════════════════
@@ -71,6 +74,33 @@ export default function SwarmPage() {
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Automation state
+  const [policies, setPolicies] = useState<Record<string, SlotPolicy[]>>({});
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderSlotId, setBuilderSlotId] = useState("");
+  const [builderSlotName, setBuilderSlotName] = useState("");
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyPolicyId, setHistoryPolicyId] = useState("");
+  const [historyPolicyName, setHistoryPolicyName] = useState("");
+
+  // Fetch policies for all slots
+  const fetchPolicies = useCallback(async () => {
+    if (!currentOrg) return;
+    try {
+      const res = await fetch(`/api/v1/slots?orgId=${currentOrg.id}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      const bySlot: Record<string, SlotPolicy[]> = {};
+      for (const p of data.policies || []) {
+        if (!bySlot[p.slotId]) bySlot[p.slotId] = [];
+        bySlot[p.slotId].push(p);
+      }
+      setPolicies(bySlot);
+    } catch {
+      // Silently fail — policies are optional enhancement
+    }
+  }, [currentOrg]);
+
   // Load agents and slot assignments
   useEffect(() => {
     if (!currentOrg) return;
@@ -82,7 +112,9 @@ export default function SwarmPage() {
       setAgents(agentList);
       setAssignments(freshOrg?.swarmSlots || {});
     }).finally(() => setLoading(false));
-  }, [currentOrg]);
+
+    fetchPolicies();
+  }, [currentOrg, fetchPolicies]);
 
   const filledCount = PROTOCOL_SLOTS.filter(s => assignments[s.id]?.agentId).length;
   const allEquipped = filledCount === PROTOCOL_SLOTS.length;
@@ -322,6 +354,16 @@ export default function SwarmPage() {
                         </div>
                       </div>
 
+                      {/* Automation badges */}
+                      {(policies[slot.id]?.length ?? 0) > 0 && (
+                        <div className="flex items-center gap-1 mt-2">
+                          <Badge variant="outline" className="text-[9px] border-purple-500/30 text-purple-400">
+                            <Zap className="w-2.5 h-2.5 mr-0.5" />
+                            {policies[slot.id].length} automation{policies[slot.id].length !== 1 ? "s" : ""}
+                          </Badge>
+                        </div>
+                      )}
+
                       <p className="text-[10px] text-muted-foreground/40 text-center mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         Click to swap agent
                       </p>
@@ -418,6 +460,108 @@ export default function SwarmPage() {
           {selectedSlotInfo && (
             <p className="text-xs text-muted-foreground mb-3">{selectedSlotInfo.description}</p>
           )}
+
+          {/* Automation section */}
+          {selectedSlotInfo && (
+            <div className="mb-4 pb-4 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  Automations
+                </h4>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-[10px] text-purple-400 border-purple-500/30 hover:bg-purple-500/10"
+                  onClick={() => {
+                    setBuilderSlotId(selectedSlotInfo.id);
+                    setBuilderSlotName(selectedSlotInfo.name);
+                    setBuilderOpen(true);
+                  }}
+                >
+                  <Plus className="w-3 h-3 mr-1" /> Add Automation
+                </Button>
+              </div>
+              {(policies[selectedSlotInfo.id]?.length ?? 0) === 0 ? (
+                <p className="text-[10px] text-muted-foreground/50 py-2">
+                  No automations configured. Add one to trigger actions automatically.
+                </p>
+              ) : (
+                <div className="space-y-1.5">
+                  {policies[selectedSlotInfo.id].map((policy) => (
+                    <div
+                      key={policy.id}
+                      className="flex items-center gap-2 p-2 rounded-lg border border-border bg-card/50"
+                    >
+                      <Zap className={cn("w-3.5 h-3.5 shrink-0", policy.enabled ? "text-purple-400" : "text-zinc-600")} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium truncate">{policy.name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {policy.trigger.type.replace(/_/g, " ")} → {policy.action.type.replace(/_/g, " ")}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "text-[9px]",
+                          policy.enabled
+                            ? "border-emerald-500/30 text-emerald-400"
+                            : "border-zinc-600 text-zinc-500"
+                        )}
+                      >
+                        {policy.enabled ? "Active" : "Off"}
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-zinc-500 hover:text-zinc-300"
+                        onClick={() => {
+                          setHistoryPolicyId(policy.id);
+                          setHistoryPolicyName(policy.name);
+                          setHistoryOpen(true);
+                        }}
+                        title="View execution history"
+                      >
+                        <History className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-zinc-500 hover:text-amber-400"
+                        onClick={async () => {
+                          try {
+                            await fetch(`/api/v1/slots/${policy.id}`, {
+                              method: "PATCH",
+                              headers: { "Content-Type": "application/json" },
+                              body: JSON.stringify({ enabled: !policy.enabled }),
+                            });
+                            fetchPolicies();
+                          } catch {}
+                        }}
+                        title={policy.enabled ? "Disable" : "Enable"}
+                      >
+                        <Power className="w-3 h-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-zinc-500 hover:text-red-400"
+                        onClick={async () => {
+                          try {
+                            await fetch(`/api/v1/slots/${policy.id}`, { method: "DELETE" });
+                            fetchPolicies();
+                          } catch {}
+                        }}
+                        title="Delete automation"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-1.5 max-h-[40vh] overflow-y-auto">
             {agents.map(agent => {
               const currentlyInSlot = selectedSlot && assignments[selectedSlot]?.agentId === agent.id;
@@ -474,6 +618,24 @@ export default function SwarmPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Slot Policy Builder Dialog */}
+      <SlotPolicyBuilder
+        open={builderOpen}
+        onOpenChange={setBuilderOpen}
+        slotId={builderSlotId}
+        slotName={builderSlotName}
+        orgId={currentOrg?.id || ""}
+        onSave={fetchPolicies}
+      />
+
+      {/* Execution History Dialog */}
+      <SlotExecutionHistory
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        policyId={historyPolicyId}
+        policyName={historyPolicyName}
+      />
     </div>
   );
 }

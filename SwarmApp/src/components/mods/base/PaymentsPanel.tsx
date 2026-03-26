@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
     CreditCard, ArrowUpRight, ArrowDownLeft, ExternalLink, RefreshCw, Plus,
+    ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -16,18 +17,54 @@ interface Props {
     onRefresh: () => void;
 }
 
+type DirectionFilter = "all" | "sent" | "received";
+type DateRange = "all" | "today" | "week" | "month";
+
+const PAGE_SIZE = 20;
+
 function shortAddr(addr: string) {
     return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
 }
 
-export default function PaymentsPanel({ payments, walletAddress, loading, onSendPayment, onRefresh }: Props) {
-    const [filter, setFilter] = useState<"all" | "sent" | "received">("all");
+function startOfDay(date: Date): Date {
+    return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+}
 
-    const filtered = payments.filter((p) => {
-        if (filter === "sent") return p.fromAddress.toLowerCase() === walletAddress?.toLowerCase();
-        if (filter === "received") return p.toAddress.toLowerCase() === walletAddress?.toLowerCase();
-        return true;
-    });
+export default function PaymentsPanel({ payments, walletAddress, loading, onSendPayment, onRefresh }: Props) {
+    const [filter, setFilter] = useState<DirectionFilter>("all");
+    const [dateRange, setDateRange] = useState<DateRange>("all");
+    const [page, setPage] = useState(0);
+
+    const filtered = useMemo(() => {
+        let result = payments;
+
+        // Direction filter
+        if (filter === "sent") result = result.filter((p) => p.fromAddress.toLowerCase() === walletAddress?.toLowerCase());
+        if (filter === "received") result = result.filter((p) => p.toAddress.toLowerCase() === walletAddress?.toLowerCase());
+
+        // Date range filter
+        if (dateRange !== "all") {
+            const now = new Date();
+            let cutoff: Date;
+            if (dateRange === "today") cutoff = startOfDay(now);
+            else if (dateRange === "week") cutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            else cutoff = new Date(now.getFullYear(), now.getMonth(), 1);
+            result = result.filter((p) => p.createdAt && new Date(p.createdAt) >= cutoff);
+        }
+
+        return result;
+    }, [payments, filter, dateRange, walletAddress]);
+
+    // Stats
+    const totalSent = filtered
+        .filter((p) => p.fromAddress.toLowerCase() === walletAddress?.toLowerCase() && p.status === "confirmed")
+        .reduce((sum, p) => sum + p.amount, 0);
+    const totalReceived = filtered
+        .filter((p) => p.toAddress.toLowerCase() === walletAddress?.toLowerCase() && p.status === "confirmed")
+        .reduce((sum, p) => sum + p.amount, 0);
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
     if (loading) {
         return (
@@ -39,22 +76,41 @@ export default function PaymentsPanel({ payments, walletAddress, loading, onSend
 
     return (
         <div className="space-y-3">
-            <div className="flex items-center justify-between">
-                <div className="flex gap-1 rounded-lg bg-muted/50 p-1 border border-border">
-                    {(["all", "sent", "received"] as const).map((f) => (
-                        <button
-                            key={f}
-                            onClick={() => setFilter(f)}
-                            className={cn(
-                                "rounded-md px-3 py-1 text-xs font-medium transition-all",
-                                filter === f
-                                    ? "bg-background text-foreground shadow-sm border border-border"
-                                    : "text-muted-foreground hover:text-foreground",
-                            )}
-                        >
-                            {f.charAt(0).toUpperCase() + f.slice(1)}
-                        </button>
-                    ))}
+            {/* Controls */}
+            <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex gap-2">
+                    <div className="flex gap-1 rounded-lg bg-muted/50 p-1 border border-border">
+                        {(["all", "sent", "received"] as const).map((f) => (
+                            <button
+                                key={f}
+                                onClick={() => { setFilter(f); setPage(0); }}
+                                className={cn(
+                                    "rounded-md px-3 py-1 text-xs font-medium transition-all",
+                                    filter === f
+                                        ? "bg-background text-foreground shadow-sm border border-border"
+                                        : "text-muted-foreground hover:text-foreground",
+                                )}
+                            >
+                                {f.charAt(0).toUpperCase() + f.slice(1)}
+                            </button>
+                        ))}
+                    </div>
+                    <div className="flex gap-1 rounded-lg bg-muted/50 p-1 border border-border">
+                        {(["all", "today", "week", "month"] as const).map((d) => (
+                            <button
+                                key={d}
+                                onClick={() => { setDateRange(d); setPage(0); }}
+                                className={cn(
+                                    "rounded-md px-2.5 py-1 text-xs font-medium transition-all",
+                                    dateRange === d
+                                        ? "bg-background text-foreground shadow-sm border border-border"
+                                        : "text-muted-foreground hover:text-foreground",
+                                )}
+                            >
+                                {d === "all" ? "All Time" : d === "today" ? "Today" : d === "week" ? "Week" : "Month"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={onRefresh}>
@@ -67,20 +123,38 @@ export default function PaymentsPanel({ payments, walletAddress, loading, onSend
                 </div>
             </div>
 
-            {filtered.length === 0 ? (
+            {/* Totals summary */}
+            {filtered.length > 0 && (
+                <div className="flex items-center gap-4 text-xs">
+                    <span className="text-muted-foreground">
+                        Sent: <span className="text-red-400 font-mono font-medium">{totalSent.toFixed(2)} USDC</span>
+                    </span>
+                    <span className="text-muted-foreground">
+                        Received: <span className="text-green-400 font-mono font-medium">{totalReceived.toFixed(2)} USDC</span>
+                    </span>
+                    <span className="text-muted-foreground ml-auto">{filtered.length} transactions</span>
+                </div>
+            )}
+
+            {/* Payment list */}
+            {paged.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-border p-12 text-center">
                     <CreditCard className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
-                    <h3 className="text-lg font-medium mb-1">No payments yet</h3>
+                    <h3 className="text-lg font-medium mb-1">No payments</h3>
                     <p className="text-sm text-muted-foreground mb-4">
-                        Send your first USDC payment on Base.
+                        {filter !== "all" || dateRange !== "all"
+                            ? "No payments match this filter."
+                            : "Send your first USDC payment on Base."}
                     </p>
-                    <Button variant="outline" size="sm" onClick={onSendPayment}>
-                        <Plus className="h-4 w-4 mr-1.5" />
-                        Send USDC
-                    </Button>
+                    {filter === "all" && dateRange === "all" && (
+                        <Button variant="outline" size="sm" onClick={onSendPayment}>
+                            <Plus className="h-4 w-4 mr-1.5" />
+                            Send USDC
+                        </Button>
+                    )}
                 </div>
             ) : (
-                filtered.map((payment) => {
+                paged.map((payment) => {
                     const isSent = payment.fromAddress.toLowerCase() === walletAddress?.toLowerCase();
                     return (
                         <div key={payment.id} className="rounded-lg border border-border bg-card p-4">
@@ -138,6 +212,33 @@ export default function PaymentsPanel({ payments, walletAddress, loading, onSend
                         </div>
                     );
                 })
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                        Page {page + 1} of {totalPages}
+                    </span>
+                    <div className="flex items-center gap-1">
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={page === 0}
+                            onClick={() => setPage(page - 1)}
+                        >
+                            <ChevronLeft className="h-4 w-4" />
+                        </Button>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={page >= totalPages - 1}
+                            onClick={() => setPage(page + 1)}
+                        >
+                            <ChevronRight className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </div>
             )}
         </div>
     );

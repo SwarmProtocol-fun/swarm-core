@@ -4,16 +4,22 @@
  * and address format validators.
  */
 import crypto from "crypto";
-import { Keypair, PublicKey } from "@solana/web3.js";
+import { Connection, Keypair, PublicKey } from "@solana/web3.js";
 import { createUmi } from "@metaplex-foundation/umi-bundle-defaults";
 import { mplTokenMetadata } from "@metaplex-foundation/mpl-token-metadata";
 import { keypairIdentity } from "@metaplex-foundation/umi";
 import bs58 from "bs58";
+import { type SolanaCluster, resolveRpcUrl } from "./solana-cluster";
+
+/** Create a @solana/web3.js Connection for the given cluster. */
+export function createConnection(cluster?: SolanaCluster): Connection {
+  return new Connection(resolveRpcUrl(cluster), "confirmed");
+}
 
 /** Create a Umi instance configured with the platform keypair. */
-export function createPlatformUmi() {
+export function createPlatformUmi(cluster?: SolanaCluster) {
   const secretKeyBase58 = process.env.SOLANA_PLATFORM_KEY;
-  const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
+  const rpcUrl = resolveRpcUrl(cluster);
 
   if (!secretKeyBase58) {
     throw new Error("SOLANA_PLATFORM_KEY is not configured");

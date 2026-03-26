@@ -95,6 +95,48 @@ const txUrl = \`https://solscan.io/tx/\${txSignature}\`;
 // Get account link
 const accountUrl = \`https://solscan.io/account/\${publicKey}\`;`,
     },
+    {
+        id: "solana-swap",
+        name: "Jupiter Swap",
+        description:
+            "Swap tokens via Jupiter DEX aggregator. Get quotes, compare routes, and execute swaps with configurable slippage. Mainnet only.",
+        icon: "ArrowLeftRight",
+        category: "DeFi",
+        status: "active",
+        usageExample: `// Get a swap quote from Jupiter
+const res = await fetch("https://quote-api.jup.ag/v6/quote?" +
+  "inputMint=So11111111111111111111111111111111111111112" +
+  "&outputMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" +
+  "&amount=1000000000&slippageBps=50");
+const quote = await res.json();`,
+    },
+    {
+        id: "solana-transfer",
+        name: "Token Transfer",
+        description:
+            "Send SOL or SPL tokens from agent wallets. Handles associated token account creation automatically.",
+        icon: "Send",
+        category: "Tokens",
+        status: "active",
+    },
+    {
+        id: "solana-history",
+        name: "Transaction History",
+        description:
+            "View past transactions for any wallet. Uses Helius Enhanced API on mainnet for rich parsed data, raw RPC on devnet.",
+        icon: "History",
+        category: "Explorer",
+        status: "active",
+    },
+    {
+        id: "solana-prices",
+        name: "Price Feeds",
+        description:
+            "Real-time token pricing and portfolio valuation via Jupiter Price API. Mainnet only.",
+        icon: "TrendingUp",
+        category: "Market",
+        status: "active",
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -150,6 +192,37 @@ export const SOLANA_WORKFLOWS: ModWorkflow[] = [
         estimatedTime: "~1 minute",
         tags: ["solana", "staking", "defi"],
     },
+    {
+        id: "jupiter-swap-flow",
+        name: "Jupiter Token Swap",
+        icon: "🔄",
+        description:
+            "Swap tokens via Jupiter DEX aggregator: select tokens, get quote, review route and price impact, execute swap.",
+        steps: [
+            "Select input and output tokens",
+            "Enter amount and get Jupiter quote",
+            "Review route, price impact, and slippage",
+            "Select agent wallet to swap from",
+            "Execute swap and confirm on-chain",
+        ],
+        estimatedTime: "~30 seconds",
+        tags: ["solana", "jupiter", "swap", "defi"],
+    },
+    {
+        id: "portfolio-check-flow",
+        name: "Portfolio Check",
+        icon: "📊",
+        description:
+            "View portfolio valuation: SOL balance, token holdings, staked SOL, all priced in USD.",
+        steps: [
+            "Select agent wallet",
+            "Fetch token balances from RPC",
+            "Get real-time prices from Jupiter",
+            "Display total portfolio value in USD",
+        ],
+        estimatedTime: "~10 seconds",
+        tags: ["solana", "portfolio", "prices"],
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -192,6 +265,33 @@ export const SOLANA_AGENT_SKILLS: ModAgentSkill[] = [
         invocation: "solana.readAccount({ address })",
         exampleInput: '{ "address": "Prog..." }',
         exampleOutput: '{ "owner": "11111...", "lamports": 5000000000, "dataLength": 165 }',
+    },
+    {
+        id: "solana.swap",
+        name: "Jupiter Swap",
+        type: "skill",
+        description: "Swap tokens via Jupiter DEX aggregator on mainnet.",
+        invocation: "solana.swap({ inputMint, outputMint, amount, slippageBps? })",
+        exampleInput: '{ "inputMint": "SOL", "outputMint": "USDC", "amount": "1.0" }',
+        exampleOutput: '{ "signature": "3Ab...", "outAmount": "150.5" }',
+    },
+    {
+        id: "solana.history",
+        name: "Transaction History",
+        type: "skill",
+        description: "Fetch recent transaction history for a wallet address.",
+        invocation: "solana.history({ address, limit? })",
+        exampleInput: '{ "address": "9WzD...", "limit": 10 }',
+        exampleOutput: '{ "transactions": [...], "hasMore": true }',
+    },
+    {
+        id: "solana.price",
+        name: "Token Price",
+        type: "skill",
+        description: "Get current USD price for Solana tokens.",
+        invocation: "solana.price({ mint })",
+        exampleInput: '{ "mint": "SOL" }',
+        exampleOutput: '{ "price": 150.25, "symbol": "SOL" }',
     },
 ];
 

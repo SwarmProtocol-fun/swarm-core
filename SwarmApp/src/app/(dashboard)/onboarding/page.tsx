@@ -131,7 +131,7 @@ export default function OnboardingPage() {
                 <Button
                   onClick={handleCreate}
                   disabled={creating || !name.trim()}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold mt-2"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold mt-2"
                 >
                   {creating ? 'Creating...' : 'Create Organization'}
                 </Button>
@@ -156,7 +156,7 @@ export default function OnboardingPage() {
                 <Button
                   onClick={handleJoin}
                   disabled={joining || inviteCode.length !== 6}
-                  className="w-full bg-amber-500 hover:bg-amber-600 text-black font-semibold mt-4"
+                  className="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold mt-4"
                 >
                   {joining ? 'Joining...' : 'Join Organization'}
                 </Button>

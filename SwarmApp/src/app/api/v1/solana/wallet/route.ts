@@ -1,20 +1,21 @@
 /**
- * GET /api/v1/solana/wallet
+ * GET /api/v1/solana/wallet?cluster=devnet
  *
- * Returns the platform Solana wallet's public info from devnet:
+ * Returns the platform Solana wallet's public info:
  * public key, SOL balance, token account count, and stake account count.
  * All queries use public RPC calls — no private key is exposed.
  */
-import { Connection, PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
-import { getPlatformPublicKey } from "@/lib/solana-keys";
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { getPlatformPublicKey, createConnection } from "@/lib/solana-keys";
+import { clusterFromRequest } from "@/lib/solana-cluster";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const rpcUrl = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
+    const cluster = clusterFromRequest(request);
     const publicKey = getPlatformPublicKey();
-    const connection = new Connection(rpcUrl, "confirmed");
+    const connection = createConnection(cluster);
     const pubkey = new PublicKey(publicKey);
 
     const [lamports, tokenAccounts, stakeAccounts] = await Promise.all([
@@ -43,7 +44,7 @@ export async function GET() {
       solBalance: Number(solBalance.toFixed(4)),
       tokenAccountCount: tokenAccounts.value.length,
       stakedSol: Number((stakedLamports / LAMPORTS_PER_SOL).toFixed(4)),
-      cluster: rpcUrl.includes("devnet") ? "devnet" : rpcUrl.includes("testnet") ? "testnet" : "mainnet-beta",
+      cluster,
     });
   } catch (err) {
     console.error("Solana wallet info error:", err);

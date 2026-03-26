@@ -539,7 +539,7 @@ export const SKILL_REGISTRY: Skill[] = [
         version: "1.0.0",
         author: "Coinbase",
         requires: ["base-mod"],
-        requiredKeys: ["CDP_API_KEY_NAME", "CDP_API_KEY_SECRET"],
+        requiredKeys: ["CDP_API_KEY_ID", "CDP_API_KEY_SECRET", "CDP_WALLET_SECRET"],
         tags: ["cdp", "coinbase", "base", "paymaster", "gasless", "server-wallet", "billing", "trade", "policy", "spend-permissions"],
         pricing: {
             model: "subscription",
@@ -560,14 +560,14 @@ export const SKILL_REGISTRY: Skill[] = [
     {
         id: "solana-web3",
         name: "Solana",
-        description: "Solana dashboard — deterministic agent wallets, SOL balance queries, and Devnet RPC integration. Mod manifest with tool definitions for the Solana dashboard page.",
+        description: "Full-featured Solana dashboard — Jupiter swaps, SOL/SPL transfers, staking, transaction history, portfolio valuation, agent wallets, and Metaplex NFT minting.",
         type: "mod",
         source: "verified",
         category: "Web3",
         icon: "◎",
-        version: "1.0.0",
+        version: "2.0.0",
         author: "Swarm Core",
-        tags: ["solana", "spl", "web3", "defi", "staking"],
+        tags: ["solana", "spl", "web3", "defi", "staking", "jupiter", "swap", "nft"],
         pricing: { model: "free" },
         sidebarConfig: {
             sectionId: "modifications",

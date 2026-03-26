@@ -1645,7 +1645,7 @@ export default function HbarPage() {
                     className="text-xs"
                   />
                   <Button
-                    className="w-full bg-amber-600 hover:bg-amber-700 text-black"
+                    className="w-full bg-amber-600 hover:bg-amber-700 text-white"
                     disabled={swarmWrite.state.isLoading || !deliveryInput.trim()}
                     onClick={async () => {
                       let hash = deliveryInput.trim();

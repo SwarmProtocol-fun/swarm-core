@@ -204,7 +204,7 @@ export function officeReducer(state: OfficeState, action: OfficeAction): OfficeS
     case "UPDATE_DELIVERIES":
       return { ...state, deliveries: action.deliveries };
     case "SET_PARTICLES":
-      return { ...state, particles: action.particles };
+      return { ...state, particles: [...state.particles, ...action.particles].slice(-60) };
     case "SET_CEO_POSITION":
       return { ...state, ceoPosition: action.position };
     case "SET_CEO_ACTIVE":

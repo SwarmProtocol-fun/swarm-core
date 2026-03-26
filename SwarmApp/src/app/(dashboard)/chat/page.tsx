@@ -674,7 +674,7 @@ export default function ChatPage() {
             <Button
               onClick={handleNewConversation}
               size="sm"
-              className="h-7 px-2.5 bg-amber-600 hover:bg-amber-700 text-black text-xs font-medium"
+              className="h-7 px-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-medium"
             >
               + New
             </Button>
@@ -934,7 +934,7 @@ export default function ChatPage() {
                               {showSender && (
                                 <div
                                   className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${isAgent
-                                    ? "bg-gradient-to-br from-amber-500 to-orange-600 text-black"
+                                    ? "bg-gradient-to-br from-amber-500 to-orange-600 text-white"
                                     : "bg-gradient-to-br from-indigo-500 to-purple-600 text-white"
                                     }`}
                                 >
@@ -1161,7 +1161,7 @@ export default function ChatPage() {
                     <Button
                       onClick={handleSend}
                       disabled={sending || uploading || isRecording || (!messageInput.trim() && pendingFiles.length === 0)}
-                      className="bg-amber-600 hover:bg-amber-700 text-black px-6"
+                      className="bg-amber-600 hover:bg-amber-700 text-white px-6"
                     >
                       {uploading ? "Uploading..." : sending ? "…" : "Send"}
                     </Button>
@@ -1177,7 +1177,7 @@ export default function ChatPage() {
                 <p className="text-sm text-muted-foreground mb-4">
                   Create a new conversation to get started
                 </p>
-                <Button onClick={handleNewConversation} className="bg-amber-600 hover:bg-amber-700 text-black">
+                <Button onClick={handleNewConversation} className="bg-amber-600 hover:bg-amber-700 text-white">
                   + New Conversation
                 </Button>
               </div>

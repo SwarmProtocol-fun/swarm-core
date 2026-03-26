@@ -8,6 +8,37 @@
  */
 
 // ═══════════════════════════════════════════════════════════════
+// Networks
+// ═══════════════════════════════════════════════════════════════
+
+export type CdpNetwork =
+    | "base"
+    | "base-sepolia"
+    | "ethereum"
+    | "ethereum-sepolia"
+    | "arbitrum"
+    | "polygon";
+
+export const CDP_NETWORK_CHAIN_IDS: Record<CdpNetwork, number> = {
+    "base": 8453,
+    "base-sepolia": 84532,
+    "ethereum": 1,
+    "ethereum-sepolia": 11155111,
+    "arbitrum": 42161,
+    "polygon": 137,
+};
+
+const CHAIN_ID_TO_NETWORK = Object.fromEntries(
+    Object.entries(CDP_NETWORK_CHAIN_IDS).map(([k, v]) => [v, k]),
+) as Record<number, CdpNetwork>;
+
+export function networkFromChainId(chainId: number): CdpNetwork {
+    return CHAIN_ID_TO_NETWORK[chainId] || "base-sepolia";
+}
+
+export const CDP_TESTNET_CHAIN_IDS = new Set([84532, 11155111]);
+
+// ═══════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════
 
@@ -194,6 +225,15 @@ export interface CdpAuditEntry {
     timestamp: Date | null;
 }
 
+/** Token balance returned by the CDP SDK */
+export interface CdpTokenBalance {
+    token: string;
+    amount: string;
+    decimals: number;
+    symbol?: string;
+    name?: string;
+}
+
 // ═══════════════════════════════════════════════════════════════
 // Firestore Collection Names
 // ═══════════════════════════════════════════════════════════════
@@ -218,6 +258,8 @@ export const CDP_CAPABILITIES = {
     SUBSCRIPTION_CHARGE: "cdp.subscription.charge",
     TRADE_SWAP: "cdp.trade.swap",
     SECRET_ROTATE: "cdp.secret.rotate",
+    BALANCE_CHECK: "cdp.balance.check",
+    FAUCET_REQUEST: "cdp.faucet.request",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════

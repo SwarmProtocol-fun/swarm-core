@@ -27,10 +27,12 @@ import type {
   QueuedTaskStatus,
   WorkerStatus,
   TaskPriority,
+  JobLogEntry,
 } from "./types";
 
 const WORKERS = "gatewayWorkers";
 const QUEUE = "gatewayTaskQueue";
+const JOB_LOGS = "gatewayJobLogs";
 
 // ── Workers ──────────────────────────────────────────────────────────────────
 
@@ -216,4 +218,57 @@ export async function getQueueStats(orgId: string): Promise<{
     completed: counts.completed || 0,
     failed: counts.failed || 0,
   };
+}
+
+// ── Job Logs ─────────────────────────────────────────────────────────────────
+
+export async function appendJobLogs(
+  taskId: string,
+  workerId: string,
+  orgId: string,
+  lines: string[],
+): Promise<string> {
+  const ref = await addDoc(collection(db, JOB_LOGS), {
+    taskId,
+    workerId,
+    orgId,
+    lines,
+    timestamp: serverTimestamp(),
+  });
+  return ref.id;
+}
+
+export async function getJobLogs(
+  taskId: string,
+  since?: number,
+): Promise<JobLogEntry[]> {
+  const constraints = [
+    where("taskId", "==", taskId),
+    orderBy("timestamp", "asc"),
+    firestoreLimit(500),
+  ];
+  const q = query(collection(db, JOB_LOGS), ...constraints);
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JobLogEntry);
+}
+
+/**
+ * Get tasks for a specific org with optional status filter and pagination.
+ */
+export async function getOrgTasks(
+  orgId: string,
+  status?: QueuedTaskStatus,
+  max = 50,
+  offsetCount = 0,
+): Promise<QueuedTask[]> {
+  const constraints = [
+    where("orgId", "==", orgId),
+    ...(status ? [where("status", "==", status)] : []),
+    orderBy("createdAt", "desc"),
+    firestoreLimit(max + offsetCount),
+  ];
+  const q = query(collection(db, QUEUE), ...constraints);
+  const snap = await getDocs(q);
+  const tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QueuedTask);
+  return tasks.slice(offsetCount);
 }

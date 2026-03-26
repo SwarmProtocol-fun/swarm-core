@@ -776,7 +776,7 @@ export default function ProjectDetailPage() {
           <TabsTrigger value="jobs" className="relative">
             💼 Jobs ({jobs.length})
             {jobs.filter(j => j.status === 'in_progress').length > 0 && (
-              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-amber-500 text-black animate-pulse">
+              <span className="ml-1.5 inline-flex items-center justify-center w-5 h-5 text-[10px] font-bold rounded-full bg-amber-500 text-white animate-pulse">
                 {jobs.filter(j => j.status === 'in_progress').length}
               </span>
             )}
@@ -801,7 +801,7 @@ export default function ProjectDetailPage() {
             <Button
               onClick={() => setShowAssignAgent(true)}
               disabled={unassignedAgents.length === 0}
-              className="bg-amber-600 hover:bg-amber-700 text-black"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               + Assign Agent
             </Button>
@@ -860,7 +860,7 @@ export default function ProjectDetailPage() {
                   <div className="mt-2 space-y-2">
                     <p className="text-sm">No agents in your organization yet</p>
                     <Link href="/agents">
-                      <Button className="bg-amber-500 hover:bg-amber-600 text-black">
+                      <Button className="bg-amber-500 hover:bg-amber-600 text-white">
                         + Register Your First Agent
                       </Button>
                     </Link>
@@ -876,7 +876,7 @@ export default function ProjectDetailPage() {
           <div className="flex justify-end">
             <Button
               onClick={() => setShowCreateTask(true)}
-              className="bg-amber-600 hover:bg-amber-700 text-black"
+              className="bg-amber-600 hover:bg-amber-700 text-white"
             >
               + Create Task
             </Button>
@@ -929,7 +929,7 @@ export default function ProjectDetailPage() {
         {/* Jobs Tab */}
         <TabsContent value="jobs" className="space-y-4">
           <div className="flex justify-end">
-            <Button onClick={() => setShowCreateJob(true)} className="bg-amber-500 hover:bg-amber-600 text-black font-semibold">
+            <Button onClick={() => setShowCreateJob(true)} className="bg-amber-500 hover:bg-amber-600 text-white font-semibold">
               + Post Job
             </Button>
           </div>
@@ -1039,7 +1039,7 @@ export default function ProjectDetailPage() {
                 <Button variant="outline" onClick={() => setShowCreateJob(false)}>Cancel</Button>
                 <Button
                   disabled={creatingJob || !newJobTitle.trim()}
-                  className="bg-amber-500 hover:bg-amber-600 text-black font-semibold"
+                  className="bg-amber-500 hover:bg-amber-600 text-white font-semibold"
                   onClick={async () => {
                     if (!currentOrg || !newJobTitle.trim()) return;
                     setCreatingJob(true);
@@ -1452,7 +1452,7 @@ export default function ProjectDetailPage() {
                     <Button
                       onClick={handleSendChat}
                       disabled={sendingChat || uploading || (!chatInput.trim() && pendingFiles.length === 0) || !channel}
-                      className="bg-amber-600 hover:bg-amber-700 text-black"
+                      className="bg-amber-600 hover:bg-amber-700 text-white"
                     >
                       {uploading ? 'Uploading...' : 'Send'}
                     </Button>
@@ -1678,7 +1678,7 @@ export default function ProjectDetailPage() {
             <div><label className="text-sm font-medium">Description</label><Input value={editDescription} onChange={e => setEditDescription(e.target.value)} /></div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowEditProject(false)}>Cancel</Button>
-              <Button className="bg-amber-500 hover:bg-amber-600 text-black" onClick={async () => {
+              <Button className="bg-amber-500 hover:bg-amber-600 text-white" onClick={async () => {
                 await updateProject(projectId, { name: editName.trim(), description: editDescription.trim() || '' });
                 setProject(p => p ? { ...p, name: editName.trim(), description: editDescription.trim() || '' } : p);
                 setShowEditProject(false);

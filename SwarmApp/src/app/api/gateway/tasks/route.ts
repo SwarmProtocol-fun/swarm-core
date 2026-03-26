@@ -106,15 +106,25 @@ export async function POST(req: NextRequest) {
       callbackUrl: body.callbackUrl,
     });
 
-    // Store idempotency mapping
-    if (body.idempotencyKey) {
-      const redis = getRedis();
-      if (redis) {
+    // Store idempotency mapping + notify hub for WebSocket push
+    const redis = getRedis();
+    if (redis) {
+      if (body.idempotencyKey) {
         try {
           await redis.set(`gateway:idemp:${body.idempotencyKey}`, taskId, { ex: 3600 });
         } catch {
           // non-fatal
         }
+      }
+
+      // Notify hub so connected gateways receive the job via WebSocket push
+      try {
+        await redis.publish(
+          `gateway:new-task:${body.orgId}`,
+          JSON.stringify({ taskId, taskType: body.taskType, ts: Date.now() }),
+        );
+      } catch {
+        // non-fatal — gateways will still pick up via HTTP polling
       }
     }
 

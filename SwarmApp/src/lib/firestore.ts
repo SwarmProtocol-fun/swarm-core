@@ -284,6 +284,7 @@ export interface Message {
 export interface Profile {
   walletAddress: string;
   displayName: string;
+  email?: string;
   avatar?: string;
   bio?: string;
   updatedAt: Timestamp;

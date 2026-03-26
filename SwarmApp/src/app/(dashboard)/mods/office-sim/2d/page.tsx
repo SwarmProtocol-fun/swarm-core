@@ -1,7 +1,7 @@
 /** Office Sim — 2D Command Center View */
 "use client";
 
-import { useEffect, useCallback, useRef, useState } from "react";
+import { useEffect, useCallback, useMemo, useState } from "react";
 import { useOffice } from "@/components/mods/office-sim/office-store";
 import { useOrg } from "@/contexts/OrgContext";
 import { Office2D } from "@/components/mods/office-sim/Office2D";
@@ -11,6 +11,12 @@ import type { ToolbarPanel } from "@/components/mods/office-sim/OfficeToolbar";
 import { TaskBoardPanel } from "@/components/mods/office-sim/panels/TaskBoardPanel";
 import { DecisionInboxPanel } from "@/components/mods/office-sim/panels/DecisionInboxPanel";
 import { ReportHistoryPanel } from "@/components/mods/office-sim/panels/ReportHistoryPanel";
+import { CostMetricsPanel } from "@/components/mods/office-sim/panels/CostMetricsPanel";
+import {
+  deriveBoardTasks,
+  deriveDecisionItems,
+  deriveReportSummaries,
+} from "@/components/mods/office-sim/office-data";
 
 export default function Office2DPage() {
   const { state, dispatch } = useOffice();
@@ -18,13 +24,23 @@ export default function Office2DPage() {
   const { activeCount, errorCount } = state.metrics;
   const [openPanel, setOpenPanel] = useState<ToolbarPanel>(null);
 
+  // Derive live panel data from agent state
+  const boardTasks = useMemo(() => deriveBoardTasks(state), [state]);
+  const decisionItems = useMemo(() => deriveDecisionItems(state), [state]);
+  const reportSummaries = useMemo(() => deriveReportSummaries(state), [state]);
+
+  // Decision reply handler
+  const handleDecisionReply = useCallback(async (reply: { itemId: string; selectedOption: number; action: string }) => {
+    console.log("[OfficeSim] CEO decision:", reply);
+    // Future: dispatch to hub or Firestore
+  }, []);
+
   /* ── Keyboard navigation ── */
   const handleKeyDown = useCallback(
     (e: KeyboardEvent) => {
       const agents = Array.from(state.agents.values());
       if (agents.length === 0) return;
 
-      // Don't capture when typing in an input
       const target = e.target as HTMLElement;
       if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT") return;
 
@@ -49,7 +65,6 @@ export default function Office2DPage() {
           break;
         case "/":
           e.preventDefault();
-          // Focus the search input in toolbar
           const input = document.querySelector<HTMLInputElement>(
             'input[placeholder*="Search agents"]',
           );
@@ -74,6 +89,9 @@ export default function Office2DPage() {
         view="2d"
         openPanel={openPanel}
         onPanelChange={setOpenPanel}
+        decisionCount={decisionItems.length}
+        taskCount={boardTasks.filter(t => t.status === "in_progress" || t.status === "pending").length}
+        reportCount={reportSummaries.length}
       />
 
       {/* Floor plan */}
@@ -105,22 +123,25 @@ export default function Office2DPage() {
       {/* Panel Overlays */}
       {openPanel === "task-board" && (
         <TaskBoardPanel
-          tasks={[]}
+          tasks={boardTasks}
           onClose={() => setOpenPanel(null)}
         />
       )}
       {openPanel === "decision-inbox" && (
         <DecisionInboxPanel
-          items={[]}
-          onReply={async () => {}}
+          items={decisionItems}
+          onReply={handleDecisionReply}
           onClose={() => setOpenPanel(null)}
         />
       )}
       {openPanel === "reports" && (
         <ReportHistoryPanel
-          reports={[]}
+          reports={reportSummaries}
           onClose={() => setOpenPanel(null)}
         />
+      )}
+      {openPanel === "cost-metrics" && (
+        <CostMetricsPanel onClose={() => setOpenPanel(null)} />
       )}
     </div>
   );

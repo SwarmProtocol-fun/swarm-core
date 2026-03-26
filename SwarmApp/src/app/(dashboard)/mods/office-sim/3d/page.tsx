@@ -1,11 +1,22 @@
 /** Office Sim — 3D Immersive View */
 "use client";
 
+import { useMemo, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { useOffice } from "@/components/mods/office-sim/office-store";
 import { useOrg } from "@/contexts/OrgContext";
 import { AgentDetailDrawer } from "@/components/mods/office-sim/AgentDetailDrawer";
 import { OfficeToolbar } from "@/components/mods/office-sim/OfficeToolbar";
+import type { ToolbarPanel } from "@/components/mods/office-sim/OfficeToolbar";
+import { TaskBoardPanel } from "@/components/mods/office-sim/panels/TaskBoardPanel";
+import { DecisionInboxPanel } from "@/components/mods/office-sim/panels/DecisionInboxPanel";
+import { ReportHistoryPanel } from "@/components/mods/office-sim/panels/ReportHistoryPanel";
+import { CostMetricsPanel } from "@/components/mods/office-sim/panels/CostMetricsPanel";
+import {
+  deriveBoardTasks,
+  deriveDecisionItems,
+  deriveReportSummaries,
+} from "@/components/mods/office-sim/office-data";
 import { Button } from "@/components/ui/button";
 import type { CameraMode } from "@/components/mods/office-sim/types";
 
@@ -35,14 +46,32 @@ const CAMERA_MODES: { mode: CameraMode; label: string }[] = [
 export default function Office3DPage() {
   const { state, dispatch } = useOffice();
   const { currentOrg } = useOrg();
+  const [openPanel, setOpenPanel] = useState<ToolbarPanel>(null);
+
   const selectedAgent = state.selectedAgentId
     ? state.agents.get(state.selectedAgentId)
     : null;
 
+  // Derive live panel data from agent state
+  const boardTasks = useMemo(() => deriveBoardTasks(state), [state]);
+  const decisionItems = useMemo(() => deriveDecisionItems(state), [state]);
+  const reportSummaries = useMemo(() => deriveReportSummaries(state), [state]);
+
+  const handleDecisionReply = useCallback(async (reply: { itemId: string; selectedOption: number; action: string }) => {
+    console.log("[OfficeSim] CEO decision:", reply);
+  }, []);
+
   return (
     <div className="space-y-3">
       {/* Shared Toolbar */}
-      <OfficeToolbar view="3d" />
+      <OfficeToolbar
+        view="3d"
+        openPanel={openPanel}
+        onPanelChange={setOpenPanel}
+        decisionCount={decisionItems.length}
+        taskCount={boardTasks.filter(t => t.status === "in_progress" || t.status === "pending").length}
+        reportCount={reportSummaries.length}
+      />
 
       {/* 3D Scene */}
       <Office3D />
@@ -92,6 +121,30 @@ export default function Office3DPage() {
 
       {/* Agent Detail Drawer */}
       <AgentDetailDrawer orgId={currentOrg?.id} />
+
+      {/* Panel Overlays */}
+      {openPanel === "task-board" && (
+        <TaskBoardPanel
+          tasks={boardTasks}
+          onClose={() => setOpenPanel(null)}
+        />
+      )}
+      {openPanel === "decision-inbox" && (
+        <DecisionInboxPanel
+          items={decisionItems}
+          onReply={handleDecisionReply}
+          onClose={() => setOpenPanel(null)}
+        />
+      )}
+      {openPanel === "reports" && (
+        <ReportHistoryPanel
+          reports={reportSummaries}
+          onClose={() => setOpenPanel(null)}
+        />
+      )}
+      {openPanel === "cost-metrics" && (
+        <CostMetricsPanel onClose={() => setOpenPanel(null)} />
+      )}
     </div>
   );
 }
