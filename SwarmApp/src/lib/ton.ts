@@ -347,6 +347,153 @@ await fetch("/api/v1/ton/fees", {
   }),
 });`,
     },
+
+    // ── Deployment Tools ──────────────────────────────────────
+
+    {
+        id: "ton-deploy-contract",
+        name: "Smart Contract Deploy",
+        description:
+            "Deploy a custom FunC, Tact, or Fift smart contract to TON mainnet or testnet. Accepts pre-compiled BOC (Bag of Cells) or source code. Tracks deployment status, cost, and on-chain address.",
+        icon: "FileCode",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Deploy a Tact smart contract
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "smart_contract", name: "MyContract",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "smart_contract", language: "tact",
+      sourceCode: "contract MyContract { ... }",
+      initParams: '{"owner": "EQD..."}', precompiled: false,
+    },
+  }),
+});`,
+    },
+    {
+        id: "ton-deploy-jetton",
+        name: "Jetton Token Deploy",
+        description:
+            "Deploy a TEP-74 Jetton (fungible token) on TON. Configure name, symbol, decimals, total supply, mintability, and off-chain metadata URI. Creates the Jetton master contract and initial wallet.",
+        icon: "Coins",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Deploy a Jetton token
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "jetton", name: "Swarm Token",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "jetton", tokenName: "Swarm Token", tokenSymbol: "SWARM",
+      decimals: 9, totalSupply: "1000000000000000000", // 1B tokens
+      metadataUri: "https://swarmprotocol.fun/jetton.json",
+      mintable: true, adminAddress: "EQD...",
+    },
+  }),
+});`,
+    },
+    {
+        id: "ton-deploy-nft-collection",
+        name: "NFT Collection Deploy",
+        description:
+            "Deploy a TEP-62 NFT collection contract on TON. Set collection metadata, max supply, royalty percentage, and owner. Once deployed, mint items into the collection.",
+        icon: "Image",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Deploy an NFT collection
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "nft_collection", name: "Agent Passes",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "nft_collection", collectionName: "Agent Passes",
+      metadataUri: "https://swarmprotocol.fun/collection.json",
+      maxSupply: 10000, royaltyPercent: 5,
+      royaltyAddress: "EQD...", ownerAddress: "EQD...",
+    },
+  }),
+});`,
+    },
+    {
+        id: "ton-deploy-nft-item",
+        name: "NFT Item Mint",
+        description:
+            "Mint a single NFT item into an existing TEP-62 collection on TON. Specify item index, metadata URI, and initial owner address.",
+        icon: "Sparkles",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Mint an NFT item into a collection
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "nft_item", name: "Agent Pass #42",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "nft_item", collectionAddress: "EQC...",
+      itemIndex: 42, metadataUri: "https://swarmprotocol.fun/nft/42.json",
+      ownerAddress: "EQA...",
+    },
+  }),
+});`,
+    },
+    {
+        id: "ton-deploy-sbt",
+        name: "Soulbound Token Deploy",
+        description:
+            "Deploy a TEP-85 Soulbound Token (SBT) on TON — non-transferable NFTs for identity, credentials, or achievements. Configure authority address for optional revocation.",
+        icon: "Fingerprint",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Deploy a Soulbound Token
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "sbt", name: "Agent Credential",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "sbt", collectionName: "Agent Credentials",
+      metadataUri: "https://swarmprotocol.fun/sbt.json",
+      authorityAddress: "EQD...", ownerAddress: "EQA...",
+      revocable: true,
+    },
+  }),
+});`,
+    },
+    {
+        id: "ton-deploy-dex-pool",
+        name: "DEX Liquidity Pool",
+        description:
+            "Deploy a liquidity pool on DeDust or STON.fi DEX. Provide initial liquidity for a token pair (TON/Jetton or Jetton/Jetton). Supports volatile and stable pool types.",
+        icon: "ArrowLeftRight",
+        category: "Deploy",
+        status: "active",
+        usageExample: `// Deploy a DEX liquidity pool on DeDust
+const deploy = await fetch("/api/v1/ton/deploy", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    orgId, type: "dex_pool", name: "SWARM/TON Pool",
+    deployerAddress: "EQD...", network: "mainnet",
+    config: {
+      type: "dex_pool", platform: "dedust",
+      tokenAAddress: "native", // TON
+      tokenBAddress: "EQC...", // SWARM Jetton
+      tokenAAmount: "10000000000", // 10 TON
+      tokenBAmount: "100000000000000", // 100,000 SWARM
+      poolType: "volatile",
+    },
+  }),
+});`,
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -466,6 +613,137 @@ export const TON_WORKFLOWS: ModWorkflow[] = [
         estimatedTime: "~3 minutes",
         tags: ["ton", "treasury", "policy", "setup", "org"],
     },
+
+    // ── Deployment Workflows ─────────────────────────────────
+
+    {
+        id: "ton-deploy-jetton-flow",
+        name: "Deploy Jetton Token",
+        icon: "🪙",
+        description:
+            "End-to-end Jetton deployment: configure token params, compile TEP-74 master contract, deploy on-chain, verify via TON Center, and distribute initial supply.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Configure token: name, symbol, decimals, total supply",
+            "Upload off-chain metadata JSON (name, symbol, image, description)",
+            "Set mintable flag and admin address",
+            "Estimate deployment gas cost (~0.2 TON)",
+            "Check deployment against org spending policy",
+            "Compile and deploy Jetton master contract",
+            "Wait for on-chain confirmation and record contract address",
+            "Verify Jetton metadata via TON Center API",
+            "Distribute initial supply to designated wallets",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~2 minutes",
+        tags: ["ton", "jetton", "deploy", "token", "tep-74"],
+    },
+    {
+        id: "ton-deploy-nft-collection-flow",
+        name: "Deploy NFT Collection",
+        icon: "🎨",
+        description:
+            "Deploy a TEP-62 NFT collection on TON: set collection metadata, royalties, max supply, then batch-mint initial items.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Configure collection: name, description, image",
+            "Upload collection metadata to IPFS or Storacha",
+            "Set royalty percentage and recipient address",
+            "Set max supply (0 for unlimited)",
+            "Estimate deployment gas cost (~0.15 TON)",
+            "Deploy NFT collection contract on-chain",
+            "Record collection contract address",
+            "Optionally batch-mint initial NFT items",
+            "Verify collection on TON Center / Getgems",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~3 minutes",
+        tags: ["ton", "nft", "deploy", "collection", "tep-62"],
+    },
+    {
+        id: "ton-deploy-sbt-flow",
+        name: "Deploy Soulbound Tokens",
+        icon: "🪪",
+        description:
+            "Deploy TEP-85 non-transferable SBTs for agent credentials, org membership, or achievement badges. Includes authority setup for revocation.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Configure SBT: name, description, metadata URI",
+            "Set authority address (can revoke SBTs)",
+            "Choose if SBTs are revocable or permanent",
+            "Estimate deployment gas cost (~0.1 TON)",
+            "Deploy SBT collection contract",
+            "Mint SBT to recipient address",
+            "Verify SBT is non-transferable on-chain",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~2 minutes",
+        tags: ["ton", "sbt", "deploy", "soulbound", "tep-85", "credentials"],
+    },
+    {
+        id: "ton-deploy-smart-contract-flow",
+        name: "Deploy Smart Contract",
+        icon: "📜",
+        description:
+            "Full lifecycle for deploying a custom FunC/Tact smart contract: write or upload code, compile to BOC, deploy, and verify on-chain.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Write contract in Tact or FunC (or upload pre-compiled BOC)",
+            "Define constructor/init parameters",
+            "Compile contract to BOC (Bag of Cells)",
+            "Estimate deployment gas cost",
+            "Check deployment cost against spending policy",
+            "Sign and broadcast deploy transaction via TON Connect",
+            "Wait for on-chain confirmation",
+            "Record contract address and tx hash",
+            "Verify contract state via TON Center API",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~3 minutes",
+        tags: ["ton", "smart-contract", "deploy", "func", "tact", "boc"],
+    },
+    {
+        id: "ton-deploy-dex-pool-flow",
+        name: "Create DEX Liquidity Pool",
+        icon: "💧",
+        description:
+            "Deploy a liquidity pool on DeDust or STON.fi: select token pair, provide initial liquidity, configure pool type, and receive LP tokens.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Select DEX platform (DeDust or STON.fi)",
+            "Choose token pair (TON/Jetton or Jetton/Jetton)",
+            "Set initial liquidity amounts for both tokens",
+            "Choose pool type (volatile or stable)",
+            "Approve token spending for the DEX router",
+            "Create pool and provide initial liquidity",
+            "Receive LP tokens representing pool share",
+            "Verify pool on DEX frontend",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~5 minutes",
+        tags: ["ton", "dex", "deploy", "liquidity", "dedust", "stonfi"],
+    },
+    {
+        id: "ton-deploy-nft-mint-batch-flow",
+        name: "Batch Mint NFTs",
+        icon: "🖼️",
+        description:
+            "Mint multiple NFT items into an existing collection. Upload metadata, specify owners, and batch-deploy in a single workflow.",
+        steps: [
+            "Connect TON wallet and verify ownership",
+            "Select target NFT collection contract",
+            "Prepare item metadata URIs (JSON with name, image, attributes)",
+            "Specify owner address for each item (or use default)",
+            "Estimate total gas cost (items × ~0.05 TON)",
+            "Check total cost against spending policy",
+            "Batch-mint items with sequential indices",
+            "Wait for all on-chain confirmations",
+            "Record minted item addresses",
+            "Log deployment in audit trail",
+        ],
+        estimatedTime: "~5 minutes",
+        tags: ["ton", "nft", "deploy", "mint", "batch"],
+    },
 ];
 
 // ═══════════════════════════════════════════════════════════════
@@ -580,6 +858,81 @@ export const TON_AGENT_SKILLS: ModAgentSkill[] = [
         invocation: "ton.history({ address, limit? })",
         exampleInput: '{ "address": "EQD...", "limit": 10 }',
         exampleOutput: '{ "transactions": [{ "hash": "abc", "direction": "out", "amountTon": "1.0" }] }',
+    },
+
+    // ── Deployment Skills ────────────────────────────────────
+
+    {
+        id: "ton.deploy.contract",
+        name: "Deploy Smart Contract",
+        type: "skill",
+        description: "Deploy a custom FunC/Tact smart contract to TON. Accepts source code or pre-compiled BOC.",
+        invocation: "ton.deploy.contract({ orgId, name, deployerAddress, network, language, sourceCode, initParams })",
+        exampleInput: '{ "orgId": "org_abc", "name": "MyContract", "deployerAddress": "EQD...", "network": "mainnet", "language": "tact", "sourceCode": "contract MyContract { ... }", "initParams": "{}" }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "100000000" }',
+    },
+    {
+        id: "ton.deploy.jetton",
+        name: "Deploy Jetton Token",
+        type: "skill",
+        description: "Deploy a TEP-74 Jetton (fungible token) on TON with custom name, symbol, supply, and metadata.",
+        invocation: "ton.deploy.jetton({ orgId, deployerAddress, network, tokenName, tokenSymbol, decimals, totalSupply, metadataUri, mintable, adminAddress })",
+        exampleInput: '{ "orgId": "org_abc", "deployerAddress": "EQD...", "network": "mainnet", "tokenName": "Swarm Token", "tokenSymbol": "SWARM", "decimals": 9, "totalSupply": "1000000000000000000", "metadataUri": "https://...", "mintable": true, "adminAddress": "EQD..." }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "200000000" }',
+    },
+    {
+        id: "ton.deploy.nft_collection",
+        name: "Deploy NFT Collection",
+        type: "skill",
+        description: "Deploy a TEP-62 NFT collection contract on TON with royalties and max supply.",
+        invocation: "ton.deploy.nft_collection({ orgId, deployerAddress, network, collectionName, metadataUri, maxSupply, royaltyPercent, royaltyAddress, ownerAddress })",
+        exampleInput: '{ "orgId": "org_abc", "deployerAddress": "EQD...", "network": "mainnet", "collectionName": "Agent Passes", "metadataUri": "https://...", "maxSupply": 10000, "royaltyPercent": 5, "royaltyAddress": "EQD...", "ownerAddress": "EQD..." }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "150000000" }',
+    },
+    {
+        id: "ton.deploy.nft_item",
+        name: "Mint NFT Item",
+        type: "skill",
+        description: "Mint a single NFT item into an existing TEP-62 collection.",
+        invocation: "ton.deploy.nft_item({ orgId, deployerAddress, network, collectionAddress, itemIndex, metadataUri, ownerAddress })",
+        exampleInput: '{ "orgId": "org_abc", "deployerAddress": "EQD...", "network": "mainnet", "collectionAddress": "EQC...", "itemIndex": 42, "metadataUri": "https://...", "ownerAddress": "EQA..." }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "50000000" }',
+    },
+    {
+        id: "ton.deploy.sbt",
+        name: "Deploy SBT",
+        type: "skill",
+        description: "Deploy a TEP-85 Soulbound Token (non-transferable) for credentials, identity, or achievements.",
+        invocation: "ton.deploy.sbt({ orgId, deployerAddress, network, collectionName, metadataUri, authorityAddress, ownerAddress, revocable })",
+        exampleInput: '{ "orgId": "org_abc", "deployerAddress": "EQD...", "network": "mainnet", "collectionName": "Agent Credentials", "metadataUri": "https://...", "authorityAddress": "EQD...", "ownerAddress": "EQA...", "revocable": true }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "100000000" }',
+    },
+    {
+        id: "ton.deploy.dex_pool",
+        name: "Create DEX Pool",
+        type: "skill",
+        description: "Deploy a liquidity pool on DeDust or STON.fi with initial liquidity.",
+        invocation: "ton.deploy.dex_pool({ orgId, deployerAddress, network, platform, tokenAAddress, tokenBAddress, tokenAAmount, tokenBAmount, poolType })",
+        exampleInput: '{ "orgId": "org_abc", "deployerAddress": "EQD...", "network": "mainnet", "platform": "dedust", "tokenAAddress": "native", "tokenBAddress": "EQC...", "tokenAAmount": "10000000000", "tokenBAmount": "100000000000000", "poolType": "volatile" }',
+        exampleOutput: '{ "deploymentId": "dep_xyz", "status": "deploying", "estimatedCostNano": "500000000" }',
+    },
+    {
+        id: "ton.deploy.status",
+        name: "Check Deploy Status",
+        type: "skill",
+        description: "Check the status of a deployment. Returns current status, contract address (if deployed), and tx hash.",
+        invocation: "ton.deploy.status({ orgId, deploymentId })",
+        exampleInput: '{ "orgId": "org_abc", "deploymentId": "dep_xyz" }',
+        exampleOutput: '{ "status": "deployed", "contractAddress": "EQC...", "txHash": "abc123...", "actualCostNano": "180000000" }',
+    },
+    {
+        id: "ton.deploy.list",
+        name: "List Deployments",
+        type: "skill",
+        description: "List all deployments for an org, optionally filtered by type.",
+        invocation: "ton.deploy.list({ orgId, type?, limit? })",
+        exampleInput: '{ "orgId": "org_abc", "type": "jetton", "limit": 10 }',
+        exampleOutput: '{ "deployments": [{ "id": "dep_xyz", "type": "jetton", "name": "Swarm Token", "status": "deployed" }] }',
     },
 ];
 
@@ -707,6 +1060,164 @@ export async function createTonPayment(orgId: string, opts: {
     // Use TON Connect to sign: connector.sendTransaction({ to, amount, payload })
   }
   return payment;
+}`,
+    },
+    {
+        id: "ton-deploy-jetton-example",
+        name: "Deploy Jetton Token",
+        icon: "Coins",
+        description: "Deploy a TEP-74 Jetton master contract on TON with metadata and initial supply distribution.",
+        language: "typescript",
+        tags: ["ton", "deploy", "jetton", "tep-74", "token"],
+        codeSnippet: `import { Address, beginCell, toNano } from "@ton/core";
+import { TonClient } from "@ton/ton";
+
+// Jetton metadata — host this JSON at a public URL
+const jettonMetadata = {
+  name: "Swarm Token",
+  symbol: "SWARM",
+  decimals: "9",
+  image: "https://swarmprotocol.fun/token-icon.png",
+  description: "Utility token for the Swarm agent network",
+};
+
+// Build on-chain content cell (Snake format for off-chain metadata)
+function buildJettonMetadataCell(uri: string) {
+  return beginCell()
+    .storeUint(0x01, 8) // off-chain tag
+    .storeStringTail(uri)
+    .endCell();
+}
+
+// Deploy via Swarm API
+async function deployJetton(orgId: string, deployerAddress: string) {
+  const res = await fetch("/api/v1/ton/deploy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orgId,
+      type: "jetton",
+      name: "Swarm Token",
+      description: "SWARM utility token deployment",
+      deployerAddress,
+      network: "mainnet",
+      config: {
+        type: "jetton",
+        tokenName: "Swarm Token",
+        tokenSymbol: "SWARM",
+        decimals: 9,
+        totalSupply: "1000000000000000000", // 1B with 9 decimals
+        metadataUri: "https://swarmprotocol.fun/jetton.json",
+        mintable: true,
+        adminAddress: deployerAddress,
+      },
+    }),
+  });
+  return res.json();
+}`,
+    },
+    {
+        id: "ton-deploy-nft-example",
+        name: "Deploy NFT Collection + Mint",
+        icon: "Image",
+        description: "Deploy an NFT collection on TON and mint items with royalties and off-chain metadata.",
+        language: "typescript",
+        tags: ["ton", "deploy", "nft", "tep-62", "collection", "mint"],
+        codeSnippet: `// Step 1: Deploy the collection
+async function deployNftCollection(orgId: string, deployerAddress: string) {
+  const res = await fetch("/api/v1/ton/deploy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orgId,
+      type: "nft_collection",
+      name: "Swarm Agent Passes",
+      description: "Agent access pass NFT collection",
+      deployerAddress,
+      network: "mainnet",
+      config: {
+        type: "nft_collection",
+        collectionName: "Swarm Agent Passes",
+        metadataUri: "https://swarmprotocol.fun/collection.json",
+        maxSupply: 10000,
+        royaltyPercent: 5,
+        royaltyAddress: deployerAddress,
+        ownerAddress: deployerAddress,
+      },
+    }),
+  });
+  return res.json(); // { deploymentId, contractAddress (after deploy) }
+}
+
+// Step 2: Mint an item into the deployed collection
+async function mintNftItem(
+  orgId: string, deployerAddress: string,
+  collectionAddress: string, itemIndex: number, ownerAddress: string,
+) {
+  const res = await fetch("/api/v1/ton/deploy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orgId,
+      type: "nft_item",
+      name: \`Agent Pass #\${itemIndex}\`,
+      description: "Mint agent pass NFT",
+      deployerAddress,
+      network: "mainnet",
+      config: {
+        type: "nft_item",
+        collectionAddress,
+        itemIndex,
+        metadataUri: \`https://swarmprotocol.fun/nft/\${itemIndex}.json\`,
+        ownerAddress,
+      },
+    }),
+  });
+  return res.json();
+}`,
+    },
+    {
+        id: "ton-deploy-dex-pool-example",
+        name: "Create DEX Liquidity Pool",
+        icon: "ArrowLeftRight",
+        description: "Create a liquidity pool on DeDust or STON.fi and provide initial liquidity for a token pair.",
+        language: "typescript",
+        tags: ["ton", "deploy", "dex", "dedust", "stonfi", "liquidity"],
+        codeSnippet: `// Deploy a TON/SWARM liquidity pool on DeDust
+async function createDexPool(orgId: string, deployerAddress: string) {
+  const res = await fetch("/api/v1/ton/deploy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      orgId,
+      type: "dex_pool",
+      name: "SWARM/TON Pool",
+      description: "Initial liquidity pool for SWARM token",
+      deployerAddress,
+      network: "mainnet",
+      config: {
+        type: "dex_pool",
+        platform: "dedust",
+        tokenAAddress: "native", // TON
+        tokenBAddress: "EQC...", // SWARM Jetton master
+        tokenAAmount: "10000000000",     // 10 TON
+        tokenBAmount: "100000000000000", // 100k SWARM
+        poolType: "volatile",
+      },
+    }),
+  });
+  return res.json();
+}
+
+// Check deployment status
+async function checkDeployStatus(orgId: string, deploymentId: string) {
+  const res = await fetch(
+    \`/api/v1/ton/deploy?orgId=\${orgId}&id=\${deploymentId}\`
+  );
+  const data = await res.json();
+  console.log("Status:", data.deployment.status);
+  console.log("Contract:", data.deployment.contractAddress);
+  return data;
 }`,
     },
     {

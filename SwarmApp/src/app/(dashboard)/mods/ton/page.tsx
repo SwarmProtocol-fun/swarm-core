@@ -13,7 +13,8 @@ import {
     ShieldCheck, AlertTriangle, CheckCircle2, XCircle, Clock, Ban, ExternalLink,
     Plus, Pause, Play, Trash2, Copy, Check, Trophy, History, BarChart3,
     KeyRound, Percent, TrendingUp, ArrowDownLeft,
-    ArrowUpRight, Fingerprint, Ghost, Image, Mic, MessageSquare, Sparkles, Loader2,
+    ArrowUpRight, Fingerprint, Ghost, MessageSquare, Sparkles, Loader2,
+    Rocket, FileCode, Coins as CoinsIcon,
     type LucideIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -27,12 +28,16 @@ import {
 } from "@/lib/ton-policy";
 import type { TonBounty, TonFeeConfig } from "@/lib/ton-bounty";
 import type { TonAgentWallet } from "@/lib/ton-agent-wallet";
+import {
+    DEPLOY_TYPE_LABELS, DEPLOY_STATUS_META,
+    type TonDeployment, type TonDeployType,
+} from "@/lib/ton-deploy";
 
 // ═══════════════════════════════════════════════════════════════
 // Constants
 // ═══════════════════════════════════════════════════════════════
 
-type Tab = "overview" | "payments" | "bounties" | "subscriptions" | "history" | "analytics" | "agent-wallets" | "policy" | "audit" | "prank";
+type Tab = "overview" | "payments" | "bounties" | "subscriptions" | "history" | "analytics" | "agent-wallets" | "deploy" | "policy" | "audit" | "prank";
 
 const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "overview",      label: "Overview",      icon: LayoutDashboard },
@@ -42,6 +47,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
     { id: "history",       label: "History",        icon: History },
     { id: "analytics",     label: "Analytics",      icon: BarChart3 },
     { id: "agent-wallets", label: "Agent Wallets",  icon: KeyRound },
+    { id: "deploy",        label: "Deploy",          icon: Rocket },
     { id: "policy",        label: "Policy",         icon: Shield },
     { id: "audit",         label: "Audit",          icon: FileText },
     { id: "prank",         label: "Prank",          icon: Ghost },
@@ -946,7 +952,7 @@ function AuditPanel({ entries, onRefresh }: { entries: TonAuditEntry[]; onRefres
 // Prank Panel
 // ═══════════════════════════════════════════════════════════════
 
-type PrankMessage = { type: "text" | "image" | "voice"; content: string; imageUrl?: string; delay?: number };
+type PrankMessage = { type: "text"; content: string; delay?: number };
 type PrankResult = { messages: PrankMessage[]; summary: string; sendStatus?: Record<number, "pending" | "sent" | "failed"> };
 
 function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: string | null | undefined }) {
@@ -954,9 +960,6 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
     const [telegramUsername, setTelegramUsername] = useState("");
     const [persona, setPersona] = useState("");
     const [prompt, setPrompt] = useState("");
-    const [useTexts, setUseTexts] = useState(true);
-    const [useImages, setUseImages] = useState(true);
-    const [useVoice, setUseVoice] = useState(true);
     const [intensity, setIntensity] = useState<"light" | "medium" | "chaotic">("medium");
     const [generating, setGenerating] = useState(false);
     const [sending, setSending] = useState(false);
@@ -973,7 +976,7 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
             const res = await fetch("/api/v1/ton/prank", {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "x-wallet-address": wallet || "" },
-                body: JSON.stringify({ orgId, friendName, persona, prompt, useTexts, useImages, useVoice, intensity }),
+                body: JSON.stringify({ orgId, friendName, persona, prompt, intensity }),
             });
             const data = await res.json();
             if (!res.ok) { setError(data.error || "Generation failed"); return; }
@@ -1005,17 +1008,8 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
         }
     };
 
-    const msgIcon = (type: PrankMessage["type"]) => {
-        if (type === "image") return <Image className="h-3.5 w-3.5 text-purple-400 shrink-0" />;
-        if (type === "voice") return <Mic className="h-3.5 w-3.5 text-green-400 shrink-0" />;
-        return <MessageSquare className="h-3.5 w-3.5 text-blue-400 shrink-0" />;
-    };
-
-    const msgBg = (type: PrankMessage["type"]) => {
-        if (type === "image") return "bg-purple-500/5 border-purple-500/20";
-        if (type === "voice") return "bg-green-500/5 border-green-500/20";
-        return "bg-blue-500/5 border-blue-500/20";
-    };
+    const msgIcon = () => <MessageSquare className="h-3.5 w-3.5 text-blue-400 shrink-0" />;
+    const msgBg = () => "bg-blue-500/5 border-blue-500/20";
 
     return (
         <div className="space-y-4">
@@ -1049,25 +1043,7 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
                 </div>
 
                 <div className="flex items-center gap-4 flex-wrap">
-                    <span className="text-xs text-muted-foreground">Media:</span>
-                    {([
-                        { key: "texts", label: "Texts", icon: MessageSquare, value: useTexts, set: setUseTexts },
-                        { key: "images", label: "AI Photos", icon: Image, value: useImages, set: setUseImages },
-                        { key: "voice", label: "Voice Notes", icon: Mic, value: useVoice, set: setUseVoice },
-                    ] as const).map((m) => (
-                        <button
-                            key={m.key}
-                            onClick={() => m.set(!m.value)}
-                            className={cn(
-                                "flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all",
-                                m.value ? "bg-foreground/10 border-border text-foreground" : "border-border/50 text-muted-foreground"
-                            )}
-                        >
-                            <m.icon className="h-3 w-3" />{m.label}
-                        </button>
-                    ))}
-
-                    <span className="text-xs text-muted-foreground ml-2">Intensity:</span>
+                    <span className="text-xs text-muted-foreground">Intensity:</span>
                     {(["light", "medium", "chaotic"] as const).map((lvl) => (
                         <button
                             key={lvl}
@@ -1108,11 +1084,10 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
 
                     <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
                         {result.messages.map((m, i) => (
-                            <div key={i} className={cn("rounded-lg border px-3 py-2.5 flex items-start gap-2", msgBg(m.type))}>
-                                {msgIcon(m.type)}
+                            <div key={i} className={cn("rounded-lg border px-3 py-2.5 flex items-start gap-2", msgBg())}>
+                                {msgIcon()}
                                 <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-0.5">
-                                        <span className="text-xs font-medium capitalize text-muted-foreground">{m.type}</span>
                                         {m.delay && <span className="text-xs text-muted-foreground">+{m.delay}s delay</span>}
                                         {result.sendStatus?.[i] && (
                                             <span className={cn("text-xs ml-auto", result.sendStatus[i] === "sent" ? "text-green-400" : result.sendStatus[i] === "failed" ? "text-red-400" : "text-muted-foreground")}>
@@ -1121,7 +1096,6 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
                                         )}
                                     </div>
                                     <p className="text-xs leading-relaxed">{m.content}</p>
-                                    {m.imageUrl && <img src={m.imageUrl} alt="AI generated" className="mt-2 rounded-md max-h-40 object-cover" />}
                                 </div>
                             </div>
                         ))}
@@ -1156,6 +1130,310 @@ function PrankPanel({ orgId, wallet }: { orgId: string | undefined; wallet: stri
 }
 
 // ═══════════════════════════════════════════════════════════════
+// Deploy Panel
+// ═══════════════════════════════════════════════════════════════
+
+const DEPLOY_TYPE_ICONS: Record<TonDeployType, LucideIcon> = {
+    smart_contract: FileCode, jetton: CoinsIcon, nft_collection: Sparkles,
+    nft_item: Sparkles, sbt: Fingerprint, dex_pool: ArrowUpRight,
+};
+
+function DeployPanel({ deployments, actionLoading, onCreate, onAction, onRefresh }: {
+    deployments: TonDeployment[]; actionLoading: string | null;
+    onCreate: () => void; onAction: (id: string, action: string, extra?: Record<string, string>) => void; onRefresh: () => void;
+}) {
+    const [typeFilter, setTypeFilter] = useState<TonDeployType | "all">("all");
+    const filtered = typeFilter === "all" ? deployments : deployments.filter((d) => d.type === typeFilter);
+
+    return (
+        <div className="space-y-4">
+            <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                    <select className="bg-background border border-border rounded-md px-2 py-1.5 text-sm" value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as TonDeployType | "all")}>
+                        <option value="all">All Types</option>
+                        {(Object.keys(DEPLOY_TYPE_LABELS) as TonDeployType[]).map((t) => <option key={t} value={t}>{DEPLOY_TYPE_LABELS[t]}</option>)}
+                    </select>
+                    <Button variant="ghost" size="sm" onClick={onRefresh}><RefreshCw className="h-3.5 w-3.5" /></Button>
+                </div>
+                <Button size="sm" onClick={onCreate}><Rocket className="h-3.5 w-3.5 mr-1.5" />New Deployment</Button>
+            </div>
+
+            {/* Stats row */}
+            <div className="grid grid-cols-4 gap-3">
+                {[
+                    { label: "Total", value: deployments.length, color: "text-blue-400" },
+                    { label: "Deployed", value: deployments.filter((d) => d.status === "deployed").length, color: "text-green-400" },
+                    { label: "Pending", value: deployments.filter((d) => d.status === "pending" || d.status === "pending_approval" || d.status === "compiling" || d.status === "deploying").length, color: "text-yellow-400" },
+                    { label: "Failed", value: deployments.filter((d) => d.status === "failed").length, color: "text-red-400" },
+                ].map((s) => (
+                    <div key={s.label} className="rounded-lg border border-border bg-card p-3">
+                        <p className="text-xs text-muted-foreground mb-1">{s.label}</p>
+                        <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
+                    </div>
+                ))}
+            </div>
+
+            {filtered.length === 0 ? (
+                <EmptyState label="No deployments yet. Click New Deployment to deploy a smart contract, Jetton, NFT collection, SBT, or DEX pool." />
+            ) : (
+                <div className="rounded-lg border border-border bg-card">
+                    <div className="divide-y divide-border">
+                        {filtered.map((d) => {
+                            const Icon = DEPLOY_TYPE_ICONS[d.type] || FileCode;
+                            const statusMeta = DEPLOY_STATUS_META[d.status];
+                            return (
+                                <div key={d.id} className="px-4 py-3 flex items-center justify-between">
+                                    <div className="flex items-center gap-3 min-w-0">
+                                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-500/10 border border-purple-500/20 shrink-0">
+                                            <Icon className="h-4 w-4 text-purple-400" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-2">
+                                                <p className="text-sm font-medium truncate">{d.name}</p>
+                                                <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{DEPLOY_TYPE_LABELS[d.type]}</span>
+                                                <span className="text-xs text-muted-foreground">{d.network}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                {d.contractAddress && (
+                                                    <span className="text-xs font-mono text-muted-foreground">{shortAddr(d.contractAddress)}<CopyBtn text={d.contractAddress} /></span>
+                                                )}
+                                                {d.txHash && (
+                                                    <a href={`${TON_EXPLORER}${d.txHash}`} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:underline flex items-center gap-0.5"><ExternalLink className="h-3 w-3" />tx</a>
+                                                )}
+                                                <span className="text-xs text-muted-foreground">{fmtDate(d.createdAt)}</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                        <span className={cn("text-xs font-medium", statusMeta.color)}>{statusMeta.label}</span>
+                                        {d.status === "pending_approval" && (
+                                            <div className="flex gap-1">
+                                                <Button variant="ghost" size="sm" onClick={() => onAction(d.id, "approve")} disabled={actionLoading === `approve-${d.id}`}>
+                                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />
+                                                </Button>
+                                                <Button variant="ghost" size="sm" onClick={() => onAction(d.id, "reject")} disabled={actionLoading === `reject-${d.id}`}>
+                                                    <XCircle className="h-3.5 w-3.5 text-red-400" />
+                                                </Button>
+                                            </div>
+                                        )}
+                                        {d.status === "failed" && d.errorMessage && (
+                                            <span className="text-xs text-red-400 max-w-[200px] truncate" title={d.errorMessage}>{d.errorMessage}</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Dialog: Create Deployment
+// ═══════════════════════════════════════════════════════════════
+
+const DEPLOY_TYPE_OPTIONS: { value: TonDeployType; label: string; desc: string }[] = [
+    { value: "jetton", label: "Jetton Token", desc: "TEP-74 fungible token" },
+    { value: "nft_collection", label: "NFT Collection", desc: "TEP-62 NFT collection" },
+    { value: "nft_item", label: "NFT Item", desc: "Mint into existing collection" },
+    { value: "sbt", label: "Soulbound Token", desc: "TEP-85 non-transferable" },
+    { value: "smart_contract", label: "Smart Contract", desc: "Custom FunC/Tact contract" },
+    { value: "dex_pool", label: "DEX Pool", desc: "DeDust or STON.fi liquidity" },
+];
+
+function CreateDeployDialog({ open, onClose, onCreate }: {
+    open: boolean; onClose: () => void;
+    onCreate: (d: { type: TonDeployType; name: string; description: string; network: string; config: Record<string, unknown> }) => Promise<{ error?: string }>;
+}) {
+    const [type, setType] = useState<TonDeployType>("jetton");
+    const [name, setName] = useState(""); const [desc, setDesc] = useState(""); const [network, setNetwork] = useState("mainnet");
+    const [loading, setLoading] = useState(false); const [error, setError] = useState("");
+
+    // Jetton fields
+    const [tokenName, setTokenName] = useState(""); const [tokenSymbol, setTokenSymbol] = useState(""); const [decimals, setDecimals] = useState("9");
+    const [totalSupply, setTotalSupply] = useState(""); const [metadataUri, setMetadataUri] = useState(""); const [mintable, setMintable] = useState(true); const [adminAddress, setAdminAddress] = useState("");
+
+    // NFT collection fields
+    const [collectionName, setCollectionName] = useState(""); const [maxSupply, setMaxSupply] = useState(""); const [royaltyPercent, setRoyaltyPercent] = useState("5");
+    const [royaltyAddress, setRoyaltyAddress] = useState(""); const [ownerAddress, setOwnerAddress] = useState("");
+
+    // NFT item fields
+    const [collectionAddress, setCollectionAddress] = useState(""); const [itemIndex, setItemIndex] = useState("");
+    const [itemOwner, setItemOwner] = useState("");
+
+    // SBT fields
+    const [sbtName, setSbtName] = useState(""); const [authorityAddress, setAuthorityAddress] = useState("");
+    const [sbtOwner, setSbtOwner] = useState(""); const [revocable, setRevocable] = useState(true);
+
+    // Smart contract fields
+    const [language, setLanguage] = useState<"tact" | "func" | "fift">("tact"); const [sourceCode, setSourceCode] = useState(""); const [initParams, setInitParams] = useState("{}");
+    const [precompiled, setPrecompiled] = useState(false);
+
+    // DEX pool fields
+    const [platform, setPlatform] = useState<"dedust" | "stonfi">("dedust"); const [tokenA, setTokenA] = useState("native");
+    const [tokenB, setTokenB] = useState(""); const [amountA, setAmountA] = useState(""); const [amountB, setAmountB] = useState("");
+    const [poolType, setPoolType] = useState<"volatile" | "stable">("volatile");
+
+    if (!open) return null;
+
+    const buildConfig = (): Record<string, unknown> => {
+        switch (type) {
+            case "jetton": return { tokenName: tokenName || name, tokenSymbol, decimals: parseInt(decimals, 10) || 9, totalSupply, metadataUri, mintable, adminAddress };
+            case "nft_collection": return { collectionName: collectionName || name, metadataUri, maxSupply: parseInt(maxSupply, 10) || 0, royaltyPercent: parseFloat(royaltyPercent) || 0, royaltyAddress, ownerAddress };
+            case "nft_item": return { collectionAddress, itemIndex: parseInt(itemIndex, 10) || 0, metadataUri, ownerAddress: itemOwner };
+            case "sbt": return { collectionName: sbtName || name, metadataUri, authorityAddress, ownerAddress: sbtOwner, revocable };
+            case "smart_contract": return { language, sourceCode, initParams, precompiled };
+            case "dex_pool": return { platform, tokenAAddress: tokenA, tokenBAddress: tokenB, tokenAAmount: amountA, tokenBAmount: amountB, poolType };
+        }
+    };
+
+    const handle = async () => {
+        setError(""); if (!name) { setError("Name required"); return; }
+        setLoading(true);
+        const r = await onCreate({ type, name, description: desc, network, config: buildConfig() });
+        setLoading(false);
+        if (r.error) setError(r.error); else onClose();
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+            <div className="bg-card border border-border rounded-xl p-6 w-full max-w-lg space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+                <div className="flex items-center gap-2"><Rocket className="h-5 w-5 text-purple-400" /><h2 className="text-lg font-semibold">New Deployment</h2></div>
+                <div className="space-y-3">
+                    {/* Type selection */}
+                    <div><label className="text-xs text-muted-foreground mb-1 block">Deployment Type</label>
+                        <div className="grid grid-cols-3 gap-2">
+                            {DEPLOY_TYPE_OPTIONS.map((opt) => (
+                                <button key={opt.value} onClick={() => setType(opt.value)}
+                                    className={cn("rounded-lg border p-2 text-left transition-all", type === opt.value ? "border-purple-500 bg-purple-500/10" : "border-border hover:border-muted-foreground")}>
+                                    <p className="text-xs font-medium">{opt.label}</p>
+                                    <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Common fields */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <div><label className="text-xs text-muted-foreground mb-1 block">Name</label>
+                            <input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="My Token" value={name} onChange={(e) => setName(e.target.value)} /></div>
+                        <div><label className="text-xs text-muted-foreground mb-1 block">Network</label>
+                            <select className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" value={network} onChange={(e) => setNetwork(e.target.value)}>
+                                <option value="mainnet">Mainnet</option><option value="testnet">Testnet</option>
+                            </select></div>
+                    </div>
+                    <div><label className="text-xs text-muted-foreground mb-1 block">Description</label>
+                        <input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="Optional description" value={desc} onChange={(e) => setDesc(e.target.value)} /></div>
+
+                    {/* Type-specific fields */}
+                    {type === "jetton" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">Jetton Configuration</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Token Name</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="Swarm Token" value={tokenName} onChange={(e) => setTokenName(e.target.value)} /></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Symbol</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="SWARM" value={tokenSymbol} onChange={(e) => setTokenSymbol(e.target.value)} /></div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Decimals</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" type="number" value={decimals} onChange={(e) => setDecimals(e.target.value)} /></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Total Supply</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="1000000000" value={totalSupply} onChange={(e) => setTotalSupply(e.target.value)} /></div>
+                            </div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Metadata URI</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="https://..." value={metadataUri} onChange={(e) => setMetadataUri(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Admin Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQD..." value={adminAddress} onChange={(e) => setAdminAddress(e.target.value)} /></div>
+                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={mintable} onChange={(e) => setMintable(e.target.checked)} />Mintable (admin can mint more)</label>
+                        </div>
+                    )}
+
+                    {type === "nft_collection" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">NFT Collection Configuration</p>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Collection Name</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="Agent Passes" value={collectionName} onChange={(e) => setCollectionName(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Metadata URI</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="https://..." value={metadataUri} onChange={(e) => setMetadataUri(e.target.value)} /></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Max Supply (0=unlimited)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" type="number" value={maxSupply} onChange={(e) => setMaxSupply(e.target.value)} /></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Royalty %</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" type="number" step="0.1" value={royaltyPercent} onChange={(e) => setRoyaltyPercent(e.target.value)} /></div>
+                            </div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Royalty Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQD..." value={royaltyAddress} onChange={(e) => setRoyaltyAddress(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Owner Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQD..." value={ownerAddress} onChange={(e) => setOwnerAddress(e.target.value)} /></div>
+                        </div>
+                    )}
+
+                    {type === "nft_item" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">NFT Item Configuration</p>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Collection Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQC..." value={collectionAddress} onChange={(e) => setCollectionAddress(e.target.value)} /></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Item Index</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" type="number" value={itemIndex} onChange={(e) => setItemIndex(e.target.value)} /></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Owner Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQA..." value={itemOwner} onChange={(e) => setItemOwner(e.target.value)} /></div>
+                            </div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Metadata URI</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="https://..." value={metadataUri} onChange={(e) => setMetadataUri(e.target.value)} /></div>
+                        </div>
+                    )}
+
+                    {type === "sbt" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">Soulbound Token Configuration</p>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">SBT Collection Name</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="Agent Credentials" value={sbtName} onChange={(e) => setSbtName(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Metadata URI</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="https://..." value={metadataUri} onChange={(e) => setMetadataUri(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Authority Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQD..." value={authorityAddress} onChange={(e) => setAuthorityAddress(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Owner Address</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQA..." value={sbtOwner} onChange={(e) => setSbtOwner(e.target.value)} /></div>
+                            <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={revocable} onChange={(e) => setRevocable(e.target.checked)} />Revocable by authority</label>
+                        </div>
+                    )}
+
+                    {type === "smart_contract" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">Smart Contract Configuration</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Language</label>
+                                    <select className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" value={language} onChange={(e) => setLanguage(e.target.value as "tact" | "func" | "fift")}>
+                                        <option value="tact">Tact</option><option value="func">FunC</option><option value="fift">Fift</option>
+                                    </select></div>
+                                <div className="flex items-end pb-1"><label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={precompiled} onChange={(e) => setPrecompiled(e.target.checked)} />Pre-compiled BOC</label></div>
+                            </div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">{precompiled ? "BOC Hex" : "Source Code"}</label>
+                                <textarea className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono h-32 resize-none" placeholder={precompiled ? "b5ee9c72..." : "contract MyContract { ... }"} value={sourceCode} onChange={(e) => setSourceCode(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Init Parameters (JSON)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" value={initParams} onChange={(e) => setInitParams(e.target.value)} /></div>
+                        </div>
+                    )}
+
+                    {type === "dex_pool" && (
+                        <div className="space-y-3 border-t border-border pt-3">
+                            <p className="text-xs font-medium text-purple-400">DEX Pool Configuration</p>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Platform</label>
+                                    <select className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" value={platform} onChange={(e) => setPlatform(e.target.value as "dedust" | "stonfi")}>
+                                        <option value="dedust">DeDust</option><option value="stonfi">STON.fi</option>
+                                    </select></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Pool Type</label>
+                                    <select className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" value={poolType} onChange={(e) => setPoolType(e.target.value as "volatile" | "stable")}>
+                                        <option value="volatile">Volatile</option><option value="stable">Stable</option>
+                                    </select></div>
+                            </div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Token A Address (&quot;native&quot; for TON)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" value={tokenA} onChange={(e) => setTokenA(e.target.value)} /></div>
+                            <div><label className="text-xs text-muted-foreground mb-1 block">Token B Address (Jetton)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm font-mono" placeholder="EQC..." value={tokenB} onChange={(e) => setTokenB(e.target.value)} /></div>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Token A Amount (nano)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="10000000000" value={amountA} onChange={(e) => setAmountA(e.target.value)} /></div>
+                                <div><label className="text-xs text-muted-foreground mb-1 block">Token B Amount (nano)</label><input className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm" placeholder="100000000000" value={amountB} onChange={(e) => setAmountB(e.target.value)} /></div>
+                            </div>
+                        </div>
+                    )}
+
+                    {error && <p className="text-xs text-red-400">{error}</p>}
+                </div>
+                <div className="flex gap-2 justify-end pt-2">
+                    <Button variant="ghost" size="sm" onClick={onClose}>Cancel</Button>
+                    <Button size="sm" onClick={handle} disabled={loading}>
+                        {loading ? <RefreshCw className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Rocket className="h-3.5 w-3.5 mr-1.5" />}Deploy
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+// ═══════════════════════════════════════════════════════════════
 // Page
 // ═══════════════════════════════════════════════════════════════
 
@@ -1185,16 +1463,19 @@ export default function TonModPage() {
     const [feeConfig, setFeeConfig] = useState<TonFeeConfig | null>(null);
     const [auditEntries, setAuditEntries] = useState<TonAuditEntry[]>([]);
 
+    const [deployments, setDeployments] = useState<TonDeployment[]>([]);
+
     const [showSend, setShowSend] = useState(false);
     const [showBounty, setShowBounty] = useState(false);
     const [showSub, setShowSub] = useState(false);
     const [showGenWallet, setShowGenWallet] = useState(false);
+    const [showDeploy, setShowDeploy] = useState(false);
 
     const hdrs = useCallback(() => ({ "x-wallet-address": wallet || "" }), [wallet]);
 
     const fetchAll = useCallback(async () => {
         if (!orgId) return;
-        const [w, p, b, s, aw, pol, fees, a] = await Promise.allSettled([
+        const [w, p, b, s, aw, pol, fees, a, dep] = await Promise.allSettled([
             fetch(`/api/v1/ton/connect?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
             fetch(`/api/v1/ton/payments?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
             fetch(`/api/v1/ton/bounties?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
@@ -1203,6 +1484,7 @@ export default function TonModPage() {
             fetch(`/api/v1/ton/policies?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
             fetch(`/api/v1/ton/fees?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
             fetch(`/api/v1/ton/audit?orgId=${orgId}&limit=100`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
+            fetch(`/api/v1/ton/deploy?orgId=${orgId}`, { headers: hdrs() }).then((r) => r.ok ? r.json() : null),
         ]);
 
         const walletData = w.status === "fulfilled" ? w.value : null;
@@ -1221,6 +1503,7 @@ export default function TonModPage() {
         if (pol.status === "fulfilled" && pol.value) setPolicy(pol.value.policy || null);
         if (fees.status === "fulfilled" && fees.value) setFeeConfig(fees.value.feeConfig || null);
         if (a.status === "fulfilled" && a.value) setAuditEntries(a.value.entries || []);
+        if (dep.status === "fulfilled" && dep.value) setDeployments(dep.value.deployments || []);
     }, [orgId, hdrs]);
 
     useEffect(() => {
@@ -1438,6 +1721,22 @@ export default function TonModPage() {
         return { error: result.error || "Failed" };
     };
 
+    const handleDeploy = async (d: { type: TonDeployType; name: string; description: string; network: string; config: Record<string, unknown> }) => {
+        if (!orgId || !wallet) return { error: "Not connected" };
+        const res = await fetch("/api/v1/ton/deploy", { method: "POST", headers: { ...hdrs(), "Content-Type": "application/json" }, body: JSON.stringify({ orgId, type: d.type, name: d.name, description: d.description, deployerAddress: wallet, network: d.network, config: { type: d.type, ...d.config }, createdBy: wallet }) });
+        const result = await res.json();
+        if (res.ok) { fetchAll(); return {}; }
+        return { error: result.error || "Failed" };
+    };
+
+    const handleDeployAction = async (id: string, action: string, extra: Record<string, string> = {}) => {
+        if (!orgId) return;
+        setActionLoading(`${action}-${id}`);
+        await fetch("/api/v1/ton/deploy", { method: "PATCH", headers: { ...hdrs(), "Content-Type": "application/json" }, body: JSON.stringify({ orgId, id, action, ...extra }) });
+        await fetchAll();
+        setActionLoading(null);
+    };
+
     const pendingCount = payments.filter((p) => p.status === "pending_approval").length;
     const primaryWallet = connectedWallets.find((w) => w.verified) || connectedWallets[0];
     const allWallets = [...connectedWallets, ...agentWallets.filter((aw) => aw.status === "active").map((aw) => ({ address: aw.address, verified: false }))];
@@ -1483,12 +1782,14 @@ export default function TonModPage() {
                     {tab === "history" && <HistoryPanel address={primaryWallet?.address || null} network="mainnet" />}
                     {tab === "analytics" && <AnalyticsPanel payments={payments} bounties={bounties} subscriptions={subscriptions} feeConfig={feeConfig} />}
                     {tab === "agent-wallets" && <AgentWalletsPanel agentWallets={agentWallets} actionLoading={actionLoading} onGenerate={() => setShowGenWallet(true)} onAction={handleAgentWalletAction} onRefresh={fetchAll} />}
+                    {tab === "deploy" && <DeployPanel deployments={deployments} actionLoading={actionLoading} onCreate={() => setShowDeploy(true)} onAction={handleDeployAction} onRefresh={fetchAll} />}
                     {tab === "policy" && <PolicyPanel policy={policy} feeConfig={feeConfig} onSave={handleSavePolicy} onSaveFee={handleSaveFee} onRefresh={fetchAll} />}
                     {tab === "audit" && <AuditPanel entries={auditEntries} onRefresh={fetchAll} />}
                     {tab === "prank" && <PrankPanel orgId={orgId} wallet={wallet} />}
                 </>
             )}
 
+            <CreateDeployDialog open={showDeploy} onClose={() => setShowDeploy(false)} onCreate={handleDeploy} />
             <SendPaymentDialog open={showSend} onClose={() => setShowSend(false)} wallets={allWallets.length > 0 ? allWallets : [{ address: wallet || "" }]} onSend={handleSendPayment} />
             <PostBountyDialog open={showBounty} onClose={() => setShowBounty(false)} wallets={allWallets.length > 0 ? allWallets : [{ address: wallet || "" }]} onPost={handlePostBounty} />
             <CreateSubDialog open={showSub} onClose={() => setShowSub(false)} wallets={allWallets.length > 0 ? allWallets : [{ address: wallet || "" }]} onCreate={handleCreateSub} />

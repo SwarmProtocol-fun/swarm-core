@@ -102,6 +102,10 @@ const wsState = new Map();
 // agentId → { timestamps: number[] }
 const rateLimits = new Map();
 
+// ── Invoke State ─────────────────────────────────────────────────────────────
+// requestId → { resolve, reject, timeout }
+const pendingInvocations = new Map();
+
 // ── Gateway State ────────────────────────────────────────────────────────────
 // gatewayId → Set<ws>
 const gatewayConnections = new Map();
@@ -847,6 +851,95 @@ app.get("/diagnostics", async (req, res) => {
   res.json(result);
 });
 
+// ── POST /agents/:agentId/invoke ──────────────────────────────────────────────
+// Synchronous request→response: sends a prompt to a connected agent and waits
+// for the agent to reply with { type: "invoke:response", requestId, result }.
+// The agent can use any tools available to it to fulfill the prompt.
+//
+// Auth: Ed25519 signature of "POST:/agents/invoke:{agentId}:{ts}"
+//       passed as query params ?sig=<base64>&ts=<epochMs>
+//       OR header x-internal-secret matching INTERNAL_SERVICE_SECRET (for same-origin calls)
+//
+const INVOKE_TIMEOUT_MS = parseInt(optionalEnv("INVOKE_TIMEOUT_MS", "120000"), 10);
+
+app.post("/agents/:agentId/invoke", async (req, res) => {
+  const { agentId } = req.params;
+  const { prompt, timeout } = req.body || {};
+
+  if (!prompt) {
+    return res.status(400).json({ error: "prompt is required" });
+  }
+
+  // ── Auth: internal secret OR Ed25519 signature ──
+  const internalSecret = process.env.INTERNAL_SERVICE_SECRET;
+  const headerSecret = req.headers["x-internal-secret"];
+
+  if (internalSecret && headerSecret === internalSecret) {
+    // Trusted internal call — skip signature verification
+  } else {
+    const sig = req.query.sig;
+    const ts = req.query.ts;
+    if (!sig || !ts) {
+      return res.status(401).json({ error: "Missing auth — provide sig+ts query params or x-internal-secret header" });
+    }
+    const tsMs = parseInt(ts, 10);
+    if (Math.abs(Date.now() - tsMs) > AUTH_WINDOW_MS) {
+      return res.status(401).json({ error: "Timestamp expired" });
+    }
+    const signedMessage = `POST:/agents/invoke:${agentId}:${ts}`;
+    const agentData = await verifyEd25519(agentId, signedMessage, sig);
+    if (!agentData) {
+      return res.status(401).json({ error: "Invalid signature" });
+    }
+  }
+
+  // ── Check agent is online ──
+  const sockets = agentConnections.get(agentId);
+  if (!sockets || sockets.size === 0) {
+    return res.status(503).json({ error: "Agent is not connected" });
+  }
+
+  const requestId = crypto.randomUUID();
+  const effectiveTimeout = Math.min(timeout || INVOKE_TIMEOUT_MS, INVOKE_TIMEOUT_MS);
+
+  // ── Send invoke request to agent ──
+  const invokePayload = JSON.stringify({
+    type: "invoke",
+    requestId,
+    prompt,
+    ts: Date.now(),
+  });
+
+  let sent = false;
+  for (const ws of sockets) {
+    if (ws.readyState === 1) {
+      ws.send(invokePayload);
+      sent = true;
+      break; // Send to one socket only
+    }
+  }
+
+  if (!sent) {
+    return res.status(503).json({ error: "Agent connected but no healthy socket" });
+  }
+
+  // ── Wait for agent response ──
+  try {
+    const result = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        pendingInvocations.delete(requestId);
+        reject(new Error("Agent did not respond in time"));
+      }, effectiveTimeout);
+
+      pendingInvocations.set(requestId, { resolve, reject, timeout: timer });
+    });
+
+    res.json({ ok: true, requestId, result });
+  } catch (err) {
+    res.status(504).json({ error: err.message, requestId });
+  }
+});
+
 // GET /agents/online (no auth required — public info)
 app.get("/agents/online", (_req, res) => {
   const online = [];
@@ -1576,6 +1669,32 @@ wss.on("connection", async (ws, _req) => {
 
       ws.send(JSON.stringify(acceptPayload));
       log("info", "Task accepted", { agentId, taskId: msg.taskId });
+      return;
+    }
+
+    // Invoke response — agent returning result for a synchronous invoke request
+    if (type === "invoke:response" && msg.requestId) {
+      const pending = pendingInvocations.get(msg.requestId);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        pendingInvocations.delete(msg.requestId);
+        pending.resolve(msg.result || msg.data || null);
+        log("info", "Invoke response received", { agentId, requestId: msg.requestId });
+      } else {
+        log("warn", "Invoke response for unknown/expired requestId", { agentId, requestId: msg.requestId });
+      }
+      return;
+    }
+
+    // Invoke error — agent failed to process the invoke
+    if (type === "invoke:error" && msg.requestId) {
+      const pending = pendingInvocations.get(msg.requestId);
+      if (pending) {
+        clearTimeout(pending.timeout);
+        pendingInvocations.delete(msg.requestId);
+        pending.reject(new Error(msg.error || "Agent invoke failed"));
+        log("warn", "Invoke error received", { agentId, requestId: msg.requestId, error: msg.error });
+      }
       return;
     }
 
