@@ -1,5 +1,7 @@
 [build]
-  command = "npm ci && npx next build --turbopack"
+  # Build skipped — handled by GitHub Actions (Netlify OOMs on 573 routes).
+  # Netlify CLI deploys the pre-built .next directory from CI.
+  command = "echo 'Deployed from GitHub Actions'"
   publish = ".next"
 
 [build.environment]
