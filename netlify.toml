@@ -1,5 +1,5 @@
 [build]
   base = "SwarmApp"
   ignore = "exit 0"
-  command = "echo 'Skipped — deployed from GitHub Actions'"
+  command = "npm run build"
   publish = "SwarmApp/.next"

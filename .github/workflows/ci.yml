@@ -115,9 +115,8 @@ jobs:
           cache: npm
           cache-dependency-path: SwarmApp/package-lock.json
       - run: npm ci
-      - run: npm run build
-      - name: Deploy to Netlify
-        run: npx netlify-cli deploy --prod --dir=.next --site=${{ secrets.NETLIFY_SITE_ID }} --auth=${{ secrets.NETLIFY_AUTH_TOKEN }}
+      - name: Build and Deploy to Netlify
+        run: npx netlify-cli deploy --prod --build --site=${{ secrets.NETLIFY_SITE_ID }} --auth=${{ secrets.NETLIFY_AUTH_TOKEN }}
 
 # ─── Hub jobs ──────────────────────────────────────────────────────────────────
 
