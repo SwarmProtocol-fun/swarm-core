@@ -20,7 +20,7 @@
     "decentralized"
   ],
   "author": "Swarm Protocol",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "dockerode": "^4.0.10",
     "dotenv": "^17.3.1",

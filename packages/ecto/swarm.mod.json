@@ -1,0 +1,19 @@
+{
+  "id": "dev.swarmprotocol.ecto",
+  "name": "Ecto Agent Runtime",
+  "version": "1.0.0",
+  "swarmApi": "^0.1.0",
+  "entrypoint": {
+    "type": "worker",
+    "url": "https://ecto.swarmprotocol.fun/v1.0.0/worker.js"
+  },
+  "permissions": [
+    "swarm:agents.spawn",
+    "swarm:agents.manage",
+    "swarm:messages.send",
+    "swarm:messages.read",
+    "storage:vault:unlimited",
+    "net:fetch:*",
+    "compute:docker:container"
+  ]
+}

@@ -307,9 +307,27 @@ The subnet output (trained models) becomes the **coordination brain** for robot 
 
 ---
 
+## 📦 Swarm Mod System
+
+This subnet is packaged as a Swarm mod. See `swarm.mod.json` for the manifest.
+
+```
+bittensor-mod/
+├── swarm.mod.json             # Mod manifest
+├── LICENSE                    # Swarm Open Source License v1.0
+├── CONTRIBUTING.md            # Contributor agreement (links to parent DAO)
+├── requirements.txt           # Python dependencies
+├── demo.py                    # End-to-end demo
+├── subnet/                    # Core subnet (protocol, miner, validator)
+├── scenarios/                 # Care scenario bank
+└── scripts/                   # Deployment tools
+```
+
 ## 📄 License
 
-MIT License (same as Swarm Protocol)
+Swarm Open Source License v1.0 — see [LICENSE](LICENSE) and the
+[parent project](https://github.com/EcosystemNetwork/Swarm/blob/main) for full terms
+including IP Disposition Clause and DAO governance
 
 ---
 

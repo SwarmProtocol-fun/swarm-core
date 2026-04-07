@@ -1,21 +1,85 @@
-MIT License
+Swarm Open Source License v1.0
 
-Copyright (c) 2026 PerkOS
+Copyright (c) 2026 PerkOS / Nephilim Venture Capital
+
+================================================================================
+PART 1 — OPEN SOURCE GRANT
+================================================================================
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to use,
+copy, modify, merge, publish, distribute, and sublicense the Software, subject
+to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. The above copyright notice and this permission notice shall be included in
+   all copies or substantial portions of the Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+2. Contributions to the Software are governed by the Contributor Agreement
+   described in CONTRIBUTING.md. By submitting a contribution, you agree to
+   its terms.
+
+3. The Software is provided "AS IS", without warranty of any kind, express or
+   implied, including but not limited to the warranties of merchantability,
+   fitness for a particular purpose, and noninfringement.
+
+================================================================================
+PART 2 — INTELLECTUAL PROPERTY DISPOSITION CLAUSE
+================================================================================
+
+The following terms govern the sale, transfer, or exclusive licensing of the
+Software's intellectual property rights ("IP Disposition"):
+
+A. MINIMUM VALUATION FLOOR
+
+   The IP rights to this Software (including patents, trademarks, trade
+   secrets, and copyrights held by the project) SHALL NOT be sold,
+   exclusively licensed, or otherwise transferred to any third party for
+   a total consideration below the following thresholds:
+
+   - Year 1  (April 7, 2026 — April 6, 2027):   $100,000,000 USD
+   - Year 2  (April 7, 2027 — April 6, 2028):    $1,000,000,000 USD
+   - Year 3  (April 7, 2028 — April 6, 2029):    $10,000,000,000 USD
+   - Year N  (each subsequent year):              10x the prior year's floor
+
+   "Total consideration" includes cash, stock, earn-outs, royalties, and any
+   other form of value received by the selling parties.
+
+B. PROCEEDS DISTRIBUTION
+
+   Any proceeds from an IP Disposition SHALL be distributed as follows:
+
+   - 33%  — Nephilim Venture Capital (or its successors/assigns)
+   - 33%  — Core Team (as defined in GOVERNANCE.md)
+   - 33%  — Community Contributors (pro-rata by contribution weight as
+             defined in GOVERNANCE.md)
+   -  1%  — Security Bounty Reserve (held for ongoing security research
+             and vulnerability disclosure rewards)
+
+C. GOVERNANCE APPROVAL
+
+   Any IP Disposition requires approval from:
+   - Nephilim Venture Capital (or its designated representative), AND
+   - A supermajority (2/3) of the Core Team as listed in GOVERNANCE.md
+
+D. NON-EXCLUSIVE LICENSING
+
+   Nothing in this clause restricts non-exclusive commercial licensing,
+   SaaS offerings, support contracts, or other revenue activities that
+   do not constitute a full transfer of IP rights. Such revenues are
+   governed by the project's governance documents.
+
+================================================================================
+PART 3 — GENERAL
+================================================================================
+
+IN NO EVENT SHALL THE AUTHORS, COPYRIGHT HOLDERS, OR NEPHILIM VENTURE CAPITAL
+BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+This license is binding on all parties who hold copyright in the Software.
+Contributors assign sufficient rights via the Contributor Agreement to enable
+enforcement of these terms.
+
+For questions about this license, contact the project maintainers as described
+in GOVERNANCE.md.

@@ -1,0 +1,17 @@
+{
+  "id": "dev.swarmprotocol.swarm-node",
+  "name": "Swarm Node Daemon",
+  "version": "1.0.0",
+  "swarmApi": "^0.1.0",
+  "entrypoint": {
+    "type": "worker",
+    "url": "https://node.swarmprotocol.fun/v1.0.0/worker.js"
+  },
+  "permissions": [
+    "swarm:agents.spawn",
+    "swarm:agents.manage",
+    "compute:docker:container",
+    "net:fetch:*",
+    "storage:local:unlimited"
+  ]
+}

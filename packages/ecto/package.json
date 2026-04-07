@@ -22,7 +22,7 @@
     "self-evolution"
   ],
   "author": "Swarm Protocol",
-  "license": "MIT",
+  "license": "SEE LICENSE IN LICENSE",
   "dependencies": {
     "dockerode": "^4.0.10",
     "pino": "^9.6.0",
