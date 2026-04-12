@@ -20,7 +20,7 @@ import {
   isHCSConfigured,
   submitScoreEvent,
   type ScoreEvent,
-} from "@/lib/hedera-hcs-client";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 
 // ═══════════════════════════════════════════════════════════════
 // Core Ingestion Pipeline
@@ -131,7 +131,7 @@ function mapToScoreEventType(eventType: CreditEventType): ScoreEvent["type"] {
 // Normalizers — Convert source system events to CreditEventInput
 // ═══════════════════════════════════════════════════════════════
 
-/** Normalize a ScoreEvent (from hedera-hcs-client) into CreditEventInput */
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 export function normalizeScoreEvent(
   scoreEvent: ScoreEvent,
   agentId: string,

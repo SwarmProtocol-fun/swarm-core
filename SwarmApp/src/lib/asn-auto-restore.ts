@@ -8,7 +8,7 @@
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc } from "firebase/firestore";
 import { retrieveContent, isStorachaConfigured } from "@/lib/storacha/client";
-import { getAgentNFTIdentity } from "@/lib/hedera-nft-client";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 
 export interface AutoRestoreResult {
     restored: boolean;

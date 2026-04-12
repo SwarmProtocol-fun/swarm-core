@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { CLAWFLOW_CATEGORIES, TOTAL_FLOWS, type ClawFlowCategory, type ClawFlow } from "@/lib/clawflows";
+// [swarm-core] ClawFlows removed — install swarm-flow mod
 import { Search, ExternalLink, Clock, Zap, Play, ChevronDown, CheckCircle2, Loader2, Plus, Layers } from "lucide-react";
 import { useOrg } from "@/contexts/OrgContext";
 import { collection, query, where, onSnapshot } from "firebase/firestore";

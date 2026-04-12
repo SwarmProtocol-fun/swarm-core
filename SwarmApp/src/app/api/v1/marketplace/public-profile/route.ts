@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { getPrivacySettings } from "@/lib/hedera-privacy";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 import type { Agent } from "@/lib/firestore";
 
 export async function GET(req: NextRequest) {

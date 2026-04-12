@@ -15,7 +15,7 @@ import { NextRequest } from "next/server";
 import { requirePlatformAdminOrAgent, unauthorized } from "@/lib/auth-guard";
 import { getCreditHistory } from "@/lib/credit-service";
 import { rateLimit } from "@/app/api/v1/rate-limit";
-import type { ScoreEvent } from "@/lib/hedera-hcs-client";
+// [swarm-core] Hedera type removed — install swarm-hedera mod
 
 const VALID_EVENT_TYPES = new Set([
     "task_complete", "task_fail", "skill_report", "penalty", "bonus", "checkpoint",

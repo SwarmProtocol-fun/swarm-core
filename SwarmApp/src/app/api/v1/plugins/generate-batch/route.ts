@@ -20,7 +20,8 @@ import { getWalletAddress } from "@/lib/auth-guard";
 import "@/lib/plugins"; // ensure plugins are registered
 import { getPlugin } from "@/lib/plugins/registry";
 import { createJob, getActiveJob } from "@/lib/plugins/generation-jobs";
-import { THEME_PRESETS } from "@/components/mods/office-sim/themes";
+// [swarm-core] Office-sim removed — install swarm-office-sim mod
+const THEME_PRESETS: Record<string, unknown> = {};
 import type { AssetKind, AssetPurpose } from "@/lib/plugins/types";
 
 /** Standard office furniture batch */

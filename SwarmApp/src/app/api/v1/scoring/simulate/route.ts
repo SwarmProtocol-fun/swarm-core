@@ -12,7 +12,7 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { validateSession } from "@/lib/session";
 import { simulateScoreChange } from "@/lib/scoring-engine";
-import type { ScoreEvent } from "@/lib/hedera-hcs-client";
+// [swarm-core] Hedera type removed — install swarm-hedera mod
 
 export async function POST(request: NextRequest) {
     const session = await validateSession();

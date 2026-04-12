@@ -8,7 +8,7 @@
 import { NextRequest } from "next/server";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { getReviewItem, updateReviewItem } from "@/lib/credit-ops/review";
-import { getAgentSlashingHistory } from "@/lib/hedera-slashing";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 import type { ReviewResolution } from "@/lib/credit-ops/types";
 
 interface RouteContext {

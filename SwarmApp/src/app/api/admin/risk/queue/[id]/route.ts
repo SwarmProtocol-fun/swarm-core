@@ -20,8 +20,8 @@ import {
   saveRiskProfile,
 } from "@/lib/fraud-detection";
 import { computeRiskProfile } from "@/lib/fraud-risk-scoring";
-import { emitPenalty } from "@/lib/hedera-score-emitter";
-import { createPenaltyProposal } from "@/lib/hedera-governance";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 
 /** GET — Fetch single case with full details */
 export async function GET(

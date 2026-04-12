@@ -29,8 +29,8 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { checkAndRestoreASN } from "@/lib/asn-auto-restore";
-import { emitSkillReport } from "@/lib/hedera-score-emitter";
-import { createPrivateMemoryTopic, postPrivateMemory } from "@/lib/hedera-agent-memory";
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
+// [swarm-core] Hedera integration removed — install swarm-hedera mod
 
 const HEDERA_TESTNET_RPC = "https://testnet.hashio.io/api";
 

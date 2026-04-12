@@ -12,26 +12,8 @@
  */
 
 import { db } from "@/lib/firebase";
-import {
-    doc,
-    getDoc,
-    getDocs,
-    collection,
-    query,
-    where,
-    updateDoc,
-    serverTimestamp,
-} from "firebase/firestore";
-import {
-    getScoreBand,
-    getDefaultPolicy,
-    type ScoreBandInfo,
-    type PolicyState,
-} from "@/lib/credit-scoring";
-import {
-    getReputationTopicId,
-    type ScoreEvent,
-} from "@/lib/hedera-hcs-client";
+// [swarm-core] Hedera HCS removed — install swarm-hedera mod
+type ScoreEvent = { agentId: string; delta: number; reason: string; timestamp: number };
 import { getCached, setCache } from "@/lib/credit-cache";
 
 // ═══════════════════════════════════════════════════════════════

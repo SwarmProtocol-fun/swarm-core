@@ -9,12 +9,8 @@ import { SessionProvider } from "@/contexts/SessionContext";
 import SparkleTrail from "@/components/SparkleTrail";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SkinProvider } from "@/contexts/SkinContext";
-import { JrpgProvider } from "@/contexts/JrpgContext";
-import { PokemonProvider } from "@/contexts/PokemonContext";
-import { MechaProvider } from "@/contexts/MechaContext";
 import { CommandBar } from "@/components/command-bar";
 import { PostHogProvider } from "@/components/posthog-provider";
-import { TonConnectProvider } from "@/components/ton-connect-provider";
 
 import AutoSiwe from "@/components/AutoSiwe";
 
@@ -52,11 +48,7 @@ export default function RootLayout({
       <body className={inter.className} suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <SkinProvider>
-          <JrpgProvider>
-          <PokemonProvider>
-          <MechaProvider>
           <Web3Provider>
-            <TonConnectProvider>
             <SessionProvider>
             <AutoSiwe />
             <OrgProvider>
@@ -68,11 +60,7 @@ export default function RootLayout({
               </PostHogProvider>
             </OrgProvider>
             </SessionProvider>
-            </TonConnectProvider>
           </Web3Provider>
-          </MechaProvider>
-          </PokemonProvider>
-          </JrpgProvider>
           </SkinProvider>
         </ThemeProvider>
       </body>
