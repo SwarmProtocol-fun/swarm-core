@@ -9,6 +9,11 @@ import { debug } from '@/lib/debug';
 import type { Wallet } from 'thirdweb/wallets';
 
 export function Web3ProviderInner({ children }: { children: React.ReactNode }) {
+  if (!thirdwebClient) {
+    // No thirdweb client configured — render children without wallet connect
+    return <>{children}</>;
+  }
+
   return (
     <ThirdwebProvider>
       <AutoConnect
