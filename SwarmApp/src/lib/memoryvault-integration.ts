@@ -67,7 +67,7 @@ export interface FilecoinMemory {
 
 export interface MemorySyncStatus {
   hederaMessages: number;
-  storachaBackups: number;
+  storageBackups: number;
   filecoinArchives: number;
   lastSync: number;
 }
@@ -237,7 +237,7 @@ export async function checkMemoryAccess(
 /**
  * Sync agent memories across all chains:
  * - Hedera HCS (real-time, encrypted, cheap)
- * - Storacha (decentralized backup)
+ * - Storage (decentralized backup)
  * - Filecoin via MemoryVault Pro (100+ year archival)
  */
 export async function syncMemoriesAcrossChains(
@@ -249,13 +249,13 @@ export async function syncMemoriesAcrossChains(
 
   // This would integrate with:
   // 1. Hedera HCS (retrievePrivateMemories from hedera-agent-memory.ts)
-  // 2. Storacha (existing ASN backup system)
+  // 2. Storage backup system
   // 3. MemoryVault Pro (getMemoriesByOwner above)
 
   // For now, return placeholder data
   return {
     hederaMessages: 0,
-    storachaBackups: 0,
+    storageBackups: 0,
     filecoinArchives: 0,
     lastSync: Date.now(),
   };

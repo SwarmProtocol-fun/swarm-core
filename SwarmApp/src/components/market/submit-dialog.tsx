@@ -21,7 +21,8 @@ import {
 import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { type MarketItemType, type PricingModel, type MarketPricing, AGENT_CATEGORIES } from "@/lib/skills";
 import { trackMarketplaceEvent } from "@/lib/posthog";
-import { uploadArtifact } from "@/lib/storacha/api";
+// [swarm-core] Storacha removed — artifact uploads disabled in core
+const uploadArtifact = async (..._args: unknown[]) => ({ cid: "", url: "" });
 
 interface UploadedScreenshot {
     cid: string;
@@ -98,7 +99,7 @@ export function SubmitMarketItemDialog({
     const [repoUrl, setRepoUrl] = useState("");
     const [demoUrl, setDemoUrl] = useState("");
     const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-    // Screenshot artifacts (Storacha)
+    // Screenshot artifacts
     const [screenshots, setScreenshots] = useState<UploadedScreenshot[]>([]);
     const [uploadingScreenshot, setUploadingScreenshot] = useState(false);
 
@@ -793,7 +794,7 @@ export function SubmitMarketItemDialog({
                         />
                     </div>
 
-                    {/* Screenshots (Storacha) */}
+                    {/* Screenshots */}
                     <div className="space-y-2">
                         <label className="text-sm font-medium mb-1 block">Screenshots (optional)</label>
                         {screenshots.length > 0 && (
@@ -849,7 +850,7 @@ export function SubmitMarketItemDialog({
                                 <><ImageIcon className="h-3.5 w-3.5 text-muted-foreground" /><span className="text-xs text-muted-foreground">{orgId ? "Add screenshot" : "Select an org to upload"}</span></>
                             )}
                         </label>
-                        <p className="text-[10px] text-muted-foreground">Stored on IPFS via Storacha. Images help reviewers evaluate your submission.</p>
+                        <p className="text-[10px] text-muted-foreground">Upload screenshots for reviewers. Images help reviewers evaluate your submission.</p>
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">

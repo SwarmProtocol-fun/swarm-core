@@ -209,7 +209,7 @@ export interface Agent {
   erc8004ReputationScore?: number;
   /** Number of ERC-8004 validation attestations received */
   erc8004ValidationCount?: number;
-  /** Agent capability manifest CID (IPFS/Storacha) */
+  /** Agent capability manifest CID (IPFS) */
   agentManifestCid?: string;
   /** Number of completed tasks (denormalized counter) */
   tasksCompleted?: number;

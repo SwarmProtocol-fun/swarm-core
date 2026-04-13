@@ -46,10 +46,10 @@ export interface GeneratedAsset {
   /** Generation job that produced this asset */
   jobId: string;
 
-  /** Permanent storage URL (Storacha gateway or fallback) */
+  /** Permanent storage URL (Storage gateway or fallback) */
   url: string;
-  /** Storacha CID if uploaded to decentralized storage */
-  storachaCid?: string;
+  /** Storage CID if uploaded to decentralized storage */
+  storageCid?: string;
   /** MIME type */
   mimeType: string;
   /** Size in bytes */
@@ -141,7 +141,7 @@ export interface StepAdvanceResult {
   steps: JobStep[];
   currentStep: number;
   progress: number;
-  /** Set when job completes — the downloadable URL before Storacha upload */
+  /** Set when job completes — the downloadable URL before Storage upload */
   outputUrl?: string;
   /** Set when job fails */
   error?: string;

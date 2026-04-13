@@ -406,7 +406,7 @@ export default function SubmissionDetailPage() {
                       {entry.artifactCids.map((cid) => (
                         <a
                           key={cid}
-                          href={`https://${cid}.ipfs.storacha.link/`}
+                          href={`https://${cid}.ipfs.ipfs.io/`}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-[10px] px-2 py-1 rounded bg-purple-500/10 text-purple-400 hover:bg-purple-500/20 flex items-center gap-1 font-mono"

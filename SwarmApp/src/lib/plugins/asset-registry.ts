@@ -40,7 +40,7 @@ function toAsset(id: string, data: Record<string, unknown>): GeneratedAsset {
     pluginId: (data.pluginId as string) || "",
     jobId: (data.jobId as string) || "",
     url: (data.url as string) || "",
-    storachaCid: data.storachaCid as string | undefined,
+    storageCid: data.storageCid as string | undefined,
     mimeType: (data.mimeType as string) || "",
     sizeBytes: data.sizeBytes as number | undefined,
     prompt: data.prompt as string | undefined,

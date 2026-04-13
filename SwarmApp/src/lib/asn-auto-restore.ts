@@ -7,8 +7,10 @@
 
 import { db } from "@/lib/firebase";
 import { collection, doc, getDoc } from "firebase/firestore";
-import { retrieveContent, isStorachaConfigured } from "@/lib/storacha/client";
-// [swarm-core] Hedera integration removed — install swarm-hedera mod
+// [swarm-core] Storage and Hedera removed
+const retrieveContent = async () => null;
+const isStorageConfigured = () => false;
+const getAgentNFTIdentity = async (_id: string) => null;
 
 export interface AutoRestoreResult {
     restored: boolean;
@@ -50,16 +52,16 @@ export async function checkAndRestoreASN(asn: string): Promise<AutoRestoreResult
         const backupData = asnDoc.data();
         const { cid, sizeBytes, createdAt, lastBackup, walletAddress, messageCount } = backupData;
 
-        // Download memory from Storacha
+        // Download memory from storage provider
         let memoryData: any;
 
-        if (isStorachaConfigured()) {
+        if (isStorageConfigured()) {
             try {
                 const response = await retrieveContent(cid);
                 const text = await response.text();
                 memoryData = JSON.parse(text);
             } catch (error) {
-                console.error("Failed to download from Storacha during auto-restore:", error);
+                console.error("Failed to download from storage provider during auto-restore:", error);
                 return {
                     restored: false,
                     asn,
@@ -67,8 +69,8 @@ export async function checkAndRestoreASN(asn: string): Promise<AutoRestoreResult
                 };
             }
         } else {
-            // Fallback if Storacha not configured (dev mode)
-            console.warn("Storacha not configured - auto-restore returning metadata only");
+            // Fallback if storage provider not configured (dev mode)
+            console.warn("storage provider not configured - auto-restore returning metadata only");
             memoryData = null;
         }
 

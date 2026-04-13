@@ -14,7 +14,7 @@
  *
  * Integration points:
  *   - ASN identity: Each agent's PeerId is derived from their ASN
- *   - Storacha: CID sharing via libp2p pub/sub
+ *   - IPFS: CID sharing via libp2p pub/sub
  *   - Flow: Payment notifications via libp2p messaging
  *   - Coordination spaces: Real-time agent collaboration
  *
@@ -83,7 +83,7 @@ export interface P2PMessage {
     messageType: P2PMessageType;
     /** Message payload (JSON-safe) */
     payload: Record<string, unknown>;
-    /** Optional CID reference (Storacha artifact) */
+    /** Optional CID reference (IPFS artifact) */
     cidRef: string | null;
     /** Message signature (Ed25519) */
     signature: string | null;
@@ -136,7 +136,7 @@ export const MESH_TOPICS = {
     orgBroadcast: (orgId: string) => `swarm/org/${orgId}/broadcast`,
     /** Coordination space channel */
     coordination: (orgId: string, spaceId: string) => `swarm/org/${orgId}/coord/${spaceId}`,
-    /** CID sharing channel (Storacha artifacts) */
+    /** CID sharing channel (IPFS artifacts) */
     cidShare: (orgId: string) => `swarm/org/${orgId}/cid`,
     /** Payment notifications */
     payments: (orgId: string) => `swarm/org/${orgId}/payments`,

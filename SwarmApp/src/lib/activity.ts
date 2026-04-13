@@ -42,14 +42,14 @@ export type ActivityEventType =
     | "agent_hierarchy_child_added"
     | "agent_hierarchy_child_removed"
     | "agent_hierarchy_task_delegated"
-    | "storacha.memory_written"
-    | "storacha.memory_restored"
-    | "storacha.artifact_uploaded"
-    | "storacha.pro_space_created"
-    | "storacha.pro_space_deleted"
-    | "storacha.pro_member_added"
-    | "storacha.pro_member_removed"
-    | "storacha.pro_retrieval"
+    | "storage.memory_written"
+    | "storage.memory_restored"
+    | "storage.artifact_uploaded"
+    | "storage.pro_space_created"
+    | "storage.pro_space_deleted"
+    | "storage.pro_member_added"
+    | "storage.pro_member_removed"
+    | "storage.pro_retrieval"
     | "fraud.signal_detected"
     | "fraud.auto_penalty"
     | "fraud.case_created"
@@ -120,14 +120,14 @@ export const EVENT_TYPE_CONFIG: Record<string, { label: string; icon: string; co
     "config.changed": { label: "Config Changed", icon: "⚙️", color: "text-cyan-400" },
     "member.joined": { label: "Member Joined", icon: "👋", color: "text-emerald-400" },
     "member.left": { label: "Member Left", icon: "👤", color: "text-muted-foreground" },
-    "storacha.memory_written": { label: "Memory Written", icon: "💾", color: "text-purple-400" },
-    "storacha.memory_restored": { label: "Memory Restored", icon: "📥", color: "text-purple-400" },
-    "storacha.artifact_uploaded": { label: "Artifact Uploaded", icon: "📎", color: "text-purple-400" },
-    "storacha.pro_space_created": { label: "Space Created", icon: "📦", color: "text-purple-400" },
-    "storacha.pro_space_deleted": { label: "Space Deleted", icon: "🗑️", color: "text-red-400" },
-    "storacha.pro_member_added": { label: "Member Added", icon: "👤", color: "text-emerald-400" },
-    "storacha.pro_member_removed": { label: "Member Removed", icon: "👤", color: "text-muted-foreground" },
-    "storacha.pro_retrieval": { label: "Smart Retrieve", icon: "🔍", color: "text-purple-400" },
+    "storage.memory_written": { label: "Memory Written", icon: "💾", color: "text-purple-400" },
+    "storage.memory_restored": { label: "Memory Restored", icon: "📥", color: "text-purple-400" },
+    "storage.artifact_uploaded": { label: "Artifact Uploaded", icon: "📎", color: "text-purple-400" },
+    "storage.pro_space_created": { label: "Space Created", icon: "📦", color: "text-purple-400" },
+    "storage.pro_space_deleted": { label: "Space Deleted", icon: "🗑️", color: "text-red-400" },
+    "storage.pro_member_added": { label: "Member Added", icon: "👤", color: "text-emerald-400" },
+    "storage.pro_member_removed": { label: "Member Removed", icon: "👤", color: "text-muted-foreground" },
+    "storage.pro_retrieval": { label: "Smart Retrieve", icon: "🔍", color: "text-purple-400" },
     "fraud.signal_detected": { label: "Fraud Signal", icon: "🚩", color: "text-red-400" },
     "fraud.auto_penalty": { label: "Auto Penalty", icon: "⚖️", color: "text-orange-400" },
     "fraud.case_created": { label: "Review Case", icon: "📋", color: "text-amber-400" },

@@ -2,7 +2,7 @@
  * Job Executor — Advances a generation job by one step via its plugin.
  *
  * Called by API routes on each poll. Delegates to the plugin's advanceStep(),
- * then handles the upload-to-Storacha step and asset creation.
+ * then handles the upload-to-IPFS storage step and asset creation.
  *
  * Each call does at most one external API call, keeping within Netlify's 10s timeout.
  */
@@ -83,7 +83,7 @@ export async function advanceJob(jobId: string): Promise<AdvanceResult> {
     );
 
     if (allDone && result.outputUrl) {
-      // Upload to Storacha and create asset
+      // Upload to IPFS storage and create asset
       const assetUrl = await uploadAndCreateAsset(job, result.outputUrl);
 
       await updateJob(jobId, {
@@ -128,35 +128,36 @@ export async function advanceJob(jobId: string): Promise<AdvanceResult> {
 }
 
 /**
- * Upload the generated output to Storacha and create an asset record.
- * Falls back to the raw URL if Storacha isn't configured.
+ * Upload the generated output to IPFS storage and create an asset record.
+ * Falls back to the raw URL if IPFS storage isn't configured.
  */
 async function uploadAndCreateAsset(
   job: GenerationJob,
   outputUrl: string,
 ): Promise<{ assetId: string; url: string }> {
   let finalUrl = outputUrl;
-  let storachaCid: string | undefined;
+  let ipfsCid: string | undefined;
   let sizeBytes: number | undefined;
 
-  // Try Storacha upload
+  // Try IPFS storage upload
   try {
     const res = await fetch(outputUrl);
     if (!res.ok) throw new Error(`Download failed: ${res.status}`);
     const buffer = await res.arrayBuffer();
     sizeBytes = buffer.byteLength;
 
-    const { uploadContent } = await import("@/lib/storacha/client");
+    // [swarm-core] IPFS storage removed
+    const uploadContent = async (..._args: unknown[]) => ({ cid: "" });
     const mimeType = MIME_TYPES[job.assetKind] || "application/octet-stream";
     const ext = EXTENSIONS[job.assetKind] || "bin";
     const blob = new Blob([new Uint8Array(buffer)], { type: mimeType });
     const file = new File([blob], `${job.assetPurpose}-${job.category}.${ext}`, { type: mimeType });
     const cid = await uploadContent(file);
-    const gateway = process.env.STORACHA_GATEWAY_DOMAIN || "w3s.link";
-    storachaCid = cid.toString();
+    const gateway = "w3s.link";
+    ipfsCid = cid.toString();
     finalUrl = `https://${gateway}/ipfs/${cid}`;
   } catch {
-    // Storacha not configured or upload failed — use raw URL
+    // IPFS storage not configured or upload failed — use raw URL
   }
 
   const assetId = await createAsset({
@@ -169,7 +170,7 @@ async function uploadAndCreateAsset(
     pluginId: job.pluginId,
     jobId: job.id,
     url: finalUrl,
-    storachaCid,
+    ipfsCid,
     mimeType: MIME_TYPES[job.assetKind] || "application/octet-stream",
     sizeBytes,
     prompt: job.prompt,
