@@ -12,8 +12,10 @@ import { getAgentsByOrg, getOrganization, updateOrganization, ensureAgentGroupCh
 import { getAgentAvatarUrl } from "@/lib/agent-avatar";
 import { cn } from "@/lib/utils";
 import SpotlightCard from "@/components/reactbits/SpotlightCard";
-import SlotPolicyBuilder from "@/components/slots/SlotPolicyBuilder";
-import SlotExecutionHistory from "@/components/slots/SlotExecutionHistory";
+// [swarm-core] Slots removed
+const SlotPolicyBuilder = () => null;
+// [swarm-core] Slots removed
+const SlotExecutionHistory = () => null;
 import type { SlotPolicy } from "@/lib/slots/types";
 import {
   FileText, Shield, GitBranch, BarChart3, MessageSquare, Wrench,

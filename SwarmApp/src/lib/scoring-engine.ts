@@ -33,7 +33,8 @@ import {
     limit as firestoreLimit,
     serverTimestamp,
 } from "firebase/firestore";
-import type { ScoreEvent } from "./hedera-hcs-client";
+// [swarm-core] Hedera removed
+type ScoreEvent = { agentId: string; delta: number; reason: string; timestamp: number };
 import { getScoreBand, type ScoreBand } from "./credit-scoring";
 
 // ═══════════════════════════════════════════════════════════════

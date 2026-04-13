@@ -557,10 +557,8 @@ export async function updateTask(taskId: string, data: Partial<Task>): Promise<v
         const agent = agentDoc.data() as Agent;
 
         if (agent?.asn && agent?.walletAddress) {
-          // Emit task completion event (dynamic import for server-side)
-          const { emitTaskComplete } = await import("./hedera-score-emitter");
-          const complexity = task.priority === 'high' ? 'complex' : task.priority === 'low' ? 'simple' : 'medium';
-          await emitTaskComplete(agent.asn, agent.walletAddress, taskId, complexity);
+          // [swarm-core] Hedera score emitter removed — install swarm-hedera mod for on-chain scoring
+          // Task completion events are a no-op in core
         }
       }
     } catch (error) {

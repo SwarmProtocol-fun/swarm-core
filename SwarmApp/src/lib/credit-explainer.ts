@@ -11,7 +11,9 @@
 
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { getReputationTopicId, type ScoreEvent } from "./hedera-hcs-client";
+// [swarm-core] Hedera removed
+type ScoreEvent = { agentId: string; delta: number; reason: string; timestamp: number };
+const getReputationTopicId = () => null;
 import {
     getTierForScore,
     getConfidenceInfo,

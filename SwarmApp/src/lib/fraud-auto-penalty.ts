@@ -9,8 +9,10 @@
 
 import { db } from "@/lib/firebase";
 import { doc, getDoc, updateDoc } from "firebase/firestore";
-import { emitPenalty } from "./hedera-score-emitter";
-import { createPenaltyProposal } from "./hedera-governance";
+// [swarm-core] Hedera removed
+const emitPenalty = async (..._args: unknown[]) => ({});
+// [swarm-core] Hedera removed
+const createPenaltyProposal = async (..._args: unknown[]) => ({});
 import { updateSignalStatus, type RiskSignal, type RiskSignalType, type FraudDetectionConfig } from "./fraud-detection";
 import { computeRiskTier } from "./fraud-risk-scoring";
 import { logActivity } from "./activity";

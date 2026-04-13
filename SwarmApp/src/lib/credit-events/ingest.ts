@@ -16,11 +16,10 @@ import type {
 import { SOURCE_EVENT_MAP } from "./types";
 import { validateCreditEvent, computeIdempotencyKey } from "./validation";
 import { isDuplicate, storeCreditEvent } from "./store";
-import {
-  isHCSConfigured,
-  submitScoreEvent,
-  type ScoreEvent,
-// [swarm-core] Hedera integration removed — install swarm-hedera mod
+// [swarm-core] Hedera HCS removed — install swarm-hedera mod
+type ScoreEvent = { agentId: string; delta: number; reason: string; timestamp: number };
+const isHCSConfigured = () => false;
+const submitScoreEvent = async (..._args: unknown[]) => ({});
 
 // ═══════════════════════════════════════════════════════════════
 // Core Ingestion Pipeline

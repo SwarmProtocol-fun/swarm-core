@@ -55,5 +55,3 @@ export {
 export { advanceJob } from "./job-executor";
 
 // Register built-in plugins (side-effect imports)
-import "./meshy";
-import "./comfyui";
