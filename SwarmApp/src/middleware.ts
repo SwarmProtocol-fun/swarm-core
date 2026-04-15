@@ -62,7 +62,6 @@ const PROTECTED_PAGE_PREFIXES = [
   "/activity",
   "/approvals",
   "/calendar",
-  "/cerebro",
   "/cron",
   "/doctor",
   "/gateways",

@@ -9,9 +9,10 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 
 const AgentMap = dynamic(() => import("@/components/agent-map/agent-map"), { ssr: false });
-import { GitHubIcon } from "@/components/github/github-icon";
-import { GitHubPanel } from "@/components/github/github-panel";
-import { RepoSelector } from "@/components/github/repo-selector";
+// [swarm-core] GitHub mod extracted
+const GitHubIcon = ({ className }: { className?: string }) => <span className={className}>GH</span>;
+const GitHubPanel = (_props: Record<string, unknown>) => null;
+const RepoSelector = (_props: Record<string, unknown>) => null;
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

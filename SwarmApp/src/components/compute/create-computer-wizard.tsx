@@ -21,7 +21,7 @@ import {
   type OpenClawVariant,
 } from "@/lib/compute/types";
 import { estimateHourlyCost, estimateMonthlyCost } from "@/lib/compute/billing";
-import { trackComputeEvent } from "@/lib/posthog";
+const trackComputeEvent = (..._args: unknown[]) => {}; // posthog removed
 import { ResourcePicker } from "./resource-picker";
 
 interface CreateComputerWizardProps {

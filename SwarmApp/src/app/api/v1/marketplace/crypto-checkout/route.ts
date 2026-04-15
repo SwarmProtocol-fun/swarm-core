@@ -15,7 +15,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { SKILL_REGISTRY, type SubscriptionPlan } from "@/lib/skills";
-import { getModService } from "@/lib/mod-gateway/registry";
+// [swarm-core] mod-gateway extracted — remote mod lookup disabled
+const getModService = async (_id: string) => null;
 import { CHAIN_CONFIGS, PAYMENT_CHAINS, USDC_CONTRACTS, USDC_DECIMALS } from "@/lib/chains";
 
 const CRYPTO_PAYMENTS_COLLECTION = "cryptoPayments";

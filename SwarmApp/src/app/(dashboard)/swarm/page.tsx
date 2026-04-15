@@ -11,12 +11,11 @@ import { useOrg } from "@/contexts/OrgContext";
 import { getAgentsByOrg, getOrganization, updateOrganization, ensureAgentGroupChat, sendMessage, type Agent } from "@/lib/firestore";
 import { getAgentAvatarUrl } from "@/lib/agent-avatar";
 import { cn } from "@/lib/utils";
-import SpotlightCard from "@/components/reactbits/SpotlightCard";
-// [swarm-core] Slots removed
+// [swarm-core] ReactBits + Slots extracted to mods
+const SpotlightCard = ({ children, className, ...props }: { children: React.ReactNode; className?: string; spotlightColor?: string; [k: string]: unknown }) => <div className={className} {...props}>{children}</div>;
 const SlotPolicyBuilder = () => null;
-// [swarm-core] Slots removed
 const SlotExecutionHistory = () => null;
-import type { SlotPolicy } from "@/lib/slots/types";
+interface SlotPolicy { slotId: string; agentId: string; priority: number; conditions?: Record<string, unknown>; }
 import {
   FileText, Shield, GitBranch, BarChart3, MessageSquare, Wrench,
   Zap, X, Search, Plus, History, Power, Trash2,

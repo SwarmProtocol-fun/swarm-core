@@ -50,12 +50,10 @@ export default function RootLayout({
             <SessionProvider>
             <AutoSiwe />
             <OrgProvider>
-              <PostHogProvider>
               <SparkleTrail>
                 <CommandBar />
                 {children}
               </SparkleTrail>
-              </PostHogProvider>
             </OrgProvider>
             </SessionProvider>
           </Web3Provider>

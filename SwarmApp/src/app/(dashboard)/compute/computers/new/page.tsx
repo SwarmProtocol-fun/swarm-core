@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useOrg } from "@/contexts/OrgContext";
 import type { Workspace } from "@/lib/compute/types";
 import { CreateComputerWizard } from "@/components/compute/create-computer-wizard";
-import { trackComputeEvent } from "@/lib/posthog";
+const trackComputeEvent = (..._args: unknown[]) => {}; // posthog removed
 
 export default function NewComputerPage() {
   const router = useRouter();

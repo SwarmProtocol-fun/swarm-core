@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { type MarketItemType, type PricingModel, type MarketPricing, AGENT_CATEGORIES } from "@/lib/skills";
-import { trackMarketplaceEvent } from "@/lib/posthog";
+const trackMarketplaceEvent = (..._args: unknown[]) => {}; // posthog removed
 // [swarm-core] Storacha removed — artifact uploads disabled in core
 const uploadArtifact = async (..._args: unknown[]) => ({ cid: "", url: "" });
 

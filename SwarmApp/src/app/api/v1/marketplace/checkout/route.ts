@@ -13,7 +13,8 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { SKILL_REGISTRY, type SubscriptionPlan } from "@/lib/skills";
-import { getModService } from "@/lib/mod-gateway/registry";
+// [swarm-core] mod-gateway extracted — remote mod lookup disabled
+const getModService = async (_id: string) => null;
 
 export async function POST(req: NextRequest) {
   const wallet = req.headers.get("x-wallet-address")?.toLowerCase();

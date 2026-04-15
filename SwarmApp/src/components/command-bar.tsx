@@ -44,7 +44,6 @@ const NAV_ITEMS: CommandItem[] = [
     { id: "agent-map", label: "Agent Map", icon: MapPinned, href: "/agent-map", section: "Observe" },
     // Platform
     { id: "organizations", label: "Organizations", icon: Building2, href: "/organizations", section: "Platform" },
-    { id: "cerebro", label: "Cerebro", icon: Brain, href: "/cerebro", section: "Platform" },
     { id: "memory", label: "Memory", icon: HardDrive, href: "/memory", section: "Platform" },
     { id: "logs", label: "Logs", icon: FileText, href: "/logs", section: "Platform" },
     { id: "gateways", label: "Gateways", icon: Network, href: "/gateways", section: "Platform" },

@@ -23,7 +23,7 @@ import { ApplyPersonaDialog } from "@/components/market/apply-persona-dialog";
 import { SubscribeDialog } from "@/components/market/subscribe-dialog";
 import { RatingDialog } from "@/components/market/rating-dialog";
 import { CryptoCheckoutDialog } from "@/components/marketplace/crypto-checkout-dialog";
-import { trackMarketplaceEvent } from "@/lib/posthog";
+const trackMarketplaceEvent = (..._args: unknown[]) => {}; // posthog removed
 import type { Agent } from "@/lib/firestore";
 
 // ── Category labels ──

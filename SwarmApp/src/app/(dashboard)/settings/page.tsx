@@ -11,8 +11,9 @@ import { useActiveAccount } from 'thirdweb/react';
 import { updateOrganization, getProfile, setProfile, removeMemberFromOrganization } from '@/lib/firestore';
 
 import { Badge } from '@/components/ui/badge';
-import { GitHubIcon } from '@/components/github/github-icon';
-import SpotlightCard from "@/components/reactbits/SpotlightCard";
+// [swarm-core] GitHub + ReactBits extracted to mods
+const GitHubIcon = ({ className }: { className?: string }) => <span className={className}>GH</span>;
+const SpotlightCard = ({ children, className, ...props }: { children: React.ReactNode; className?: string; [k: string]: unknown }) => <div className={className}>{children}</div>;
 import { Switch } from '@/components/ui/switch';
 import { useSkin } from '@/contexts/SkinContext';
 import { getOwnedItems } from '@/lib/skills';

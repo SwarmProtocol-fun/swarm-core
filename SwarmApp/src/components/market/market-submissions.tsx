@@ -10,7 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SubmitMarketItemDialog } from "@/components/market/submit-dialog";
 import type { CommunityMarketItem } from "@/lib/market/types";
-import { trackMarketplaceEvent } from "@/lib/posthog";
+const trackMarketplaceEvent = (..._args: unknown[]) => {}; // posthog removed
 
 // ── Publisher Tier Badge ──
 

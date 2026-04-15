@@ -13,8 +13,15 @@ import {
   Legend,
   Filler,
 } from "chart.js";
-import { type CostProjection } from "@/lib/cost-intelligence";
 import { type DailyCost } from "@/lib/usage";
+
+/** Inline — extracted from cost-intelligence mod */
+interface CostProjection {
+  date: string;
+  projected: number;
+  lower: number;
+  upper: number;
+}
 
 ChartJS.register(
   CategoryScale,

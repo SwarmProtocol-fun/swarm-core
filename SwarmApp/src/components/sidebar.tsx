@@ -152,20 +152,8 @@ export const DEFAULT_SECTIONS: NavSection[] = [
       { id: "organizations", href: "/organizations", label: "Organizations", icon: Building2, maturity: "production" },
       { id: "usage", href: "/usage", label: "Usage & Billing", icon: Coins, maturity: "beta" },
       { id: "storage", href: "/usage/storage", label: "Storage", icon: Database, maturity: "production" },
-      { id: "cerebro", href: "/cerebro", label: "Cerebro", icon: Brain, maturity: "production" },
       { id: "publisher", href: "/market/publisher", label: "Publisher", icon: Upload, maturity: "production" },
     ],
-  },
-  {
-    id: "modifications",
-    label: "Modifications",
-    items: [
-      { id: "mod-hbar-onchain", href: "/hbar", label: "HBAR", icon: Hexagon, maturity: "production" },
-      { id: "mod-flow-defi", href: "/mods/flow", label: "Flow", icon: Coins, maturity: "beta" },
-      { id: "mod-eth-foundation", href: "/mods/eth-foundation", label: "ETH Foundation", icon: Diamond, maturity: "beta" },
-    ],
-    accentColor: "cyan",
-    collapsible: true,
   },
 ];
 
@@ -479,53 +467,6 @@ export function Sidebar() {
             icon,
           },
         });
-      }
-
-      // Merge remote mod services from the gateway registry
-      try {
-        const { listActiveModServices } = await import("@/lib/mod-gateway/registry");
-        const remoteServices = await listActiveModServices();
-        for (const svc of remoteServices) {
-          // Skip if already handled via static registry
-          if (handled.has(svc.slug) || handled.has(svc.modId)) continue;
-          // Only show remote mods the org has subscribed to
-          if (!ownedIds.has(svc.slug) && !ownedIds.has(svc.modId)) continue;
-
-          if (svc.sidebarConfig) {
-            const icon = ICON_MAP[svc.sidebarConfig.iconName] as typeof LayoutDashboard | undefined;
-            const navItem: NavItem = {
-              id: `mod-${svc.slug}`,
-              href: svc.sidebarConfig.href,
-              label: svc.sidebarConfig.label,
-              icon: icon || Globe,
-            };
-            if (svc.sidebarConfig.parentModId) {
-              childItems.push({
-                parentModId: svc.sidebarConfig.parentModId,
-                sectionId: svc.sidebarConfig.sectionId,
-                item: navItem,
-              });
-            } else {
-              parentItems.push({
-                sectionId: svc.sidebarConfig.sectionId,
-                item: navItem,
-              });
-            }
-          } else {
-            // Remote mod without sidebarConfig — auto-generate entry
-            parentItems.push({
-              sectionId: "modifications",
-              item: {
-                id: `mod-${svc.slug}`,
-                href: `/mods/${svc.slug}`,
-                label: svc.name,
-                icon: Globe,
-              },
-            });
-          }
-        }
-      } catch {
-        // Remote registry unavailable — continue with static entries only
       }
 
       const base = DEFAULT_SECTIONS.map(s => ({ ...s, items: [...s.items] }));
