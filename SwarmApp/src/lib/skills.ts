@@ -20,11 +20,17 @@ import {
     Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import type { TokenGateConfig } from "./token-gate";
-
 // ═══════════════════════════════════════════════════════════════
 // Types
 // ═══════════════════════════════════════════════════════════════
+
+/** Inline — extracted from token-gate mod */
+export interface TokenGateConfig {
+    contractAddress: string;
+    chainId: number;
+    minBalance?: string;
+    tokenType?: "ERC20" | "ERC721" | "ERC1155";
+}
 
 export type MarketItemType = "mod" | "plugin" | "skill" | "skin" | "agent" | "compute";
 export type MarketItemSource = "verified" | "community";

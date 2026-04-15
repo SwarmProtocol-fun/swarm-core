@@ -10,8 +10,6 @@ import SparkleTrail from "@/components/SparkleTrail";
 import { ThemeProvider } from "@/components/theme-provider";
 import { SkinProvider } from "@/contexts/SkinContext";
 import { CommandBar } from "@/components/command-bar";
-import { PostHogProvider } from "@/components/posthog-provider";
-
 import AutoSiwe from "@/components/AutoSiwe";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
