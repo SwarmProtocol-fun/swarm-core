@@ -17,7 +17,8 @@ import { useSession } from "@/contexts/SessionContext";
 import { debug } from "@/lib/debug";
 import { useThirdwebAuth } from "@/hooks/useThirdwebAuth";
 
-const Spline = lazy(() => import('@splinetool/react-spline'));
+// [swarm-core] Spline 3D extracted to mod — placeholder
+const Spline = lazy(() => Promise.resolve({ default: (_props: Record<string, unknown>) => null }));
 
 // 3 robots — staggered loading to avoid WebGL context exhaustion
 const ROBOT_CONFIGS = [

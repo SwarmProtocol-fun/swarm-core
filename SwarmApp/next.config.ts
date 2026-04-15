@@ -9,7 +9,6 @@ const nextConfig: NextConfig = {
   // preventing cold-start timeouts and 502s from oversized bundles.
   serverExternalPackages: [
     "ethers",
-    "@storacha/client",
     "@azure/arm-compute",
     "@azure/arm-network",
     "@azure/arm-containerinstance",
