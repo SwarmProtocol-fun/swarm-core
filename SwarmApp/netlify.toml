@@ -1,11 +1,16 @@
 [build]
   ignore = "exit 1"
   command = "node --max-old-space-size=3072 node_modules/.bin/next build"
-  publish = ".next"
 
 [build.environment]
   NODE_OPTIONS = "--max-old-space-size=3072"
   SECRETS_SCAN_SMART_DETECTION_ENABLED = "false"
+
+# ── Next.js Runtime: converts .next output into working routes/functions.
+# Without this, Netlify serves the raw .next build as static files and
+# every route except possibly "/" 404s.
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
 
 # ── Security headers ──
 [[headers]]
