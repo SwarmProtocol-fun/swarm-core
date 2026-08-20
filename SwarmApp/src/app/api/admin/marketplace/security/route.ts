@@ -7,10 +7,7 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, doc, getDoc, updateDoc,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import { runSecurityScan, type ReviewEntry, type ExtendedScanOptions } from "@/lib/submission-protocol";
@@ -61,7 +58,7 @@ export async function GET(req: NextRequest) {
     ];
 
     for (const col of collections) {
-      const snap = await getDocs(query(collection(db, col.name)));
+      const snap = await adminDb().collection(col.name).get();
 
       for (const d of snap.docs) {
         const data = d.data();
@@ -184,14 +181,14 @@ export async function POST(req: NextRequest) {
   const colName = colParam === "agents" ? "marketplaceAgents" : "communityMarketItems";
 
   try {
-    const ref = doc(db, colName, itemId);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(colName).doc(itemId);
+    const snap = await ref.get();
 
-    if (!snap.exists()) {
+    if (!snap.exists) {
       return Response.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data()!;
     const permissions = (data.permissionsRequired || []) as PermissionScope[];
 
     // Build extended scan options
@@ -221,7 +218,7 @@ export async function POST(req: NextRequest) {
       findings: scanResult.findings,
     });
 
-    await updateDoc(ref, { reviewHistory });
+    await ref.update({ reviewHistory });
 
     await recordAuditEntry({
       action: "security.rescan",

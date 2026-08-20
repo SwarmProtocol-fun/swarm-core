@@ -12,8 +12,8 @@
  * Auth: x-wallet-address header
  */
 import { NextRequest } from "next/server";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { getWalletAddress } from "@/lib/auth-guard";
 import type { ReviewEntry } from "@/lib/submission-protocol";
 
@@ -44,14 +44,14 @@ export async function POST(req: NextRequest) {
     }
 
     const collectionName = COLLECTIONS[collectionKey];
-    const ref = doc(db, collectionName, itemId);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(collectionName).doc(itemId);
+    const snap = await ref.get();
 
-    if (!snap.exists()) {
+    if (!snap.exists) {
         return Response.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data()!;
 
     // Verify ownership
     const ownerField = collectionKey === "agents" ? "authorWallet" : "submittedBy";
@@ -88,11 +88,11 @@ export async function POST(req: NextRequest) {
     // Re-enter pipeline at product_review
     const newStatus = collectionKey === "agents" ? "review" : "pending";
 
-    await updateDoc(ref, {
+    await ref.update({
         status: newStatus,
         stage: "product_review",
         appealComment: comment,
-        appealedAt: serverTimestamp(),
+        appealedAt: FieldValue.serverTimestamp(),
         reviewHistory,
     });
 

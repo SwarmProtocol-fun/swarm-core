@@ -7,10 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  doc, getDoc, updateDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import {
@@ -47,23 +45,23 @@ export async function GET(
   const colName = COLLECTIONS[col];
 
   try {
-    const ref = doc(db, colName, id);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(colName).doc(id);
+    const snap = await ref.get();
 
-    if (!snap.exists()) {
+    if (!snap.exists) {
       return Response.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data()!;
 
     // Enrich with publisher profile
     const publisherWallet = data.submittedBy || data.authorWallet;
     let publisher = null;
     if (publisherWallet) {
-      const pubRef = doc(db, "publisherProfiles", publisherWallet);
-      const pubSnap = await getDoc(pubRef);
-      if (pubSnap.exists()) {
-        const p = pubSnap.data();
+      const pubRef = adminDb().collection("publisherProfiles").doc(publisherWallet);
+      const pubSnap = await pubRef.get();
+      if (pubSnap.exists) {
+        const p = pubSnap.data()!;
         publisher = {
           wallet: publisherWallet,
           displayName: p.displayName || publisherWallet.slice(0, 10) + "...",
@@ -134,14 +132,14 @@ export async function POST(
     }, { status: 400 });
   }
 
-  const ref = doc(db, COLLECTIONS[col], id);
-  const snap = await getDoc(ref);
+  const ref = adminDb().collection(COLLECTIONS[col]).doc(id);
+  const snap = await ref.get();
 
-  if (!snap.exists()) {
+  if (!snap.exists) {
     return Response.json({ error: "Submission not found" }, { status: 404 });
   }
 
-  const current = snap.data();
+  const current = snap.data()!;
   const currentStage = (current.stage as SubmissionStage) || "intake";
   const reviewHistory: ReviewEntry[] = Array.isArray(current.reviewHistory) ? current.reviewHistory : [];
 
@@ -200,9 +198,9 @@ export async function POST(
       const publisherWallet = current.submittedBy || current.authorWallet;
       let tier = 0;
       if (publisherWallet) {
-        const pubRef = doc(db, "publisherProfiles", publisherWallet);
-        const pubSnap = await getDoc(pubRef);
-        if (pubSnap.exists()) tier = pubSnap.data().tier ?? 0;
+        const pubRef = adminDb().collection("publisherProfiles").doc(publisherWallet);
+        const pubSnap = await pubRef.get();
+        if (pubSnap.exists) tier = pubSnap.data()!.tier ?? 0;
       }
       newStage = getStartingStage(tier);
       newStatus = pendingStatus(col);
@@ -217,11 +215,11 @@ export async function POST(
 
   reviewHistory.push(newEntry);
 
-  await updateDoc(ref, {
+  await ref.update({
     status: newStatus,
     stage: newStage,
     reviewHistory,
-    reviewedAt: serverTimestamp(),
+    reviewedAt: FieldValue.serverTimestamp(),
     reviewComment,
   });
 

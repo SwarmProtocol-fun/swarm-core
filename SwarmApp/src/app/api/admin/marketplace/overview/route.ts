@@ -6,10 +6,7 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, getCountFromServer,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { getAuditLog } from "@/lib/audit-log";
 
@@ -18,6 +15,7 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 403 });
 
   try {
+    const db = adminDb();
     // Parallel count queries
     const [
       communityPendingSnap,
@@ -27,22 +25,12 @@ export async function GET(req: NextRequest) {
       publisherActiveSnap,
       reportsSnap,
     ] = await Promise.all([
-      getCountFromServer(
-        query(collection(db, "communityMarketItems"), where("status", "==", "pending")),
-      ),
-      getCountFromServer(
-        query(collection(db, "marketplaceAgents"), where("status", "==", "review")),
-      ),
-      getCountFromServer(
-        query(collection(db, "communityMarketItems"), where("status", "==", "approved")),
-      ),
-      getCountFromServer(
-        query(collection(db, "marketplaceAgents"), where("status", "==", "approved")),
-      ),
-      getCountFromServer(
-        query(collection(db, "publisherProfiles"), where("banned", "==", false)),
-      ),
-      getCountFromServer(collection(db, "marketplaceReports")),
+      db.collection("communityMarketItems").where("status", "==", "pending").count().get(),
+      db.collection("marketplaceAgents").where("status", "==", "review").count().get(),
+      db.collection("communityMarketItems").where("status", "==", "approved").count().get(),
+      db.collection("marketplaceAgents").where("status", "==", "approved").count().get(),
+      db.collection("publisherProfiles").where("banned", "==", false).count().get(),
+      db.collection("marketplaceReports").count().get(),
     ]);
 
     const queueDepth = communityPendingSnap.data().count + agentPendingSnap.data().count;
@@ -50,8 +38,8 @@ export async function GET(req: NextRequest) {
 
     // Stage breakdown — query pending items and group by stage
     const [communityPendingDocs, agentPendingDocs] = await Promise.all([
-      getDocs(query(collection(db, "communityMarketItems"), where("status", "==", "pending"))),
-      getDocs(query(collection(db, "marketplaceAgents"), where("status", "==", "review"))),
+      db.collection("communityMarketItems").where("status", "==", "pending").get(),
+      db.collection("marketplaceAgents").where("status", "==", "review").get(),
     ]);
 
     const stageBreakdown: Record<string, number> = {

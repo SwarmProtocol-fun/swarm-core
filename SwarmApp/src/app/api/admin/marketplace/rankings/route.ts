@@ -7,11 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, getDoc, updateDoc,
-  deleteField, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import {
@@ -60,9 +57,7 @@ export async function GET(req: NextRequest) {
 
     // Community items
     if (!sourceFilter || sourceFilter === "community") {
-      const snap = await getDocs(
-        query(collection(db, "communityMarketItems"), where("status", "==", "approved")),
-      );
+      const snap = await adminDb().collection("communityMarketItems").where("status", "==", "approved").get();
       for (const d of snap.docs) {
         const data = d.data();
         if (typeFilter && data.type !== typeFilter && data.itemType !== typeFilter) continue;
@@ -85,9 +80,7 @@ export async function GET(req: NextRequest) {
     // Agent packages
     if (!sourceFilter || sourceFilter === "agents") {
       if (!typeFilter || typeFilter === "agent") {
-        const snap = await getDocs(
-          query(collection(db, "marketplaceAgents"), where("status", "==", "approved")),
-        );
+        const snap = await adminDb().collection("marketplaceAgents").where("status", "==", "approved").get();
         for (const d of snap.docs) {
           const data = d.data();
           if (searchQuery && !(data.name || "").toLowerCase().includes(searchQuery)) continue;
@@ -112,8 +105,8 @@ export async function GET(req: NextRequest) {
     const tierMap: Record<string, number> = {};
     await Promise.all(
       uniqueWallets.map(async (wallet) => {
-        const snap = await getDoc(doc(db, "publisherProfiles", wallet));
-        tierMap[wallet] = snap.exists() ? (snap.data() as PublisherProfile).tier : 0;
+        const snap = await adminDb().collection("publisherProfiles").doc(wallet).get();
+        tierMap[wallet] = snap.exists ? (snap.data() as PublisherProfile).tier : 0;
       }),
     );
 
@@ -204,8 +197,8 @@ export async function POST(req: NextRequest) {
           const publisherWallet = (data.submittedBy || data.authorWallet || "") as string;
           let publisherTier = 0;
           if (publisherWallet) {
-            const pubSnap = await getDoc(doc(db, "publisherProfiles", publisherWallet));
-            if (pubSnap.exists()) publisherTier = (pubSnap.data() as PublisherProfile).tier;
+            const pubSnap = await adminDb().collection("publisherProfiles").doc(publisherWallet).get();
+            if (pubSnap.exists) publisherTier = (pubSnap.data() as PublisherProfile).tier;
           }
 
           const newScore = computeRankingScore({
@@ -216,22 +209,18 @@ export async function POST(req: NextRequest) {
             publisherTier,
           });
 
-          await updateDoc(doc(db, colName, docId), { rankingScore: newScore });
+          await adminDb().collection(colName).doc(docId).update({ rankingScore: newScore });
           recalculated++;
         }
 
         // Community items
-        const communitySnap = await getDocs(
-          query(collection(db, "communityMarketItems"), where("status", "==", "approved")),
-        );
+        const communitySnap = await adminDb().collection("communityMarketItems").where("status", "==", "approved").get();
         for (const d of communitySnap.docs) {
           await recalcItem("communityMarketItems", d.id, d.data());
         }
 
         // Agent packages
-        const agentSnap = await getDocs(
-          query(collection(db, "marketplaceAgents"), where("status", "==", "approved")),
-        );
+        const agentSnap = await adminDb().collection("marketplaceAgents").where("status", "==", "approved").get();
         for (const d of agentSnap.docs) {
           await recalcItem("marketplaceAgents", d.id, d.data());
         }
@@ -254,7 +243,7 @@ export async function POST(req: NextRequest) {
         }
 
         const colName = colParam === "agents" ? "marketplaceAgents" : "communityMarketItems";
-        await updateDoc(doc(db, colName, itemId), {
+        await adminDb().collection(colName).doc(itemId).update({
           overrideScore: score,
           rankingScore: score,
         });
@@ -274,16 +263,16 @@ export async function POST(req: NextRequest) {
         if (!itemId) return Response.json({ error: "itemId required" }, { status: 400 });
 
         const colName = colParam === "agents" ? "marketplaceAgents" : "communityMarketItems";
-        const ref = doc(db, colName, itemId);
-        const snap = await getDoc(ref);
-        if (!snap.exists()) return Response.json({ error: "Item not found" }, { status: 404 });
+        const ref = adminDb().collection(colName).doc(itemId);
+        const snap = await ref.get();
+        if (!snap.exists) return Response.json({ error: "Item not found" }, { status: 404 });
 
-        const data = snap.data();
+        const data = snap.data()!;
         const publisherWallet = (data.submittedBy || data.authorWallet || "") as string;
         let publisherTier = 0;
         if (publisherWallet) {
-          const pubSnap = await getDoc(doc(db, "publisherProfiles", publisherWallet));
-          if (pubSnap.exists()) publisherTier = (pubSnap.data() as PublisherProfile).tier;
+          const pubSnap = await adminDb().collection("publisherProfiles").doc(publisherWallet).get();
+          if (pubSnap.exists) publisherTier = (pubSnap.data() as PublisherProfile).tier;
         }
 
         const organicScore = computeRankingScore({
@@ -294,8 +283,8 @@ export async function POST(req: NextRequest) {
           publisherTier,
         });
 
-        await updateDoc(ref, {
-          overrideScore: deleteField(),
+        await ref.update({
+          overrideScore: FieldValue.delete(),
           rankingScore: organicScore,
         });
 

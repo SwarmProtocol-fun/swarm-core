@@ -6,10 +6,7 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getCountFromServer, query, where,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { listFraudReviewCases, listScanRuns, getRiskProfiles } from "@/lib/fraud-detection";
 
@@ -26,12 +23,8 @@ export async function GET(req: NextRequest) {
       recentScans,
       allProfiles,
     ] = await Promise.all([
-      getCountFromServer(
-        query(collection(db, "fraudReviewQueue"), where("status", "==", "pending")),
-      ),
-      getCountFromServer(
-        query(collection(db, "riskSignals"), where("status", "==", "active")),
-      ),
+      adminDb().collection("fraudReviewQueue").where("status", "==", "pending").count().get(),
+      adminDb().collection("riskSignals").where("status", "==", "active").count().get(),
       listFraudReviewCases({ max: 5 }),
       listScanRuns(5),
       getRiskProfiles({ max: 500 }),

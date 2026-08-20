@@ -12,8 +12,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { collection, addDoc, serverTimestamp, doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { SKILL_REGISTRY, type SubscriptionPlan } from "@/lib/skills";
 // [swarm-core] mod-gateway extracted — remote mod lookup disabled
 const getModService = async (_id: string) => null;
@@ -99,13 +99,13 @@ export async function POST(req: NextRequest) {
 
     // Resolve publisherWallet for revenue attribution
     let publisherWallet = "";
-    const communitySnap = await getDoc(doc(db, "communityMarketItems", modId));
-    if (communitySnap.exists()) {
-        publisherWallet = (communitySnap.data().submittedBy as string) || "";
+    const communitySnap = await adminDb().collection("communityMarketItems").doc(modId).get();
+    if (communitySnap.exists) {
+        publisherWallet = (communitySnap.data()!.submittedBy as string) || "";
     } else {
-        const agentSnap = await getDoc(doc(db, "marketplaceAgents", modId));
-        if (agentSnap.exists()) {
-            publisherWallet = (agentSnap.data().authorWallet as string) || "";
+        const agentSnap = await adminDb().collection("marketplaceAgents").doc(modId).get();
+        if (agentSnap.exists) {
+            publisherWallet = (agentSnap.data()!.authorWallet as string) || "";
         }
     }
 
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
     const usdcContractAddress = paymentToken === "usdc" ? USDC_CONTRACTS[chain] : undefined;
 
     try {
-        const ref = await addDoc(collection(db, CRYPTO_PAYMENTS_COLLECTION), {
+        const ref = await adminDb().collection(CRYPTO_PAYMENTS_COLLECTION).add({
             modId,
             plan,
             orgId,
@@ -130,7 +130,7 @@ export async function POST(req: NextRequest) {
             publisherWallet,
             status: "pending",
             expiresAt,
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         return NextResponse.json({

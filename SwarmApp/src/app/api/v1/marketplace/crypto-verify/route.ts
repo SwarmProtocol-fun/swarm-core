@@ -11,8 +11,8 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { subscribeToItem, type SubscriptionPlan } from "@/lib/skills";
 import { getMarketplaceSettings } from "@/lib/marketplace-settings";
 import { CHAIN_CONFIGS } from "@/lib/chains";
@@ -223,14 +223,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch payment intent
-    const paymentRef = doc(db, CRYPTO_PAYMENTS_COLLECTION, paymentId);
-    const paymentSnap = await getDoc(paymentRef);
+    const paymentRef = adminDb().collection(CRYPTO_PAYMENTS_COLLECTION).doc(paymentId);
+    const paymentSnap = await paymentRef.get();
 
-    if (!paymentSnap.exists()) {
+    if (!paymentSnap.exists) {
         return NextResponse.json({ error: "Payment intent not found" }, { status: 404 });
     }
 
-    const payment = paymentSnap.data();
+    const payment = paymentSnap.data()!;
 
     if (payment.status === "verified") {
         return NextResponse.json({ ok: true, verified: true, alreadyVerified: true });
@@ -245,7 +245,7 @@ export async function POST(req: NextRequest) {
         ? payment.expiresAt.toDate()
         : new Date(payment.expiresAt);
     if (expiresAt < new Date()) {
-        await updateDoc(paymentRef, { status: "expired" });
+        await paymentRef.update({ status: "expired" });
         return NextResponse.json({ error: "Payment intent expired" }, { status: 410 });
     }
 
@@ -288,10 +288,10 @@ export async function POST(req: NextRequest) {
             payment.wallet,
         );
 
-        await updateDoc(paymentRef, {
+        await paymentRef.update({
             status: "verified",
             txHash,
-            verifiedAt: serverTimestamp(),
+            verifiedAt: FieldValue.serverTimestamp(),
         });
 
         // Record crypto transaction to marketplaceTransactions for revenue tracking
@@ -300,15 +300,15 @@ export async function POST(req: NextRequest) {
             let publisherWallet = (payment.publisherWallet as string) || "";
 
             if (!publisherWallet) {
-                const communitySnap = await getDoc(doc(db, "communityMarketItems", payment.modId));
-                if (communitySnap.exists()) {
-                    itemName = (communitySnap.data().name as string) || itemName;
-                    publisherWallet = (communitySnap.data().submittedBy as string) || "";
+                const communitySnap = await adminDb().collection("communityMarketItems").doc(payment.modId).get();
+                if (communitySnap.exists) {
+                    itemName = (communitySnap.data()!.name as string) || itemName;
+                    publisherWallet = (communitySnap.data()!.submittedBy as string) || "";
                 } else {
-                    const agentSnap = await getDoc(doc(db, "marketplaceAgents", payment.modId));
-                    if (agentSnap.exists()) {
-                        itemName = (agentSnap.data().name as string) || itemName;
-                        publisherWallet = (agentSnap.data().authorWallet as string) || "";
+                    const agentSnap = await adminDb().collection("marketplaceAgents").doc(payment.modId).get();
+                    if (agentSnap.exists) {
+                        itemName = (agentSnap.data()!.name as string) || itemName;
+                        publisherWallet = (agentSnap.data()!.authorWallet as string) || "";
                     }
                 }
             }
@@ -317,7 +317,7 @@ export async function POST(req: NextRequest) {
             const amount = (payment.amount as number) || 0;
             const platformFee = Math.round(amount * (settings.platformFeePercent / 100) * 100) / 100;
 
-            await addDoc(collection(db, "marketplaceTransactions"), {
+            await adminDb().collection("marketplaceTransactions").add({
                 itemId: payment.modId,
                 itemName,
                 buyerWallet: wallet,
@@ -331,7 +331,7 @@ export async function POST(req: NextRequest) {
                 paymentToken: payment.paymentToken || "native",
                 txHash,
                 plan: payment.plan,
-                createdAt: serverTimestamp(),
+                createdAt: FieldValue.serverTimestamp(),
             });
         } catch {
             // Non-blocking — subscription is already active

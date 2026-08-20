@@ -7,8 +7,7 @@
  * multi-party approval system.
  */
 
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 // [swarm-core] Hedera removed
 const emitPenalty = async (..._args: unknown[]) => ({});
 // [swarm-core] Hedera removed
@@ -124,8 +123,8 @@ export async function applyAutoPenalties(
   }
 
   // Fetch agent details
-  const agentDoc = await getDoc(doc(db, "agents", agentId));
-  if (!agentDoc.exists()) {
+  const agentDoc = await adminDb().collection("agents").doc(agentId).get();
+  if (!agentDoc.exists) {
     return { penaltiesApplied: 0, governanceProposals: [] };
   }
 
@@ -232,7 +231,7 @@ export async function applyAutoPenalties(
   if (tier === "banned") {
     try {
       // Pause the agent
-      await updateDoc(doc(db, "agents", agentId), {
+      await adminDb().collection("agents").doc(agentId).update({
         status: "paused",
         pauseReason: "FRAUD_FLAGGED",
       });

@@ -10,8 +10,8 @@
  * Trigger: Netlify cron (daily) or manual
  */
 import { NextRequest } from "next/server";
-import { getDocs, query, collection, where, updateDoc, doc, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 import { requirePlatformAdmin, requireInternalService } from "@/lib/auth-guard";
 import { updatePublisherStats } from "@/lib/submission-protocol";
 import { getMarketplaceSettings } from "@/lib/marketplace-settings";
@@ -36,9 +36,7 @@ export async function POST(req: NextRequest) {
 
         // 1. Dead product cleanup — approved items with 0 installs older than N days
         const cutoff = Timestamp.fromMillis(Date.now() - settings.deadProductDays * 24 * 60 * 60 * 1000);
-        const approvedSnap = await getDocs(
-            query(collection(db, "communityMarketItems"), where("status", "==", "approved")),
-        );
+        const approvedSnap = await adminDb().collection("communityMarketItems").where("status", "==", "approved").get();
 
         for (const d of approvedSnap.docs) {
             const data = d.data();
@@ -53,7 +51,7 @@ export async function POST(req: NextRequest) {
                 lastActive &&
                 lastActive.toMillis() < cutoff.toMillis()
             ) {
-                await updateDoc(doc(db, "communityMarketItems", d.id), {
+                await adminDb().collection("communityMarketItems").doc(d.id).update({
                     publicationStatus: "unlisted",
                 });
                 results.deadProductsUnlisted++;
@@ -61,9 +59,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Quality check — approved agents with low ratings
-        const agentSnap = await getDocs(
-            query(collection(db, "marketplaceAgents"), where("status", "==", "approved")),
-        );
+        const agentSnap = await adminDb().collection("marketplaceAgents").where("status", "==", "approved").get();
 
         for (const d of agentSnap.docs) {
             const data = d.data();
@@ -75,7 +71,7 @@ export async function POST(req: NextRequest) {
                 avgRating < settings.lowQualityRating &&
                 data.publicationStatus !== "suspended"
             ) {
-                await updateDoc(doc(db, "marketplaceAgents", d.id), {
+                await adminDb().collection("marketplaceAgents").doc(d.id).update({
                     publicationStatus: "suspended",
                     stage: "product_review",
                 });
@@ -116,7 +112,7 @@ export async function POST(req: NextRequest) {
                 if (!data.featured) continue;
                 const featuredAt = data.featuredAt as Timestamp | undefined;
                 if (featuredAt && featuredAt.toMillis() < featuredCutoff.toMillis()) {
-                    await updateDoc(doc(db, colName, d.id), {
+                    await adminDb().collection(colName).doc(d.id).update({
                         featured: false,
                         featuredAt: null,
                     });

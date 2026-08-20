@@ -11,8 +11,7 @@
  * 4. Compute Herfindahl-Hirschman Index (HHI) on interaction distribution
  */
 
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import type { RiskSignal, FraudDetectionConfig } from "../fraud-detection";
 
 interface InteractionMap {
@@ -44,13 +43,10 @@ export async function detectGraphConcentration(
   }
 
   // Source 1: Task Assignments
-  const assignmentsSnap = await getDocs(
-    query(
-      collection(db, "taskAssignments"),
-      where("orgId", "==", orgId),
-      where("status", "==", "completed"),
-    ),
-  );
+  const assignmentsSnap = await adminDb().collection("taskAssignments")
+    .where("orgId", "==", orgId)
+    .where("status", "==", "completed")
+    .get();
 
   for (const d of assignmentsSnap.docs) {
     const data = d.data();
@@ -67,9 +63,7 @@ export async function detectGraphConcentration(
 
   // Source 2: Validation Stakes
   try {
-    const stakesSnap = await getDocs(
-      query(collection(db, "validationStakes")),
-    );
+    const stakesSnap = await adminDb().collection("validationStakes").get();
 
     for (const d of stakesSnap.docs) {
       const data = d.data();
@@ -89,12 +83,9 @@ export async function detectGraphConcentration(
 
   // Source 3: Agent Communications
   try {
-    const commsSnap = await getDocs(
-      query(
-        collection(db, "agentComms"),
-        where("orgId", "==", orgId),
-      ),
-    );
+    const commsSnap = await adminDb().collection("agentComms")
+      .where("orgId", "==", orgId)
+      .get();
 
     for (const d of commsSnap.docs) {
       const data = d.data();
@@ -123,9 +114,9 @@ export async function detectGraphConcentration(
     if (uniqueCounterparties <= 2 && interactions.totalInteractions > 10) {
       let agentAsn = "";
       try {
-        const agentDoc = await getDoc(doc(db, "agents", agentId));
-        if (agentDoc.exists()) {
-          agentAsn = agentDoc.data().asn || "";
+        const agentDoc = await adminDb().collection("agents").doc(agentId).get();
+        if (agentDoc.exists) {
+          agentAsn = agentDoc.data()!.asn || "";
         }
       } catch {
         // continue
@@ -157,9 +148,9 @@ export async function detectGraphConcentration(
     if (hhi > config.graphConcentrationHHI) {
       let agentAsn = "";
       try {
-        const agentDoc = await getDoc(doc(db, "agents", agentId));
-        if (agentDoc.exists()) {
-          agentAsn = agentDoc.data().asn || "";
+        const agentDoc = await adminDb().collection("agents").doc(agentId).get();
+        if (agentDoc.exists) {
+          agentAsn = agentDoc.data()!.asn || "";
         }
       } catch {
         // continue

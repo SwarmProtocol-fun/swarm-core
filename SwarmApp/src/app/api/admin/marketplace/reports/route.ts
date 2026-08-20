@@ -7,11 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, orderBy, limit as firestoreLimit,
-  doc, updateDoc, getDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -26,20 +23,16 @@ export async function GET(req: NextRequest) {
   const limitParam = Number(url.searchParams.get("limit")) || 50;
 
   try {
-    const constraints = [];
-    if (statusFilter === "open") {
-      // Open reports have no resolution field set — fetch all and filter client-side
-    } else if (statusFilter === "dismissed") {
-      constraints.push(where("resolution", "==", "dismissed"));
+    let q: Query = adminDb().collection("marketplaceReports");
+    if (statusFilter === "dismissed") {
+      q = q.where("resolution", "==", "dismissed");
     } else if (statusFilter === "resolved") {
-      constraints.push(where("resolution", "==", "resolved"));
+      q = q.where("resolution", "==", "resolved");
     }
+    // For "open", no where clause — fetch all and filter client-side below
 
-    constraints.push(orderBy("createdAt", sort === "oldest" ? "asc" : "desc"));
-    constraints.push(firestoreLimit(limitParam));
-
-    const q = query(collection(db, "marketplaceReports"), ...constraints);
-    const snap = await getDocs(q);
+    q = q.orderBy("createdAt", sort === "oldest" ? "asc" : "desc").limit(limitParam);
+    const snap = await q.get();
 
     let reports = snap.docs.map((d) => ({
       id: d.id,
@@ -77,28 +70,28 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const reportRef = doc(db, "marketplaceReports", reportId);
-    const reportSnap = await getDoc(reportRef);
-    if (!reportSnap.exists()) {
+    const reportRef = adminDb().collection("marketplaceReports").doc(reportId);
+    const reportSnap = await reportRef.get();
+    if (!reportSnap.exists) {
       return Response.json({ error: "Report not found" }, { status: 404 });
     }
 
-    const reportData = reportSnap.data();
+    const reportData = reportSnap.data()!;
 
     switch (action) {
       case "dismiss":
-        await updateDoc(reportRef, {
+        await reportRef.update({
           resolution: "dismissed",
-          resolvedAt: serverTimestamp(),
+          resolvedAt: FieldValue.serverTimestamp(),
           resolvedBy: "platform-admin",
           resolutionNote: reason || "",
         });
         break;
 
       case "resolve":
-        await updateDoc(reportRef, {
+        await reportRef.update({
           resolution: resolution || "resolved",
-          resolvedAt: serverTimestamp(),
+          resolvedAt: FieldValue.serverTimestamp(),
           resolvedBy: "platform-admin",
           resolutionNote: reason || "",
         });
@@ -108,13 +101,13 @@ export async function POST(req: NextRequest) {
         // Suspend the reported item
         const itemId = reportData.itemId as string;
         const itemCollection = reportData.collection === "agents" ? "marketplaceAgents" : "communityMarketItems";
-        const itemRef = doc(db, itemCollection, itemId);
-        const itemSnap = await getDoc(itemRef);
+        const itemRef = adminDb().collection(itemCollection).doc(itemId);
+        const itemSnap = await itemRef.get();
 
-        if (itemSnap.exists()) {
-          await updateDoc(itemRef, {
+        if (itemSnap.exists) {
+          await itemRef.update({
             status: "suspended",
-            suspendedAt: serverTimestamp(),
+            suspendedAt: FieldValue.serverTimestamp(),
             suspendReason: reason || `Suspended due to report: ${reportData.reason}`,
           });
 
@@ -128,9 +121,9 @@ export async function POST(req: NextRequest) {
         }
 
         // Resolve the report
-        await updateDoc(reportRef, {
+        await reportRef.update({
           resolution: "item_suspended",
-          resolvedAt: serverTimestamp(),
+          resolvedAt: FieldValue.serverTimestamp(),
           resolvedBy: "platform-admin",
           resolutionNote: reason || "",
         });

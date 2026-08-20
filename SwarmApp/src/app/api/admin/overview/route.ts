@@ -6,8 +6,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { collection, getCountFromServer, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 export async function GET(req: NextRequest) {
@@ -15,6 +14,7 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 403 });
 
   try {
+    const db = adminDb();
     const [
       orgsSnap,
       agentsSnap,
@@ -27,16 +27,16 @@ export async function GET(req: NextRequest) {
       pendingCommunitySnap,
       pendingAgentsSnap,
     ] = await Promise.all([
-      getCountFromServer(collection(db, "organizations")),
-      getCountFromServer(collection(db, "agents")),
-      getCountFromServer(collection(db, "communityMarketItems")),
-      getCountFromServer(collection(db, "marketplaceAgents")),
-      getCountFromServer(collection(db, "subscriptions")),
-      getCountFromServer(collection(db, "marketplaceReports")),
-      getCountFromServer(collection(db, "publisherProfiles")),
-      getCountFromServer(collection(db, "modServiceRegistry")),
-      getCountFromServer(query(collection(db, "communityMarketItems"), where("status", "==", "pending"))),
-      getCountFromServer(query(collection(db, "marketplaceAgents"), where("status", "==", "review"))),
+      db.collection("organizations").count().get(),
+      db.collection("agents").count().get(),
+      db.collection("communityMarketItems").count().get(),
+      db.collection("marketplaceAgents").count().get(),
+      db.collection("subscriptions").count().get(),
+      db.collection("marketplaceReports").count().get(),
+      db.collection("publisherProfiles").count().get(),
+      db.collection("modServiceRegistry").count().get(),
+      db.collection("communityMarketItems").where("status", "==", "pending").count().get(),
+      db.collection("marketplaceAgents").where("status", "==", "review").count().get(),
     ]);
 
     return Response.json({

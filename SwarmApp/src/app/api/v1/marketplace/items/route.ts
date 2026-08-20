@@ -15,8 +15,8 @@
  * - featured: "true" — only return featured items
  */
 import { NextRequest } from "next/server";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import type { Query } from "firebase-admin/firestore";
 import { getVerifiedItems } from "@/lib/verified-registry";
 import { computeRankingScore } from "@/lib/submission-protocol";
 
@@ -82,10 +82,10 @@ export async function GET(req: NextRequest) {
 
         // 2. Community items (approved only)
         if (sourceFilter !== "verified" && typeFilter !== "agent") {
-            const constraints = [where("status", "==", "approved")];
-            if (typeFilter) constraints.push(where("type", "==", typeFilter));
-            if (featuredOnly) constraints.push(where("featured", "==", true));
-            const snap = await getDocs(query(collection(db, "communityMarketItems"), ...constraints));
+            let q: Query = adminDb().collection("communityMarketItems").where("status", "==", "approved");
+            if (typeFilter) q = q.where("type", "==", typeFilter);
+            if (featuredOnly) q = q.where("featured", "==", true);
+            const snap = await q.get();
             for (const d of snap.docs) {
                 const data = d.data();
                 if (categoryFilter && data.category !== categoryFilter) continue;
@@ -111,11 +111,9 @@ export async function GET(req: NextRequest) {
 
         // 3. Marketplace agents (approved only)
         if (sourceFilter !== "verified" && (!typeFilter || typeFilter === "agent")) {
-            const agentConstraints = [where("status", "==", "approved")];
-            if (featuredOnly) agentConstraints.push(where("featured", "==", true));
-            const agentSnap = await getDocs(
-                query(collection(db, "marketplaceAgents"), ...agentConstraints),
-            );
+            let agentQ: Query = adminDb().collection("marketplaceAgents").where("status", "==", "approved");
+            if (featuredOnly) agentQ = agentQ.where("featured", "==", true);
+            const agentSnap = await agentQ.get();
             for (const d of agentSnap.docs) {
                 const data = d.data();
                 if (categoryFilter && data.category !== categoryFilter) continue;

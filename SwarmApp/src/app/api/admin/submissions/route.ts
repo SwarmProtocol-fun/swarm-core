@@ -6,10 +6,7 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, orderBy, limit,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 export async function GET(req: NextRequest) {
@@ -27,13 +24,11 @@ export async function GET(req: NextRequest) {
     // Community items
     if (!collectionFilter || collectionFilter === "community") {
       const statusField = statusFilter === "pending" ? "pending" : statusFilter;
-      const q = query(
-        collection(db, "communityMarketItems"),
-        where("status", "==", statusField),
-        orderBy("submittedAt", "desc"),
-        limit(limitParam),
-      );
-      const snap = await getDocs(q);
+      const snap = await adminDb().collection("communityMarketItems")
+        .where("status", "==", statusField)
+        .orderBy("submittedAt", "desc")
+        .limit(limitParam)
+        .get();
       for (const d of snap.docs) {
         results.push({ source: "community", id: d.id, ...d.data() });
       }
@@ -42,13 +37,11 @@ export async function GET(req: NextRequest) {
     // Agent marketplace
     if (!collectionFilter || collectionFilter === "agents") {
       const agentStatus = statusFilter === "pending" ? "review" : statusFilter;
-      const q = query(
-        collection(db, "marketplaceAgents"),
-        where("status", "==", agentStatus),
-        orderBy("submittedAt", "desc"),
-        limit(limitParam),
-      );
-      const snap = await getDocs(q);
+      const snap = await adminDb().collection("marketplaceAgents")
+        .where("status", "==", agentStatus)
+        .orderBy("submittedAt", "desc")
+        .limit(limitParam)
+        .get();
       for (const d of snap.docs) {
         results.push({ source: "agents", id: d.id, ...d.data() });
       }

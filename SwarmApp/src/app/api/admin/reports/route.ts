@@ -9,11 +9,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, orderBy, doc, updateDoc,
-  serverTimestamp, getDoc, limit,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -24,12 +21,10 @@ export async function GET(req: NextRequest) {
   const limitParam = Number(req.nextUrl.searchParams.get("limit")) || 50;
 
   try {
-    const q = query(
-      collection(db, "marketplaceReports"),
-      orderBy("createdAt", "desc"),
-      limit(limitParam),
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb().collection("marketplaceReports")
+      .orderBy("createdAt", "desc")
+      .limit(limitParam)
+      .get();
     const reports = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     return Response.json({ ok: true, reports });
@@ -55,28 +50,28 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Missing action or reportId" }, { status: 400 });
   }
 
-  const reportRef = doc(db, "marketplaceReports", reportId);
-  const reportSnap = await getDoc(reportRef);
+  const reportRef = adminDb().collection("marketplaceReports").doc(reportId);
+  const reportSnap = await reportRef.get();
 
-  if (!reportSnap.exists()) {
+  if (!reportSnap.exists) {
     return Response.json({ error: "Report not found" }, { status: 404 });
   }
 
-  const report = reportSnap.data();
+  const report = reportSnap.data()!;
 
   try {
-    await updateDoc(reportRef, {
+    await reportRef.update({
       resolution: action,
-      resolvedAt: serverTimestamp(),
+      resolvedAt: FieldValue.serverTimestamp(),
       resolvedBy: req.headers.get("x-wallet-address") || "admin",
     });
 
     // Optionally suspend the reported item
     if (action === "action-taken" && suspendItem && report.itemId && report.collection) {
-      const itemRef = doc(db, report.collection, report.itemId);
-      await updateDoc(itemRef, {
+      const itemRef = adminDb().collection(report.collection).doc(report.itemId);
+      await itemRef.update({
         status: "suspended",
-        suspendedAt: serverTimestamp(),
+        suspendedAt: FieldValue.serverTimestamp(),
         suspendReason: `Report ${reportId}: ${report.reason}`,
       });
     }

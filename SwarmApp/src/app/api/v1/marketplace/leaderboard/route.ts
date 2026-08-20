@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { collection, query, where, getDocs, orderBy, limit as limitQuery } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import type { Agent } from "@/lib/firestore";
 
 export async function GET(req: NextRequest) {
@@ -17,14 +16,11 @@ export async function GET(req: NextRequest) {
         const sortBy = searchParams.get("sortBy") || "creditScore"; // creditScore, trustScore, tasksCompleted
 
         // Find all agents with public scores
-        const agentsQuery = query(
-            collection(db, "agents"),
-            where("allowPublicScores", "==", true),
-            orderBy(sortBy, "desc"),
-            limitQuery(Math.min(limit, 100)), // Max 100
-        );
-
-        const agentsSnapshot = await getDocs(agentsQuery);
+        const agentsSnapshot = await adminDb().collection("agents")
+            .where("allowPublicScores", "==", true)
+            .orderBy(sortBy, "desc")
+            .limit(Math.min(limit, 100)) // Max 100
+            .get();
 
         const leaderboard = agentsSnapshot.docs.map((doc, index) => {
             const agent = { id: doc.id, ...doc.data() } as Agent;

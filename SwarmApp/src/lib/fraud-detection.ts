@@ -7,23 +7,14 @@
  *
  * Runs as a batch cron pipeline. Each detector returns RiskSignal[] which feed
  * into composite risk scoring, auto-penalties, and admin review queue.
+ *
+ * Server-only (Firebase Admin SDK) — writes riskSignals/fraudReviewQueue/
+ * riskProfiles/fraudScanRuns, which are denied to clients in firestore.rules.
+ * Verified no client-side importers before converting from the client SDK.
  */
 
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  addDoc,
-  setDoc,
-  getDoc,
-  getDocs,
-  updateDoc,
-  query,
-  where,
-  orderBy,
-  limit as firestoreLimit,
-  serverTimestamp,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { computeRiskProfile, computeRiskTier, type RiskProfile } from "./fraud-risk-scoring";
 import { applyAutoPenalties } from "./fraud-auto-penalty";
 import { logActivity } from "./activity";
@@ -173,34 +164,32 @@ const PROFILES_COLLECTION = "riskProfiles";
 const REVIEW_COLLECTION = "fraudReviewQueue";
 const SCAN_RUNS_COLLECTION = "fraudScanRuns";
 
+function db() {
+  return adminDb();
+}
+
 /** Save a risk signal. Returns the document ID. */
 export async function saveRiskSignal(signal: RiskSignal): Promise<string> {
-  const ref = await addDoc(collection(db, SIGNALS_COLLECTION), {
+  const ref = await db().collection(SIGNALS_COLLECTION).add({
     ...signal,
-    createdAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
   });
   return ref.id;
 }
 
 /** Get active signals for an agent. */
 export async function getActiveSignals(agentId: string): Promise<RiskSignal[]> {
-  const q = query(
-    collection(db, SIGNALS_COLLECTION),
-    where("agentId", "==", agentId),
-    where("status", "==", "active"),
-    orderBy("createdAt", "desc"),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(SIGNALS_COLLECTION)
+    .where("agentId", "==", agentId)
+    .where("status", "==", "active")
+    .orderBy("createdAt", "desc")
+    .get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as RiskSignal));
 }
 
 /** Get all signals for a scan run. */
 export async function getSignalsByScanRun(scanRunId: string): Promise<RiskSignal[]> {
-  const q = query(
-    collection(db, SIGNALS_COLLECTION),
-    where("scanRunId", "==", scanRunId),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(SIGNALS_COLLECTION).where("scanRunId", "==", scanRunId).get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as RiskSignal));
 }
 
@@ -212,16 +201,14 @@ export async function getSignals(opts: {
   status?: SignalStatus;
   max?: number;
 }): Promise<RiskSignal[]> {
-  const constraints: Parameters<typeof query>[1][] = [];
-  if (opts.agentId) constraints.push(where("agentId", "==", opts.agentId));
-  if (opts.signalType) constraints.push(where("signalType", "==", opts.signalType));
-  if (opts.severity) constraints.push(where("severity", "==", opts.severity));
-  if (opts.status) constraints.push(where("status", "==", opts.status));
-  constraints.push(orderBy("createdAt", "desc"));
-  constraints.push(firestoreLimit(opts.max || 100));
+  let q: Query = db().collection(SIGNALS_COLLECTION);
+  if (opts.agentId) q = q.where("agentId", "==", opts.agentId);
+  if (opts.signalType) q = q.where("signalType", "==", opts.signalType);
+  if (opts.severity) q = q.where("severity", "==", opts.severity);
+  if (opts.status) q = q.where("status", "==", opts.status);
+  q = q.orderBy("createdAt", "desc").limit(opts.max || 100);
 
-  const q = query(collection(db, SIGNALS_COLLECTION), ...constraints);
-  const snap = await getDocs(q);
+  const snap = await q.get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as RiskSignal));
 }
 
@@ -231,26 +218,25 @@ export async function updateSignalStatus(
   status: SignalStatus,
   resolvedBy?: string,
 ): Promise<void> {
-  const ref = doc(db, SIGNALS_COLLECTION, signalId);
+  const ref = db().collection(SIGNALS_COLLECTION).doc(signalId);
   const update: Record<string, unknown> = { status };
   if (resolvedBy) {
     update.resolvedBy = resolvedBy;
-    update.resolvedAt = serverTimestamp();
+    update.resolvedAt = FieldValue.serverTimestamp();
   }
-  await updateDoc(ref, update);
+  await ref.update(update);
 }
 
 /** Save or update a risk profile (doc ID = agentId). */
 export async function saveRiskProfile(profile: RiskProfile): Promise<void> {
-  const ref = doc(db, PROFILES_COLLECTION, profile.agentId);
-  await setDoc(ref, { ...profile, updatedAt: serverTimestamp() }, { merge: true });
+  const ref = db().collection(PROFILES_COLLECTION).doc(profile.agentId);
+  await ref.set({ ...profile, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
 }
 
 /** Get risk profile for an agent. */
 export async function getRiskProfile(agentId: string): Promise<RiskProfile | null> {
-  const ref = doc(db, PROFILES_COLLECTION, agentId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
+  const snap = await db().collection(PROFILES_COLLECTION).doc(agentId).get();
+  if (!snap.exists) return null;
   return snap.data() as RiskProfile;
 }
 
@@ -259,30 +245,28 @@ export async function getRiskProfiles(opts?: {
   riskTier?: RiskTier;
   max?: number;
 }): Promise<RiskProfile[]> {
-  const constraints: Parameters<typeof query>[1][] = [];
-  if (opts?.riskTier) constraints.push(where("riskTier", "==", opts.riskTier));
-  constraints.push(firestoreLimit(opts?.max || 200));
+  let q: Query = db().collection(PROFILES_COLLECTION);
+  if (opts?.riskTier) q = q.where("riskTier", "==", opts.riskTier);
+  q = q.limit(opts?.max || 200);
 
-  const q = query(collection(db, PROFILES_COLLECTION), ...constraints);
-  const snap = await getDocs(q);
+  const snap = await q.get();
   return snap.docs.map((d) => d.data() as RiskProfile);
 }
 
 /** Save a fraud review case. */
 export async function saveFraudReviewCase(reviewCase: FraudReviewCase): Promise<string> {
-  const ref = await addDoc(collection(db, REVIEW_COLLECTION), {
+  const ref = await db().collection(REVIEW_COLLECTION).add({
     ...reviewCase,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return ref.id;
 }
 
 /** Get fraud review case by ID. */
 export async function getFraudReviewCase(caseId: string): Promise<FraudReviewCase | null> {
-  const ref = doc(db, REVIEW_COLLECTION, caseId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
+  const snap = await db().collection(REVIEW_COLLECTION).doc(caseId).get();
+  if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as FraudReviewCase;
 }
 
@@ -293,15 +277,13 @@ export async function listFraudReviewCases(opts?: {
   agentId?: string;
   max?: number;
 }): Promise<FraudReviewCase[]> {
-  const constraints: Parameters<typeof query>[1][] = [];
-  if (opts?.status) constraints.push(where("status", "==", opts.status));
-  if (opts?.severity) constraints.push(where("severity", "==", opts.severity));
-  if (opts?.agentId) constraints.push(where("agentId", "==", opts.agentId));
-  constraints.push(orderBy("createdAt", "desc"));
-  constraints.push(firestoreLimit(opts?.max || 100));
+  let q: Query = db().collection(REVIEW_COLLECTION);
+  if (opts?.status) q = q.where("status", "==", opts.status);
+  if (opts?.severity) q = q.where("severity", "==", opts.severity);
+  if (opts?.agentId) q = q.where("agentId", "==", opts.agentId);
+  q = q.orderBy("createdAt", "desc").limit(opts?.max || 100);
 
-  const q = query(collection(db, REVIEW_COLLECTION), ...constraints);
-  const snap = await getDocs(q);
+  const snap = await q.get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as FraudReviewCase));
 }
 
@@ -310,14 +292,13 @@ export async function updateFraudReviewCase(
   caseId: string,
   updates: Partial<FraudReviewCase>,
 ): Promise<void> {
-  const ref = doc(db, REVIEW_COLLECTION, caseId);
-  await updateDoc(ref, { ...updates, updatedAt: serverTimestamp() });
+  await db().collection(REVIEW_COLLECTION).doc(caseId).update({ ...updates, updatedAt: FieldValue.serverTimestamp() });
 }
 
 /** Create a fraud scan run record. */
 export async function createScanRun(config: FraudDetectionConfig): Promise<string> {
-  const ref = await addDoc(collection(db, SCAN_RUNS_COLLECTION), {
-    startedAt: serverTimestamp(),
+  const ref = await db().collection(SCAN_RUNS_COLLECTION).add({
+    startedAt: FieldValue.serverTimestamp(),
     status: "running",
     durationMs: 0,
     agentsScanned: 0,
@@ -335,26 +316,22 @@ export async function updateScanRun(
   runId: string,
   updates: Partial<FraudScanRun>,
 ): Promise<void> {
-  const ref = doc(db, SCAN_RUNS_COLLECTION, runId);
-  await updateDoc(ref, updates);
+  await db().collection(SCAN_RUNS_COLLECTION).doc(runId).update(updates);
 }
 
 /** Get a scan run by ID. */
 export async function getScanRun(runId: string): Promise<FraudScanRun | null> {
-  const ref = doc(db, SCAN_RUNS_COLLECTION, runId);
-  const snap = await getDoc(ref);
-  if (!snap.exists()) return null;
+  const snap = await db().collection(SCAN_RUNS_COLLECTION).doc(runId).get();
+  if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as FraudScanRun;
 }
 
 /** List recent scan runs. */
 export async function listScanRuns(max: number = 20): Promise<FraudScanRun[]> {
-  const q = query(
-    collection(db, SCAN_RUNS_COLLECTION),
-    orderBy("startedAt", "desc"),
-    firestoreLimit(max),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(SCAN_RUNS_COLLECTION)
+    .orderBy("startedAt", "desc")
+    .limit(max)
+    .get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as FraudScanRun));
 }
 
@@ -367,13 +344,11 @@ export async function listScanRuns(max: number = 20): Promise<FraudScanRun[]> {
  * Deduplicates on (agentId, signalType, sorted counterpartyIds hash).
  */
 async function isDuplicateSignal(signal: RiskSignal): Promise<boolean> {
-  const q = query(
-    collection(db, SIGNALS_COLLECTION),
-    where("agentId", "==", signal.agentId),
-    where("signalType", "==", signal.signalType),
-    where("status", "==", "active"),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(SIGNALS_COLLECTION)
+    .where("agentId", "==", signal.agentId)
+    .where("signalType", "==", signal.signalType)
+    .where("status", "==", "active")
+    .get();
 
   if (snap.empty) return false;
 
@@ -435,7 +410,7 @@ export async function runFraudScan(
 
   try {
     // 2. Fetch all orgs
-    const orgsSnap = await getDocs(collection(db, "organizations"));
+    const orgsSnap = await db().collection("organizations").get();
     const orgIds = orgsSnap.docs.map((d) => d.id);
 
     const allSignals: RiskSignal[] = [];
@@ -515,10 +490,10 @@ export async function runFraudScan(
         }, "low");
 
         // Fetch agent name
-        const agentDoc = await getDoc(doc(db, "agents", agentId));
-        const agentName = agentDoc.exists() ? (agentDoc.data().name || agentId) : agentId;
-        const asn = agentDoc.exists() ? (agentDoc.data().asn || "") : "";
-        const orgId = agentDoc.exists() ? (agentDoc.data().orgId || "") : "";
+        const agentDoc = await db().collection("agents").doc(agentId).get();
+        const agentName = agentDoc.exists ? (agentDoc.data()!.name || agentId) : agentId;
+        const asn = agentDoc.exists ? (agentDoc.data()!.asn || "") : "";
+        const orgId = agentDoc.exists ? (agentDoc.data()!.orgId || "") : "";
 
         const reviewSeverity: "medium" | "high" | "critical" =
           highestSeverity === "low" ? "medium" : highestSeverity as "medium" | "high" | "critical";
@@ -561,7 +536,7 @@ export async function runFraudScan(
     // 10. Update scan run
     const durationMs = Date.now() - startTime;
     const scanResult: Partial<FraudScanRun> = {
-      completedAt: serverTimestamp(),
+      completedAt: FieldValue.serverTimestamp(),
       durationMs,
       status: "completed",
       agentsScanned,
@@ -577,13 +552,13 @@ export async function runFraudScan(
     return {
       id: scanRunId,
       ...scanResult,
-      startedAt: serverTimestamp(),
+      startedAt: FieldValue.serverTimestamp(),
       config: mergedConfig,
     } as FraudScanRun;
   } catch (error) {
     const durationMs = Date.now() - startTime;
     await updateScanRun(scanRunId, {
-      completedAt: serverTimestamp(),
+      completedAt: FieldValue.serverTimestamp(),
       durationMs,
       status: "failed",
       error: error instanceof Error ? error.message : "Unknown error",

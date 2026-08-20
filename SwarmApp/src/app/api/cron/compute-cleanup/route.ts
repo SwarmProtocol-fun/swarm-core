@@ -16,8 +16,7 @@
  * Trigger: Netlify cron (daily) or manual
  */
 import { NextRequest } from "next/server";
-import { getDocs, query, collection, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin, requireInternalService } from "@/lib/auth-guard";
 import { getComputer, updateComputer, deleteComputer } from "@/lib/compute/firestore";
 import { getComputeProvider } from "@/lib/compute/provider";
@@ -132,7 +131,7 @@ async function deleteAzureVM(vmName: string): Promise<void> {
 // ═══════════════════════════════════════════════════════════════
 
 async function getAllComputeComputers(): Promise<Array<{ id: string; data: Record<string, unknown> }>> {
-  const snap = await getDocs(collection(db, "computeComputers"));
+  const snap = await adminDb().collection("computeComputers").get();
   return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
 }
 

@@ -10,11 +10,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, updateDoc,
-  serverTimestamp, orderBy,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -27,16 +24,18 @@ export async function GET(req: NextRequest) {
   const bannedFilter = url.searchParams.get("banned");
 
   try {
-    let q = query(collection(db, "publisherProfiles"), orderBy("updatedAt", "desc"));
+    // Note: matches original behavior — a filter replaces the base query
+    // (drops ordering); bannedFilter wins if both are set.
+    let q: Query = adminDb().collection("publisherProfiles").orderBy("updatedAt", "desc");
 
     if (tierFilter !== null) {
-      q = query(collection(db, "publisherProfiles"), where("tier", "==", Number(tierFilter)));
+      q = adminDb().collection("publisherProfiles").where("tier", "==", Number(tierFilter));
     }
     if (bannedFilter === "true") {
-      q = query(collection(db, "publisherProfiles"), where("banned", "==", true));
+      q = adminDb().collection("publisherProfiles").where("banned", "==", true);
     }
 
-    const snap = await getDocs(q);
+    const snap = await q.get();
     const publishers = snap.docs.map((d) => ({ wallet: d.id, ...d.data() }));
 
     return Response.json({ ok: true, publishers });
@@ -63,32 +62,32 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Missing action or wallet" }, { status: 400 });
   }
 
-  const ref = doc(db, "publisherProfiles", wallet.toLowerCase());
+  const ref = adminDb().collection("publisherProfiles").doc(wallet.toLowerCase());
 
   try {
     switch (action) {
       case "ban":
-        await updateDoc(ref, {
+        await ref.update({
           banned: true,
           banReason: reason || "Banned by admin",
-          bannedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          bannedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         break;
       case "unban":
-        await updateDoc(ref, {
+        await ref.update({
           banned: false,
           banReason: null,
           bannedAt: null,
           cooldownUntil: null,
-          updatedAt: serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         break;
       case "set-tier":
         if (tier === undefined || tier < 0 || tier > 3) {
           return Response.json({ error: "Invalid tier (0-3)" }, { status: 400 });
         }
-        await updateDoc(ref, { tier, updatedAt: serverTimestamp() });
+        await ref.update({ tier, updatedAt: FieldValue.serverTimestamp() });
         break;
       default:
         return Response.json({ error: "Invalid action" }, { status: 400 });

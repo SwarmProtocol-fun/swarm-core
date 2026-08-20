@@ -17,17 +17,8 @@ import { getAgentAvatarUrl } from "@/lib/agent-avatar";
 import { agentCheckIn, getOrganization, type Agent } from "@/lib/firestore";
 import { generateASN } from "@/lib/credit-scoring";
 import { HEDERA_CONTRACTS, HEDERA_GAS_LIMIT, CONTRACTS, AGENT_IDENTITY_NFT_ABI, AGENT_REGISTRY_ABI } from "@/lib/swarm-contracts";
-import { db } from "@/lib/firebase";
-import {
-    collection,
-    doc,
-    addDoc,
-    getDocs,
-    updateDoc,
-    query,
-    where,
-    serverTimestamp,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { checkAndRestoreASN } from "@/lib/asn-auto-restore";
 // [swarm-core] Hedera integration removed — install swarm-hedera mod
 // [swarm-core] Hedera integration removed — install swarm-hedera mod
@@ -149,12 +140,10 @@ async function validateASNNotActive(
     currentAgentId?: string,
 ): Promise<{ conflict: false } | { conflict: true; agentName: string; agentId: string }> {
     if (!asn) return { conflict: false };
-    const q = query(
-        collection(db, "agents"),
-        where("asn", "==", asn),
-        where("status", "in", ["online", "busy"]),
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb().collection("agents")
+        .where("asn", "==", asn)
+        .where("status", "in", ["online", "busy"])
+        .get();
     for (const d of snap.docs) {
         if (currentAgentId && d.id === currentAgentId) continue; // skip self
         const data = d.data();
@@ -224,11 +213,7 @@ export async function POST(request: NextRequest) {
 
     try {
         // Check if this public key is already registered
-        const existingQ = query(
-            collection(db, "agents"),
-            where("publicKey", "==", publicKey)
-        );
-        const existing = await getDocs(existingQ);
+        const existing = await adminDb().collection("agents").where("publicKey", "==", publicKey).get();
 
         if (!existing.empty) {
             // Update existing agent (same key reconnecting)
@@ -254,7 +239,7 @@ export async function POST(request: NextRequest) {
 
             const updates: Record<string, unknown> = {
                 status: "online",
-                lastSeen: serverTimestamp(),
+                lastSeen: FieldValue.serverTimestamp(),
                 connectionType: "ed25519",
                 ...(skills.length > 0 ? { reportedSkills: skills } : {}),
                 ...(bio ? { bio } : {}),
@@ -267,17 +252,17 @@ export async function POST(request: NextRequest) {
             if (!existingData.walletAddress) {
                 updates.walletAddress = agentAddress;
             }
-            await updateDoc(doc(db, "agents", existingDoc.id), updates);
+            await adminDb().collection("agents").doc(existingDoc.id).update(updates);
 
             // Check for ASN backup and auto-restore
             const restoreResult = await checkAndRestoreASN(existingAsn);
             if (restoreResult.restored && restoreResult.reputation) {
                 // Update credit scores from restored backup
-                await updateDoc(doc(db, "agents", existingDoc.id), {
+                await adminDb().collection("agents").doc(existingDoc.id).update({
                     creditScore: restoreResult.reputation.creditScore,
                     trustScore: restoreResult.reputation.trustScore,
                     restoredFromBackup: true,
-                    restoredAt: serverTimestamp(),
+                    restoredAt: FieldValue.serverTimestamp(),
                 });
             }
 
@@ -286,7 +271,7 @@ export async function POST(request: NextRequest) {
                 const skillStr = (skills.length > 0 ? skills.map(s => s.name).join(",") : existingData.reportedSkills?.map((s: { name: string }) => s.name).join(",")) || "general";
                 registerOnChain(existingData.name || agentName, existingAsn, skillStr, publicKey).then(async (result) => {
                     if (result) {
-                        await updateDoc(doc(db, "agents", existingDoc.id), {
+                        await adminDb().collection("agents").doc(existingDoc.id).update({
                             onChainTxHash: result.txHash,
                             onChainRegistered: true,
                         });
@@ -298,7 +283,7 @@ export async function POST(request: NextRequest) {
             if (!existingData.hederaNftMinted) {
                 mintIdentityNFT(agentAddress, existingAsn, existingData.creditScore ?? 680, existingData.trustScore ?? 50).then(async (result) => {
                     if (result) {
-                        await updateDoc(doc(db, "agents", existingDoc.id), {
+                        await adminDb().collection("agents").doc(existingDoc.id).update({
                             hederaNftTxHash: result.txHash,
                             hederaNftTokenId: result.tokenId || null,
                             hederaNftMinted: true,
@@ -337,12 +322,10 @@ export async function POST(request: NextRequest) {
 
         // Fallback: check by orgId + name to prevent duplicates when
         // the agent regenerates its keypair (e.g., deleted keys/ folder)
-        const nameQ = query(
-            collection(db, "agents"),
-            where("orgId", "==", orgId),
-            where("name", "==", agentName)
-        );
-        const nameMatch = await getDocs(nameQ);
+        const nameMatch = await adminDb().collection("agents")
+            .where("orgId", "==", orgId)
+            .where("name", "==", agentName)
+            .get();
 
         if (!nameMatch.empty) {
             // Same org + name → update existing agent with new key
@@ -370,7 +353,7 @@ export async function POST(request: NextRequest) {
                 publicKey,
                 agentAddress, // Update address when key changes
                 status: "online",
-                lastSeen: serverTimestamp(),
+                lastSeen: FieldValue.serverTimestamp(),
                 connectionType: "ed25519",
                 ...(skills.length > 0 ? { reportedSkills: skills } : {}),
                 ...(bio ? { bio } : {}),
@@ -380,17 +363,17 @@ export async function POST(request: NextRequest) {
                 nameUpdates.creditScore = matchedData.creditScore ?? 680;
                 nameUpdates.trustScore = matchedData.trustScore ?? 50;
             }
-            await updateDoc(doc(db, "agents", matchedDoc.id), nameUpdates);
+            await adminDb().collection("agents").doc(matchedDoc.id).update(nameUpdates);
 
             // Check for ASN backup and auto-restore
             const restoreResult = await checkAndRestoreASN(matchedAsn);
             if (restoreResult.restored && restoreResult.reputation) {
                 // Update credit scores from restored backup
-                await updateDoc(doc(db, "agents", matchedDoc.id), {
+                await adminDb().collection("agents").doc(matchedDoc.id).update({
                     creditScore: restoreResult.reputation.creditScore,
                     trustScore: restoreResult.reputation.trustScore,
                     restoredFromBackup: true,
-                    restoredAt: serverTimestamp(),
+                    restoredAt: FieldValue.serverTimestamp(),
                 });
             }
 
@@ -399,7 +382,7 @@ export async function POST(request: NextRequest) {
                 const skillStr = (skills.length > 0 ? skills.map(s => s.name).join(",") : matchedData.reportedSkills?.map((s: { name: string }) => s.name).join(",")) || "general";
                 registerOnChain(matchedData.name || agentName, matchedAsn, skillStr, publicKey).then(async (result) => {
                     if (result) {
-                        await updateDoc(doc(db, "agents", matchedDoc.id), {
+                        await adminDb().collection("agents").doc(matchedDoc.id).update({
                             onChainTxHash: result.txHash,
                             onChainRegistered: true,
                         });
@@ -411,7 +394,7 @@ export async function POST(request: NextRequest) {
             if (!matchedData.hederaNftMinted) {
                 mintIdentityNFT(agentAddress, matchedAsn, matchedData.creditScore ?? 680, matchedData.trustScore ?? 50).then(async (result) => {
                     if (result) {
-                        await updateDoc(doc(db, "agents", matchedDoc.id), {
+                        await adminDb().collection("agents").doc(matchedDoc.id).update({
                             hederaNftTxHash: result.txHash,
                             hederaNftTokenId: result.tokenId || null,
                             hederaNftMinted: true,
@@ -471,7 +454,7 @@ export async function POST(request: NextRequest) {
             ? preRestoreResult.reputation.trustScore
             : 50;
 
-        const ref = await addDoc(collection(db, "agents"), {
+        const ref = await adminDb().collection("agents").add({
             name: agentName,
             type: agentType || "agent",
             orgId,
@@ -495,15 +478,15 @@ export async function POST(request: NextRequest) {
             privacyLevel: "private",
             allowPublicProfile: false,
             allowPublicScores: false,
-            ...(preRestoreResult.restored ? { restoredAt: serverTimestamp() } : {}),
-            lastSeen: serverTimestamp(),
-            createdAt: serverTimestamp(),
+            ...(preRestoreResult.restored ? { restoredAt: FieldValue.serverTimestamp() } : {}),
+            lastSeen: FieldValue.serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         });
 
         // Attempt on-chain registration on Hedera Testnet (non-blocking)
         registerOnChain(agentName, asn, skillStr, publicKey).then(async (result) => {
             if (result) {
-                await updateDoc(doc(db, "agents", ref.id), {
+                await adminDb().collection("agents").doc(ref.id).update({
                     onChainTxHash: result.txHash,
                     onChainRegistered: true,
                 });
@@ -513,7 +496,7 @@ export async function POST(request: NextRequest) {
         // Mint Soulbound Identity NFT on Hedera (non-blocking, platform-sponsored)
         mintIdentityNFT(agentAddress, asn, initialCreditScore, initialTrustScore).then(async (result) => {
             if (result) {
-                await updateDoc(doc(db, "agents", ref.id), {
+                await adminDb().collection("agents").doc(ref.id).update({
                     hederaNftTxHash: result.txHash,
                     hederaNftTokenId: result.tokenId || null,
                     hederaNftMinted: true,
@@ -525,7 +508,7 @@ export async function POST(request: NextRequest) {
         (async () => {
             try {
                 const memoryConfig = await createPrivateMemoryTopic(ref.id, asn);
-                await updateDoc(doc(db, "agents", ref.id), {
+                await adminDb().collection("agents").doc(ref.id).update({
                     hederaMemoryTopicId: memoryConfig.memoryTopicId,
                     hederaMemoryEnabled: true,
                     hederaMemoryCreatedAt: new Date(),

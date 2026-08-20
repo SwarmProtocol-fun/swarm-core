@@ -9,8 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 /**
  * GET /api/nft/agent/[address]
@@ -34,10 +33,10 @@ export async function GET(
     const normalizedAddress = address.toLowerCase();
 
     // Query Firestore for agent by wallet address or derived agent address
-    const agentsRef = collection(db, "agents");
-    let querySnapshot = await getDocs(query(agentsRef, where("walletAddress", "==", normalizedAddress)));
+    const agentsRef = adminDb().collection("agents");
+    let querySnapshot = await agentsRef.where("walletAddress", "==", normalizedAddress).get();
     if (querySnapshot.empty) {
-      querySnapshot = await getDocs(query(agentsRef, where("agentAddress", "==", normalizedAddress)));
+      querySnapshot = await agentsRef.where("agentAddress", "==", normalizedAddress).get();
     }
 
     if (querySnapshot.empty) {

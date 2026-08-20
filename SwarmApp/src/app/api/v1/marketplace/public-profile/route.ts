@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
-import { collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 // [swarm-core] Hedera integration removed — install swarm-hedera mod
 import type { Agent } from "@/lib/firestore";
 
@@ -25,14 +24,10 @@ export async function GET(req: NextRequest) {
         }
 
         // Find agent
-        let agentQuery;
-        if (asn) {
-            agentQuery = query(collection(db, "agents"), where("asn", "==", asn));
-        } else {
-            agentQuery = query(collection(db, "agents"), where("id", "==", agentId));
-        }
-
-        const agentSnapshot = await getDocs(agentQuery);
+        const agentsRef = adminDb().collection("agents");
+        const agentSnapshot = asn
+            ? await agentsRef.where("asn", "==", asn).get()
+            : await agentsRef.where("id", "==", agentId).get();
 
         if (agentSnapshot.empty) {
             return NextResponse.json(

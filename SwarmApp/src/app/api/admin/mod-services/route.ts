@@ -9,8 +9,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { collection, getDocs, doc, deleteDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 export async function GET(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 403 });
 
   try {
-    const snap = await getDocs(collection(db, "modServiceRegistry"));
+    const snap = await adminDb().collection("modServiceRegistry").get();
     const services = snap.docs.map((d) => ({ slug: d.id, ...d.data() }));
 
     return Response.json({ ok: true, services });
@@ -45,14 +45,14 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const ref = doc(db, "modServiceRegistry", slug);
+    const ref = adminDb().collection("modServiceRegistry").doc(slug);
     switch (action) {
       case "remove":
-        await deleteDoc(ref);
+        await ref.delete();
         break;
       case "set-status":
         if (!status) return Response.json({ error: "Missing status" }, { status: 400 });
-        await updateDoc(ref, { status, updatedAt: serverTimestamp() });
+        await ref.update({ status, updatedAt: FieldValue.serverTimestamp() });
         break;
       default:
         return Response.json({ error: "Invalid action" }, { status: 400 });

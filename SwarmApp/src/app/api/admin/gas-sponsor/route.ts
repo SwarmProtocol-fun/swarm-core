@@ -9,8 +9,7 @@
  */
 import { NextRequest, NextResponse } from "next/server";
 import { ethers } from "ethers";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 
 const HEDERA_RPC = "https://testnet.hashio.io/api";
@@ -44,9 +43,7 @@ export async function GET(_req: NextRequest) {
     // Count agents that have been on-chain registered
     let totalSponsored = 0;
     try {
-      const agentsRef = collection(db, "agents");
-      const registeredQ = query(agentsRef, where("onChainRegistered", "==", true));
-      const snap = await getDocs(registeredQ);
+      const snap = await adminDb().collection("agents").where("onChainRegistered", "==", true).get();
       totalSponsored = snap.size;
     } catch {
       // Firestore may not have this field on all agents

@@ -7,10 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, updateDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import { updatePublisherStats } from "@/lib/submission-protocol";
@@ -27,21 +25,17 @@ export async function GET(req: NextRequest) {
   const searchQuery = url.searchParams.get("q")?.toLowerCase();
 
   try {
-    const constraints = [];
+    let q: Query = adminDb().collection("publisherProfiles");
     if (tierFilter !== null && tierFilter !== undefined && tierFilter !== "") {
-      constraints.push(where("tier", "==", Number(tierFilter)));
+      q = q.where("tier", "==", Number(tierFilter));
     }
     if (bannedFilter === "true") {
-      constraints.push(where("banned", "==", true));
+      q = q.where("banned", "==", true);
     } else if (bannedFilter === "false") {
-      constraints.push(where("banned", "==", false));
+      q = q.where("banned", "==", false);
     }
 
-    const q = constraints.length
-      ? query(collection(db, "publisherProfiles"), ...constraints)
-      : query(collection(db, "publisherProfiles"));
-
-    const snap = await getDocs(q);
+    const snap = await q.get();
     let publishers = snap.docs.map((d) => ({
       wallet: d.id,
       ...d.data(),
@@ -94,31 +88,31 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "action and wallet required" }, { status: 400 });
   }
 
-  const ref = doc(db, "publisherProfiles", wallet);
+  const ref = adminDb().collection("publisherProfiles").doc(wallet);
 
   try {
     switch (action) {
       case "ban":
-        await updateDoc(ref, {
+        await ref.update({
           banned: true,
           banReason: reason || "Policy violation",
-          bannedAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
+          bannedAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         break;
       case "unban":
-        await updateDoc(ref, {
+        await ref.update({
           banned: false,
           banReason: null,
           bannedAt: null,
-          updatedAt: serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         break;
       case "set-tier":
         if (tier === undefined || tier < 0 || tier > 3) {
           return Response.json({ error: "tier must be 0-3" }, { status: 400 });
         }
-        await updateDoc(ref, { tier, updatedAt: serverTimestamp() });
+        await ref.update({ tier, updatedAt: FieldValue.serverTimestamp() });
         break;
       case "recalculate":
         await updatePublisherStats(wallet);

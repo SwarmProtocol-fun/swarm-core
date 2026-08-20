@@ -12,8 +12,8 @@ import {
   appendToMemoryMd,
   updateTimestamp,
 } from "@/lib/memory-templates";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { getWalletAddress, requireOrgMember } from "@/lib/auth-guard";
 
 export async function POST(
@@ -67,11 +67,10 @@ export async function POST(
       memoryId = memoryMd.id;
 
       // Update in Firestore
-      await setDoc(
-        doc(db, "agentMemories", memoryId),
+      await adminDb().collection("agentMemories").doc(memoryId).set(
         {
           content,
-          updatedAt: serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         },
         { merge: true }
       );

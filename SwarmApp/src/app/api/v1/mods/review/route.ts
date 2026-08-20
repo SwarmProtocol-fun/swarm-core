@@ -10,8 +10,8 @@
  * Auth: Platform admin only
  */
 import { NextRequest } from "next/server";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin, unauthorized } from "@/lib/auth-guard";
 import {
     getNextStage,
@@ -47,17 +47,11 @@ export async function GET(req: NextRequest) {
     const admin = requirePlatformAdmin(req);
     if (!admin.ok) return unauthorized(admin.error);
 
-    const { getDocs, query, collection, where } = await import("firebase/firestore");
-
     const col = resolveCollection(req.nextUrl.searchParams.get("collection"));
     const status = req.nextUrl.searchParams.get("status") || pendingStatus(col);
     const stageFilter = req.nextUrl.searchParams.get("stage");
 
-    const q = query(
-        collection(db, COLLECTIONS[col]),
-        where("status", "==", status),
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb().collection(COLLECTIONS[col]).where("status", "==", status).get();
     let items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     // Filter by pipeline stage if requested
@@ -103,14 +97,14 @@ export async function POST(req: NextRequest) {
         );
     }
 
-    const ref = doc(db, COLLECTIONS[col], itemId);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(COLLECTIONS[col]).doc(itemId);
+    const snap = await ref.get();
 
-    if (!snap.exists()) {
+    if (!snap.exists) {
         return Response.json({ error: "Submission not found" }, { status: 404 });
     }
 
-    const current = snap.data();
+    const current = snap.data()!;
     const currentStage = (current.stage as SubmissionStage) || "intake";
     const reviewHistory: ReviewEntry[] = Array.isArray(current.reviewHistory) ? current.reviewHistory : [];
 
@@ -182,11 +176,11 @@ export async function POST(req: NextRequest) {
 
     reviewHistory.push(newEntry);
 
-    await updateDoc(ref, {
+    await ref.update({
         status: newStatus,
         stage: newStage,
         reviewHistory,
-        reviewedAt: serverTimestamp(),
+        reviewedAt: FieldValue.serverTimestamp(),
         reviewComment,
     });
 

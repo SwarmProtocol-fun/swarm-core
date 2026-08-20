@@ -12,8 +12,7 @@
  * 4. Cross-reference with self-deal and trust-ring for correlation boost
  */
 
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import type { RiskSignal, FraudDetectionConfig } from "../fraud-detection";
 
 interface ValidatorProfile {
@@ -37,7 +36,7 @@ export async function detectCrossValidationAbuse(
   // Query all validation stakes
   let stakesSnap;
   try {
-    stakesSnap = await getDocs(collection(db, "validationStakes"));
+    stakesSnap = await adminDb().collection("validationStakes").get();
   } catch {
     return signals; // Collection may not exist
   }
@@ -120,9 +119,9 @@ export async function detectCrossValidationAbuse(
     // Get agent details
     let agentAsn = "";
     try {
-      const agentDoc = await getDoc(doc(db, "agents", validatorId));
-      if (agentDoc.exists()) {
-        agentAsn = agentDoc.data().asn || "";
+      const agentDoc = await adminDb().collection("agents").doc(validatorId).get();
+      if (agentDoc.exists) {
+        agentAsn = agentDoc.data()!.asn || "";
       }
     } catch {
       // continue

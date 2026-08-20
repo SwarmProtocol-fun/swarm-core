@@ -12,8 +12,8 @@
 import { NextRequest } from "next/server";
 import { verifyAgentRequest, isTimestampFresh, unauthorized } from "../verify";
 import { authenticateAgent, unauthorized as webhookUnauthorized } from "../../webhooks/auth";
-import { db } from "@/lib/firebase";
-import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 
 interface ReportedSkillPayload {
     id: string;
@@ -77,10 +77,10 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-        await updateDoc(doc(db, "agents", agentId), {
+        await adminDb().collection("agents").doc(agentId!).update({
             reportedSkills: skills,
             ...(bio ? { bio } : {}),
-            lastSeen: serverTimestamp(),
+            lastSeen: FieldValue.serverTimestamp(),
         });
 
         return Response.json({

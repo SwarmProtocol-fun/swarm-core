@@ -6,8 +6,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin, getWalletAddress } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import { logActivity } from "@/lib/activity";
@@ -41,20 +41,20 @@ export async function GET(
 
     // Enrich with agent info, risk profile, and signals
     const [agentDoc, riskProfile, activeSignals] = await Promise.all([
-      getDoc(doc(db, "agents", reviewCase.agentId)),
+      adminDb().collection("agents").doc(reviewCase.agentId).get(),
       getRiskProfile(reviewCase.agentId),
       getActiveSignals(reviewCase.agentId),
     ]);
 
-    const agent = agentDoc.exists() ? {
+    const agent = agentDoc.exists ? {
       id: agentDoc.id,
-      name: agentDoc.data().name,
-      asn: agentDoc.data().asn,
-      walletAddress: agentDoc.data().walletAddress,
-      creditScore: agentDoc.data().creditScore,
-      trustScore: agentDoc.data().trustScore,
-      status: agentDoc.data().status,
-      orgId: agentDoc.data().orgId,
+      name: agentDoc.data()!.name,
+      asn: agentDoc.data()!.asn,
+      walletAddress: agentDoc.data()!.walletAddress,
+      creditScore: agentDoc.data()!.creditScore,
+      trustScore: agentDoc.data()!.trustScore,
+      status: agentDoc.data()!.status,
+      orgId: agentDoc.data()!.orgId,
     } : null;
 
     return Response.json({
@@ -107,12 +107,12 @@ export async function POST(
       return Response.json({ error: "Case not found" }, { status: 404 });
     }
 
-    const agentDoc = await getDoc(doc(db, "agents", reviewCase.agentId));
-    if (!agentDoc.exists()) {
+    const agentDoc = await adminDb().collection("agents").doc(reviewCase.agentId).get();
+    if (!agentDoc.exists) {
       return Response.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    const agent = agentDoc.data();
+    const agent = agentDoc.data()!;
     const reviewEntry = {
       action,
       performedBy: adminWallet,
@@ -138,7 +138,7 @@ export async function POST(
             action: "dismiss",
             notes: notes || "Dismissed by admin",
             resolvedBy: adminWallet,
-            resolvedAt: serverTimestamp(),
+            resolvedAt: FieldValue.serverTimestamp(),
           },
           reviewHistory: [...reviewCase.reviewHistory, reviewEntry],
         });
@@ -152,7 +152,7 @@ export async function POST(
             action: "warn",
             notes: notes || "Warning issued",
             resolvedBy: adminWallet,
-            resolvedAt: serverTimestamp(),
+            resolvedAt: FieldValue.serverTimestamp(),
           },
           reviewHistory: [...reviewCase.reviewHistory, reviewEntry],
         });
@@ -212,7 +212,7 @@ export async function POST(
             trustPenalty: trustPenalty ? -trustPenalty : undefined,
             notes: notes || "Penalty applied",
             resolvedBy: adminWallet,
-            resolvedAt: serverTimestamp(),
+            resolvedAt: FieldValue.serverTimestamp(),
           },
           reviewHistory: [...reviewCase.reviewHistory, reviewEntry],
         });
@@ -221,7 +221,7 @@ export async function POST(
 
       case "ban": {
         // Pause the agent
-        await updateDoc(doc(db, "agents", reviewCase.agentId), {
+        await adminDb().collection("agents").doc(reviewCase.agentId).update({
           status: "paused",
           pauseReason: "FRAUD_BANNED",
         });
@@ -260,7 +260,7 @@ export async function POST(
             trustPenalty: trustPenalty ? -trustPenalty : undefined,
             notes: notes || "Agent banned",
             resolvedBy: adminWallet,
-            resolvedAt: serverTimestamp(),
+            resolvedAt: FieldValue.serverTimestamp(),
           },
           reviewHistory: [...reviewCase.reviewHistory, reviewEntry],
         });

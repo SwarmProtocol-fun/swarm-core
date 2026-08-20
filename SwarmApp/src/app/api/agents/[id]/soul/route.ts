@@ -7,8 +7,7 @@
 
 import { NextRequest } from "next/server";
 import { getAgentSOUL, updateAgentSOUL, getDefaultSOUL } from "@/lib/soul";
-import { getDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import type { Agent } from "@/lib/firestore";
 import { getWalletAddress, requireOrgMember, unauthorized, forbidden } from "@/lib/auth-guard";
 import { rateLimit } from "@/app/api/v1/rate-limit";
@@ -33,8 +32,8 @@ export async function GET(
 
     if (!soulConfig) {
       // Generate default SOUL
-      const agentDoc = await getDoc(doc(db, "agents", agentId));
-      if (!agentDoc.exists()) {
+      const agentDoc = await adminDb().collection("agents").doc(agentId).get();
+      if (!agentDoc.exists) {
         return Response.json({ error: "Agent not found" }, { status: 404 });
       }
 

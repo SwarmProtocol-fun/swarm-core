@@ -7,10 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, doc, getDoc, updateDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -55,7 +53,7 @@ export async function GET(req: NextRequest) {
     }
 
     for (const col of collections) {
-      const snap = await getDocs(query(collection(db, col.name)));
+      const snap = await adminDb().collection(col.name).get();
 
       for (const d of snap.docs) {
         const data = d.data();
@@ -90,10 +88,10 @@ export async function GET(req: NextRequest) {
 
         // Fetch parent item if updateOf exists
         if (data.updateOf) {
-          const parentRef = doc(db, col.name, data.updateOf);
-          const parentSnap = await getDoc(parentRef);
-          if (parentSnap.exists()) {
-            const parentData = parentSnap.data();
+          const parentRef = adminDb().collection(col.name).doc(data.updateOf);
+          const parentSnap = await parentRef.get();
+          if (parentSnap.exists) {
+            const parentData = parentSnap.data()!;
             item.parentItem = {
               id: parentSnap.id,
               name: parentData.name || "Untitled",
@@ -146,14 +144,14 @@ export async function POST(req: NextRequest) {
   const colName = colParam === "agents" ? "marketplaceAgents" : "communityMarketItems";
 
   try {
-    const ref = doc(db, colName, itemId);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(colName).doc(itemId);
+    const snap = await ref.get();
 
-    if (!snap.exists()) {
+    if (!snap.exists) {
       return Response.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data()!;
 
     switch (action) {
       case "revert": {
@@ -161,15 +159,15 @@ export async function POST(req: NextRequest) {
           return Response.json({ error: "Item has no parent to revert to" }, { status: 400 });
         }
         // Set this item to reverted
-        await updateDoc(ref, {
+        await ref.update({
           status: "reverted",
-          revertedAt: serverTimestamp(),
+          revertedAt: FieldValue.serverTimestamp(),
         });
         // Ensure parent is still approved
-        const parentRef = doc(db, colName, data.updateOf);
-        const parentSnap = await getDoc(parentRef);
-        if (parentSnap.exists() && parentSnap.data().status !== "approved") {
-          await updateDoc(parentRef, { status: "approved" });
+        const parentRef = adminDb().collection(colName).doc(data.updateOf);
+        const parentSnap = await parentRef.get();
+        if (parentSnap.exists && parentSnap.data()!.status !== "approved") {
+          await parentRef.update({ status: "approved" });
         }
         break;
       }
@@ -178,10 +176,10 @@ export async function POST(req: NextRequest) {
         if (!newVersion) {
           return Response.json({ error: "newVersion required for force_bump" }, { status: 400 });
         }
-        await updateDoc(ref, {
+        await ref.update({
           previousVersion: data.version || "1.0.0",
           version: newVersion.trim().slice(0, 20),
-          updatedAt: serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         });
         break;
       }

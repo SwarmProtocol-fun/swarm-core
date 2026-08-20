@@ -7,8 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -53,9 +53,9 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 403 });
 
   try {
-    const ref = doc(db, "platformConfig", "marketplace");
-    const snap = await getDoc(ref);
-    const data = snap.exists() ? snap.data() : {};
+    const ref = adminDb().collection("platformConfig").doc("marketplace");
+    const snap = await ref.get();
+    const data = snap.exists ? snap.data() : {};
     const settings = { ...DEFAULTS, ...data };
 
     return Response.json({ ok: true, settings });
@@ -89,10 +89,10 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const ref = doc(db, "platformConfig", "marketplace");
-    await setDoc(ref, {
+    const ref = adminDb().collection("platformConfig").doc("marketplace");
+    await ref.set({
       ...settings,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: "platform-admin",
     }, { merge: true });
 
@@ -105,8 +105,8 @@ export async function POST(req: NextRequest) {
     });
 
     // Re-read merged result
-    const snap = await getDoc(ref);
-    const merged = { ...DEFAULTS, ...(snap.exists() ? snap.data() : {}) };
+    const snap = await ref.get();
+    const merged = { ...DEFAULTS, ...(snap.exists ? snap.data() : {}) };
 
     return Response.json({ ok: true, settings: merged });
   } catch (err) {

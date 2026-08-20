@@ -7,8 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, getDoc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin, getWalletAddress } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import { DEFAULT_CONFIG, type FraudDetectionConfig } from "@/lib/fraud-detection";
@@ -22,19 +22,19 @@ export async function GET(req: NextRequest) {
   if (!auth.ok) return Response.json({ error: auth.error }, { status: 403 });
 
   try {
-    const ref = doc(db, CONFIG_DOC, CONFIG_ID);
-    const snap = await getDoc(ref);
+    const ref = adminDb().collection(CONFIG_DOC).doc(CONFIG_ID);
+    const snap = await ref.get();
 
-    const config: FraudDetectionConfig = snap.exists()
-      ? { ...DEFAULT_CONFIG, ...snap.data().config }
+    const config: FraudDetectionConfig = snap.exists
+      ? { ...DEFAULT_CONFIG, ...snap.data()!.config }
       : DEFAULT_CONFIG;
 
     return Response.json({
       ok: true,
       config,
       defaults: DEFAULT_CONFIG,
-      lastUpdated: snap.exists() ? snap.data().updatedAt : null,
-      updatedBy: snap.exists() ? snap.data().updatedBy : null,
+      lastUpdated: snap.exists ? snap.data()!.updatedAt : null,
+      updatedBy: snap.exists ? snap.data()!.updatedBy : null,
     });
   } catch (err) {
     return Response.json({
@@ -79,17 +79,17 @@ export async function PUT(req: NextRequest) {
   }
 
   try {
-    const ref = doc(db, CONFIG_DOC, CONFIG_ID);
-    const existing = await getDoc(ref);
-    const currentConfig = existing.exists()
-      ? { ...DEFAULT_CONFIG, ...existing.data().config }
+    const ref = adminDb().collection(CONFIG_DOC).doc(CONFIG_ID);
+    const existing = await ref.get();
+    const currentConfig = existing.exists
+      ? { ...DEFAULT_CONFIG, ...existing.data()!.config }
       : DEFAULT_CONFIG;
 
     const newConfig = { ...currentConfig, ...updates };
 
-    await setDoc(ref, {
+    await ref.set({
       config: newConfig,
-      updatedAt: serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
       updatedBy: adminWallet,
     }, { merge: true });
 

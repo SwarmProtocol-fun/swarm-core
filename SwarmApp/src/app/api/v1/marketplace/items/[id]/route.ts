@@ -12,8 +12,7 @@
  * Auth: x-wallet-address header or platform admin secret
  */
 import { NextRequest } from "next/server";
-import { doc, getDoc, deleteDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { getWalletAddress, requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -42,20 +41,20 @@ export async function DELETE(
 
     // Try community collection first, then agents
     let collectionKey: "community" | "agents" = "community";
-    let itemRef = doc(db, COLLECTIONS.community, itemId);
-    let itemSnap = await getDoc(itemRef);
+    let itemRef = adminDb().collection(COLLECTIONS.community).doc(itemId);
+    let itemSnap = await itemRef.get();
 
-    if (!itemSnap.exists()) {
+    if (!itemSnap.exists) {
         collectionKey = "agents";
-        itemRef = doc(db, COLLECTIONS.agents, itemId);
-        itemSnap = await getDoc(itemRef);
+        itemRef = adminDb().collection(COLLECTIONS.agents).doc(itemId);
+        itemSnap = await itemRef.get();
     }
 
-    if (!itemSnap.exists()) {
+    if (!itemSnap.exists) {
         return Response.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const data = itemSnap.data();
+    const data = itemSnap.data()!;
 
     // Authorization check
     if (!admin.ok) {
@@ -75,7 +74,7 @@ export async function DELETE(
     }
 
     // Perform delete
-    await deleteDoc(itemRef);
+    await itemRef.delete();
 
     // Record audit entry (non-blocking)
     try {

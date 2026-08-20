@@ -7,10 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, getDoc, updateDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import {
@@ -47,11 +45,9 @@ export async function GET(req: NextRequest) {
       colFilter && colFilter !== "all" ? [colFilter as CollectionKey] : ["community", "agents"];
 
     for (const col of collectionsToQuery) {
-      const q = query(
-        collection(db, COLLECTIONS[col]),
-        where("status", "==", pendingStatus(col)),
-      );
-      const snap = await getDocs(q);
+      const snap = await adminDb().collection(COLLECTIONS[col])
+        .where("status", "==", pendingStatus(col))
+        .get();
       for (const d of snap.docs) {
         const data = d.data();
         const stage = (data.stage as string) || "intake";
@@ -113,15 +109,15 @@ export async function POST(req: NextRequest) {
 
   for (const itemId of itemIds) {
     try {
-      const ref = doc(db, COLLECTIONS[col], itemId);
-      const snap = await getDoc(ref);
+      const ref = adminDb().collection(COLLECTIONS[col]).doc(itemId);
+      const snap = await ref.get();
 
-      if (!snap.exists()) {
+      if (!snap.exists) {
         results.push({ id: itemId, status: "error", stage: "", error: "Not found" });
         continue;
       }
 
-      const current = snap.data();
+      const current = snap.data()!;
       const currentStage = (current.stage as SubmissionStage) || "intake";
       const reviewHistory: ReviewEntry[] = Array.isArray(current.reviewHistory) ? current.reviewHistory : [];
 
@@ -171,11 +167,11 @@ export async function POST(req: NextRequest) {
       }
 
       reviewHistory.push(newEntry);
-      await updateDoc(ref, {
+      await ref.update({
         status: newStatus,
         stage: newStage,
         reviewHistory,
-        reviewedAt: serverTimestamp(),
+        reviewedAt: FieldValue.serverTimestamp(),
         reviewComment: reviewComment || "",
       });
 

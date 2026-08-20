@@ -10,11 +10,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, getDoc,
-  updateDoc, serverTimestamp, Timestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 
@@ -33,17 +30,14 @@ export async function GET(req: NextRequest) {
     const cutoff = Timestamp.fromMillis(Date.now() - days * 24 * 60 * 60 * 1000);
 
     // Query transactions — if period is "all", no date filter
-    const txRef = collection(db, "marketplaceTransactions");
-    const txQuery = period === "all"
-      ? query(txRef)
-      : query(txRef, where("createdAt", ">=", cutoff));
+    const txRef = adminDb().collection("marketplaceTransactions");
 
     let txSnap;
     try {
-      txSnap = await getDocs(txQuery);
+      txSnap = await (period === "all" ? txRef : txRef.where("createdAt", ">=", cutoff)).get();
     } catch {
       // If composite index missing, fall back to full scan + in-memory filter
-      txSnap = await getDocs(query(txRef));
+      txSnap = await txRef.get();
     }
 
     let totalRevenue = 0;
@@ -145,8 +139,8 @@ export async function GET(req: NextRequest) {
     await Promise.all(
       topPublishers.map(async (pub) => {
         try {
-          const snap = await getDoc(doc(db, "publisherProfiles", pub.wallet));
-          if (snap.exists()) pub.tier = (snap.data().tier as number) ?? 0;
+          const snap = await adminDb().collection("publisherProfiles").doc(pub.wallet).get();
+          if (snap.exists) pub.tier = (snap.data()!.tier as number) ?? 0;
         } catch {
           // skip
         }
@@ -197,19 +191,16 @@ export async function POST(req: NextRequest) {
         }
 
         // Find pending transactions for this publisher
-        const txSnap = await getDocs(
-          query(
-            collection(db, "marketplaceTransactions"),
-            where("publisherWallet", "==", publisherWallet),
-            where("status", "in", ["completed", "pending_payout"]),
-          ),
-        );
+        const txSnap = await adminDb().collection("marketplaceTransactions")
+          .where("publisherWallet", "==", publisherWallet)
+          .where("status", "in", ["completed", "pending_payout"])
+          .get();
 
         let updated = 0;
         for (const d of txSnap.docs) {
-          await updateDoc(doc(db, "marketplaceTransactions", d.id), {
+          await adminDb().collection("marketplaceTransactions").doc(d.id).update({
             status: "paid_out",
-            paidOutAt: serverTimestamp(),
+            paidOutAt: FieldValue.serverTimestamp(),
           });
           updated++;
         }
@@ -230,10 +221,10 @@ export async function POST(req: NextRequest) {
           return Response.json({ error: "transactionId required" }, { status: 400 });
         }
 
-        await updateDoc(doc(db, "marketplaceTransactions", transactionId), {
+        await adminDb().collection("marketplaceTransactions").doc(transactionId).update({
           status: "disputed",
           disputeReason: reason || "Flagged by admin",
-          disputedAt: serverTimestamp(),
+          disputedAt: FieldValue.serverTimestamp(),
         });
 
         await recordAuditEntry({

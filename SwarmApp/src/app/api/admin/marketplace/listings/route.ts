@@ -7,10 +7,8 @@
  */
 
 import { NextRequest } from "next/server";
-import {
-  collection, getDocs, query, where, doc, updateDoc, getDoc, serverTimestamp,
-} from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import { recordAuditEntry } from "@/lib/audit-log";
 import { computeRankingScore, type PublisherProfile } from "@/lib/submission-protocol";
@@ -31,15 +29,11 @@ export async function GET(req: NextRequest) {
     const results: Record<string, unknown>[] = [];
 
     // Community items
-    const communityConstraints = [];
+    let communityQ: Query = adminDb().collection("communityMarketItems");
     if (statusFilter !== "all") {
-      communityConstraints.push(where("status", "==", statusFilter));
+      communityQ = communityQ.where("status", "==", statusFilter);
     }
-    const communitySnap = await getDocs(
-      communityConstraints.length
-        ? query(collection(db, "communityMarketItems"), ...communityConstraints)
-        : query(collection(db, "communityMarketItems")),
-    );
+    const communitySnap = await communityQ.get();
     for (const d of communitySnap.docs) {
       const data = d.data();
       if (typeFilter && data.type !== typeFilter && data.itemType !== typeFilter) continue;
@@ -63,16 +57,12 @@ export async function GET(req: NextRequest) {
     }
 
     // Agent packages
-    const agentConstraints = [];
+    let agentQ: Query = adminDb().collection("marketplaceAgents");
     if (statusFilter !== "all") {
       const mappedStatus = statusFilter === "pending" ? "review" : statusFilter;
-      agentConstraints.push(where("status", "==", mappedStatus));
+      agentQ = agentQ.where("status", "==", mappedStatus);
     }
-    const agentSnap = await getDocs(
-      agentConstraints.length
-        ? query(collection(db, "marketplaceAgents"), ...agentConstraints)
-        : query(collection(db, "marketplaceAgents")),
-    );
+    const agentSnap = await agentQ.get();
     for (const d of agentSnap.docs) {
       const data = d.data();
       if (typeFilter && typeFilter !== "agent") continue;
@@ -139,32 +129,28 @@ export async function POST(req: NextRequest) {
   const colName = colParam === "agents" ? "marketplaceAgents" : "communityMarketItems";
 
   try {
-    const ref = doc(db, colName, itemId);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
+    const ref = adminDb().collection(colName).doc(itemId);
+    const snap = await ref.get();
+    if (!snap.exists) {
       return Response.json({ error: "Item not found" }, { status: 404 });
     }
 
-    const data = snap.data();
+    const data = snap.data()!;
 
     switch (action) {
       case "suspend":
-        await updateDoc(ref, { status: "suspended", suspendedAt: serverTimestamp(), suspendReason: reason || "" });
+        await ref.update({ status: "suspended", suspendedAt: FieldValue.serverTimestamp(), suspendReason: reason || "" });
         break;
       case "unsuspend":
-        await updateDoc(ref, { status: "approved", suspendedAt: null, suspendReason: null });
+        await ref.update({ status: "approved", suspendedAt: null, suspendReason: null });
         break;
       case "feature": {
         // Enforce max featured items from settings
         const settings = await getMarketplaceSettings();
         let featuredCount = 0;
-        const communityFeatured = await getDocs(
-          query(collection(db, "communityMarketItems"), where("featured", "==", true)),
-        );
+        const communityFeatured = await adminDb().collection("communityMarketItems").where("featured", "==", true).get();
         featuredCount += communityFeatured.size;
-        const agentFeatured = await getDocs(
-          query(collection(db, "marketplaceAgents"), where("featured", "==", true)),
-        );
+        const agentFeatured = await adminDb().collection("marketplaceAgents").where("featured", "==", true).get();
         featuredCount += agentFeatured.size;
 
         if (featuredCount >= settings.maxFeaturedItems) {
@@ -174,20 +160,19 @@ export async function POST(req: NextRequest) {
           );
         }
 
-        await updateDoc(ref, { featured: true, featuredAt: serverTimestamp() });
+        await ref.update({ featured: true, featuredAt: FieldValue.serverTimestamp() });
         break;
       }
       case "unfeature":
-        await updateDoc(ref, { featured: false, featuredAt: null });
+        await ref.update({ featured: false, featuredAt: null });
         break;
       case "recalculate_rank": {
         // Get publisher tier for ranking
         const publisherWallet = data.submittedBy || data.authorWallet;
         let publisherTier = 0;
         if (publisherWallet) {
-          const pubRef = doc(db, "publisherProfiles", publisherWallet);
-          const pubSnap = await getDoc(pubRef);
-          if (pubSnap.exists()) publisherTier = (pubSnap.data() as PublisherProfile).tier;
+          const pubSnap = await adminDb().collection("publisherProfiles").doc(publisherWallet).get();
+          if (pubSnap.exists) publisherTier = (pubSnap.data() as PublisherProfile).tier;
         }
 
         const score = computeRankingScore({
@@ -197,7 +182,7 @@ export async function POST(req: NextRequest) {
           publishedAt: data.publishedAt?.toDate?.() || null,
           publisherTier,
         });
-        await updateDoc(ref, { rankingScore: score });
+        await ref.update({ rankingScore: score });
         break;
       }
       default:

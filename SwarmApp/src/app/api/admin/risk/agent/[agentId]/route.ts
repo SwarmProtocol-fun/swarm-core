@@ -5,8 +5,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import { requirePlatformAdmin } from "@/lib/auth-guard";
 import {
   getRiskProfile,
@@ -25,12 +24,12 @@ export async function GET(
 
   try {
     // Fetch agent info
-    const agentDoc = await getDoc(doc(db, "agents", agentId));
-    if (!agentDoc.exists()) {
+    const agentDoc = await adminDb().collection("agents").doc(agentId).get();
+    if (!agentDoc.exists) {
       return Response.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    const agentData = agentDoc.data();
+    const agentData = agentDoc.data()!;
 
     // Parallel fetch of risk data
     const [riskProfile, allSignals, reviewCases] = await Promise.all([

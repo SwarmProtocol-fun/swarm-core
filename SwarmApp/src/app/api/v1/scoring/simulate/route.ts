@@ -8,8 +8,7 @@
  * Auth: Session required.
  */
 import { NextRequest } from "next/server";
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { validateSession } from "@/lib/session";
 import { simulateScoreChange } from "@/lib/scoring-engine";
 // [swarm-core] Hedera type removed — install swarm-hedera mod
@@ -49,12 +48,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Load agent to get ASN
-    const agentSnap = await getDoc(doc(db, "agents", agentId));
-    if (!agentSnap.exists()) {
+    const agentSnap = await adminDb().collection("agents").doc(agentId).get();
+    if (!agentSnap.exists) {
         return Response.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    const agentData = agentSnap.data();
+    const agentData = agentSnap.data()!;
     const asn = agentData.asn as string | undefined;
     if (!asn) {
         return Response.json({ error: "Agent has no ASN assigned" }, { status: 400 });

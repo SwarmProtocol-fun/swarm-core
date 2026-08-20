@@ -7,8 +7,8 @@
  * Auth: x-wallet-address header
  */
 import { NextRequest } from "next/server";
-import { doc, getDoc, updateDoc, addDoc, collection, serverTimestamp, increment } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import { getWalletAddress } from "@/lib/auth-guard";
 import { checkRateLimit } from "@/lib/rate-limit-firestore";
 import { getMarketplaceSettings } from "@/lib/marketplace-settings";
@@ -61,34 +61,34 @@ export async function POST(req: NextRequest) {
 
     // Verify item exists
     const collectionName = COLLECTIONS[collectionKey];
-    const itemRef = doc(db, collectionName, itemId);
-    const itemSnap = await getDoc(itemRef);
+    const itemRef = adminDb().collection(collectionName).doc(itemId);
+    const itemSnap = await itemRef.get();
 
-    if (!itemSnap.exists()) {
+    if (!itemSnap.exists) {
         return Response.json({ error: "Item not found" }, { status: 404 });
     }
 
     // Don't allow self-reporting
-    const itemData = itemSnap.data();
+    const itemData = itemSnap.data()!;
     const ownerField = collectionKey === "agents" ? "authorWallet" : "submittedBy";
     if (itemData[ownerField]?.toLowerCase() === wallet) {
         return Response.json({ error: "Cannot report your own item" }, { status: 400 });
     }
 
     // Create report document
-    await addDoc(collection(db, REPORTS_COLLECTION), {
+    await adminDb().collection(REPORTS_COLLECTION).add({
         itemId,
         collection: collectionKey,
         reportedBy: wallet,
         reason,
         comment,
-        createdAt: serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
     });
 
     // Increment report count on the item
     const currentReportCount = (itemData.reportCount || 0) + 1;
     const updates: Record<string, unknown> = {
-        reportCount: increment(1),
+        reportCount: FieldValue.increment(1),
     };
 
     // Auto-suspend if threshold reached (reads from platform settings)
@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
         autoSuspended = true;
     }
 
-    await updateDoc(itemRef, updates);
+    await itemRef.update(updates);
 
     return Response.json({
         reported: true,

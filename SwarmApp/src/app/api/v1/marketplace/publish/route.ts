@@ -10,8 +10,7 @@
 import { NextRequest } from "next/server";
 import { getWalletAddress, requirePlatformAdmin } from "@/lib/auth-guard";
 import { enforceCreditPolicy } from "@/lib/credit-enforcement";
-import { db } from "@/lib/firebase";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import {
     submitMarketItem,
     publishAgentPackage,
@@ -86,8 +85,7 @@ export async function POST(req: NextRequest) {
     // Platform admins bypass credit checks
     if (!admin.ok && wallet) {
         try {
-            const agentQuery = query(collection(db, "agents"), where("walletAddress", "==", wallet));
-            const agentSnap = await getDocs(agentQuery);
+            const agentSnap = await adminDb().collection("agents").where("walletAddress", "==", wallet).get();
             if (!agentSnap.empty) {
                 const agentId = agentSnap.docs[0].id;
                 const enforcement = await enforceCreditPolicy(agentId, "publish_marketplace");
