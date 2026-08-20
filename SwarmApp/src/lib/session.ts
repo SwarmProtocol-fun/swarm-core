@@ -12,15 +12,8 @@
  */
 import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { cookies } from "next/headers";
-import { db } from "./firebase";
-import {
-  doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
-  serverTimestamp,
-  Timestamp,
-} from "firebase/firestore";
+import { adminDb } from "./firebase-admin";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
 
 // ─── Constants ──────────────────────────────────────────
 
@@ -96,25 +89,26 @@ export async function createSession(
   const record: SessionRecord = {
     walletAddress: walletAddress.toLowerCase(),
     role,
-    createdAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
     expiresAt,
   };
 
-  await setDoc(doc(db, "sessions", sessionId), record);
+  await adminDb().collection("sessions").doc(sessionId).set(record);
   return sessionId;
 }
 
 export async function getSessionRecord(
   sessionId: string
 ): Promise<SessionRecord | null> {
-  const snap = await getDoc(doc(db, "sessions", sessionId));
-  if (!snap.exists()) return null;
+  const ref = adminDb().collection("sessions").doc(sessionId);
+  const snap = await ref.get();
+  if (!snap.exists) return null;
   const data = snap.data() as SessionRecord;
 
   // Check expiry
   if (data.expiresAt instanceof Timestamp) {
     if (data.expiresAt.toDate().getTime() < Date.now()) {
-      await deleteDoc(doc(db, "sessions", sessionId));
+      await ref.delete();
       return null;
     }
   }
@@ -123,7 +117,7 @@ export async function getSessionRecord(
 }
 
 export async function deleteSession(sessionId: string): Promise<void> {
-  await deleteDoc(doc(db, "sessions", sessionId));
+  await adminDb().collection("sessions").doc(sessionId).delete();
 }
 
 // ─── JWT ────────────────────────────────────────────────

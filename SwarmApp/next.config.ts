@@ -13,6 +13,7 @@ const nextConfig: NextConfig = {
     "@azure/arm-network",
     "@azure/arm-containerinstance",
     "@azure/identity",
+    "firebase-admin",
   ],
   // Skip TS type checking during build to avoid OOM on Netlify.
   // Run `npx tsc --noEmit` locally or in CI for type safety.

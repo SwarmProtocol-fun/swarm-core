@@ -4,21 +4,16 @@
  * Uses Firestore transactions for atomic increments across instances.
  * Rate limit documents auto-expire via TTL field (requires Firestore TTL policy).
  *
+ * Server-only (Firebase Admin SDK) — this bypasses Firestore rules, so it
+ * must never be imported into client-facing code.
+ *
  * Collection: `rateLimits`
  * Document ID: hashed key (IP address or user ID)
  * TTL Field: `expiresAt` (configure Firestore TTL policy on this field)
  */
 
-import { db } from "./firebase";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  updateDoc,
-  runTransaction,
-  Timestamp,
-  serverTimestamp,
-} from "firebase/firestore";
+import { adminDb } from "./firebase-admin";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
 
 const RATE_LIMIT_COLLECTION = "rateLimits";
 
@@ -39,8 +34,8 @@ interface RateLimitDoc {
   count: number;
   resetAt: Timestamp;
   expiresAt: Timestamp; // For Firestore TTL policy
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
 }
 
 /**
@@ -55,22 +50,22 @@ export async function checkRateLimit(
   key: string,
   config: RateLimitConfig
 ): Promise<RateLimitResult> {
-  const docRef = doc(db, RATE_LIMIT_COLLECTION, hashKey(key));
+  const docRef = adminDb().collection(RATE_LIMIT_COLLECTION).doc(hashKey(key));
 
   try {
-    return await runTransaction(db, async (transaction) => {
+    return await adminDb().runTransaction(async (transaction) => {
       const docSnap = await transaction.get(docRef);
       const now = Date.now();
       const resetTime = now + config.windowMs;
 
       // No existing rate limit or expired
-      if (!docSnap.exists()) {
+      if (!docSnap.exists) {
         const newDoc: RateLimitDoc = {
           count: 1,
           resetAt: Timestamp.fromMillis(resetTime),
           expiresAt: Timestamp.fromMillis(resetTime + 3600000), // +1 hour for cleanup
-          createdAt: serverTimestamp() as Timestamp,
-          updatedAt: serverTimestamp() as Timestamp,
+          createdAt: FieldValue.serverTimestamp(),
+          updatedAt: FieldValue.serverTimestamp(),
         };
         transaction.set(docRef, newDoc);
         return {
@@ -90,7 +85,7 @@ export async function checkRateLimit(
           resetAt: Timestamp.fromMillis(resetTime),
           expiresAt: Timestamp.fromMillis(resetTime + 3600000),
           createdAt: data.createdAt,
-          updatedAt: serverTimestamp() as Timestamp,
+          updatedAt: FieldValue.serverTimestamp(),
         };
         transaction.set(docRef, newDoc);
         return {
@@ -112,7 +107,7 @@ export async function checkRateLimit(
       // Increment counter
       transaction.update(docRef, {
         count: data.count + 1,
-        updatedAt: serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       });
 
       return {
@@ -140,12 +135,12 @@ export async function checkRateLimit(
  * Useful for testing or manual override.
  */
 export async function resetRateLimit(key: string): Promise<void> {
-  const docRef = doc(db, RATE_LIMIT_COLLECTION, hashKey(key));
-  await setDoc(docRef, {
+  const docRef = adminDb().collection(RATE_LIMIT_COLLECTION).doc(hashKey(key));
+  await docRef.set({
     count: 0,
     resetAt: Timestamp.now(),
     expiresAt: Timestamp.now(),
-    updatedAt: serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -153,10 +148,10 @@ export async function resetRateLimit(key: string): Promise<void> {
  * Get rate limit statistics for a key (for debugging).
  */
 export async function getRateLimitStats(key: string) {
-  const docRef = doc(db, RATE_LIMIT_COLLECTION, hashKey(key));
-  const docSnap = await getDoc(docRef);
+  const docRef = adminDb().collection(RATE_LIMIT_COLLECTION).doc(hashKey(key));
+  const docSnap = await docRef.get();
 
-  if (!docSnap.exists()) {
+  if (!docSnap.exists) {
     return {
       exists: false,
       count: 0,

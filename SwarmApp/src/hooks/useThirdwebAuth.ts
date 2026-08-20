@@ -12,6 +12,8 @@
 
 import { useMemo } from "react";
 import { useActiveWallet, useDisconnect } from "thirdweb/react";
+import { signInWithCustomToken } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useSession } from "@/contexts/SessionContext";
 
 export function useThirdwebAuth() {
@@ -44,6 +46,20 @@ export function useThirdwebAuth() {
         console.error("[Swarm] Login failed:", err);
         throw new Error(err.error || "Login failed");
       }
+
+      // Establish a real Firebase Auth session (uid = wallet address) so
+      // the client SDK's Firestore rules checks (request.auth) work. The
+      // httpOnly session cookie is the source of truth for server-side
+      // auth; this is only for direct client-side Firestore access.
+      const { firebaseToken } = await res.json().catch(() => ({}));
+      if (firebaseToken) {
+        try {
+          await signInWithCustomToken(auth, firebaseToken);
+        } catch (err) {
+          console.error("[Swarm] Firebase sign-in failed:", err);
+        }
+      }
+
       // Refresh session state so SessionContext picks up the new cookie.
       // Do NOT hard-redirect here — let ConnectButton finish its internal
       // state transition first. The landing page useEffect will handle
@@ -69,7 +85,7 @@ export function useThirdwebAuth() {
       if (activeWallet) {
         try { disconnect(activeWallet); } catch { /* wallet may already be disconnected */ }
       }
-      // 3. Clear React session state
+      // 3. Clear React session state (also clears the Firebase Auth session)
       await logout();
     },
   }), [refresh, logout, activeWallet, disconnect]);

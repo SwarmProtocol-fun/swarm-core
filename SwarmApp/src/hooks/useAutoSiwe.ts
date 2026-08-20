@@ -20,6 +20,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useActiveAccount } from "thirdweb/react";
 import { signLoginPayload } from "thirdweb/auth";
+import { signInWithCustomToken } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useSession } from "@/contexts/SessionContext";
 import { thirdwebClient } from "@/lib/thirdweb-client";
 import { debug } from "@/lib/debug";
@@ -77,9 +79,20 @@ export function useAutoSiwe() {
           throw new Error(err.error || `Verify request failed: ${verifyRes.status}`);
         }
 
+        // 4. Establish a real Firebase Auth session (uid = wallet address)
+        // so the client SDK's Firestore rules checks (request.auth) work.
+        const { firebaseToken } = await verifyRes.json().catch(() => ({}));
+        if (firebaseToken) {
+          try {
+            await signInWithCustomToken(auth, firebaseToken);
+          } catch (err) {
+            debug.error("[Swarm:autoLogin] Firebase sign-in failed:", err);
+          }
+        }
+
         debug.log("[Swarm:autoLogin] Session created, refreshing context");
 
-        // 4. Refresh session context to pick up the new cookie
+        // 5. Refresh session context to pick up the new cookie
         await refresh();
       } catch (err) {
         debug.error("[Swarm:autoLogin] Login failed:", err);

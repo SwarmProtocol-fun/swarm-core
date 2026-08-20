@@ -19,6 +19,8 @@ import {
   useRef,
   type ReactNode,
 } from "react";
+import { signOut as firebaseSignOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { debug } from "@/lib/debug";
 
 export type UserRole = "operator" | "org_admin" | "platform_admin";
@@ -154,6 +156,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         method: "POST",
         credentials: "include",
       });
+      // Clear Firebase Auth session (client-side Firestore access)
+      await firebaseSignOut(auth).catch(() => {});
     } finally {
       // Clear thirdweb wallet connection state from localStorage so the
       // wallet doesn't auto-reconnect and re-trigger SIWE on next load.

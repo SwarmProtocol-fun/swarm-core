@@ -6,24 +6,13 @@
  *  - userProfiles: aggregated per-wallet stats (sessions, time, last seen)
  *
  * Privacy: IP addresses are SHA-256 hashed before storage. No raw IPs ever persist.
+ *
+ * Server-only (Firebase Admin SDK) — bypasses Firestore rules, so this must
+ * never be imported into client-facing code.
  */
 
-import { db } from "./firebase";
-import {
-  collection,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit as firestoreLimit,
-  Timestamp,
-  increment,
-  updateDoc,
-  type QueryConstraint,
-} from "firebase/firestore";
+import { adminDb } from "./firebase-admin";
+import { Timestamp, FieldValue } from "firebase-admin/firestore";
 
 // ── Types ──
 
@@ -106,6 +95,7 @@ export async function recordLogin(
   sessionId: string,
   req: Request,
 ): Promise<string> {
+  const db = adminDb();
   const wallet = walletAddress.toLowerCase();
   const now = Timestamp.now();
 
@@ -118,8 +108,8 @@ export async function recordLogin(
   const ipHash = await hashIp(rawIp);
 
   // Create session record
-  const sessionRef = doc(collection(db, SESSIONS_COL));
-  await setDoc(sessionRef, {
+  const sessionRef = db.collection(SESSIONS_COL).doc();
+  await sessionRef.set({
     walletAddress: wallet,
     role,
     loginAt: now,
@@ -130,18 +120,18 @@ export async function recordLogin(
   });
 
   // Upsert user profile
-  const profileRef = doc(db, PROFILES_COL, wallet);
-  const profileSnap = await getDoc(profileRef);
+  const profileRef = db.collection(PROFILES_COL).doc(wallet);
+  const profileSnap = await profileRef.get();
 
-  if (profileSnap.exists()) {
-    await updateDoc(profileRef, {
+  if (profileSnap.exists) {
+    await profileRef.update({
       lastSeen: now,
-      totalSessions: increment(1),
+      totalSessions: FieldValue.increment(1),
       role,
       lastUserAgent: parseUserAgent(ua),
     });
   } else {
-    await setDoc(profileRef, {
+    await profileRef.set({
       walletAddress: wallet,
       firstSeen: now,
       lastSeen: now,
@@ -155,11 +145,11 @@ export async function recordLogin(
 
   // Sync email from user's profile (profiles collection) into analytics profile
   try {
-    const userProfileDoc = await getDoc(doc(db, "profiles", wallet));
-    if (userProfileDoc.exists()) {
+    const userProfileDoc = await db.collection("profiles").doc(wallet).get();
+    if (userProfileDoc.exists) {
       const userData = userProfileDoc.data();
-      if (userData.email) {
-        await updateDoc(profileRef, { email: userData.email });
+      if (userData?.email) {
+        await profileRef.update({ email: userData.email });
       }
     }
   } catch {
@@ -172,13 +162,13 @@ export async function recordLogin(
 // ── Record Logout ──
 
 export async function recordLogout(sessionId: string): Promise<void> {
+  const db = adminDb();
   // Find the platformSession by sessionId field
-  const q = query(
-    collection(db, SESSIONS_COL),
-    where("sessionId", "==", sessionId),
-    firestoreLimit(1),
-  );
-  const snap = await getDocs(q);
+  const snap = await db
+    .collection(SESSIONS_COL)
+    .where("sessionId", "==", sessionId)
+    .limit(1)
+    .get();
   if (snap.empty) return;
 
   const sessionDoc = snap.docs[0];
@@ -187,17 +177,18 @@ export async function recordLogout(sessionId: string): Promise<void> {
   const now = new Date();
   const durationMs = loginAt ? now.getTime() - loginAt.getTime() : 0;
 
-  await updateDoc(sessionDoc.ref, {
+  await sessionDoc.ref.update({
     logoutAt: Timestamp.now(),
     durationMs,
   });
 
   // Update user profile total time
   if (data.walletAddress && durationMs > 0) {
-    const profileRef = doc(db, PROFILES_COL, data.walletAddress);
-    await updateDoc(profileRef, {
-      totalTimeMs: increment(durationMs),
-    }).catch(() => {}); // non-critical
+    await db
+      .collection(PROFILES_COL)
+      .doc(data.walletAddress)
+      .update({ totalTimeMs: FieldValue.increment(durationMs) })
+      .catch(() => {}); // non-critical
   }
 }
 
@@ -209,25 +200,24 @@ export async function getRecentSessions(opts: {
   dateFrom?: string;
   dateTo?: string;
 }): Promise<PlatformSession[]> {
-  const constraints: QueryConstraint[] = [orderBy("loginAt", "desc")];
+  let q: FirebaseFirestore.Query = adminDb().collection(SESSIONS_COL);
 
   if (opts.wallet) {
-    constraints.unshift(where("walletAddress", "==", opts.wallet.toLowerCase()));
+    q = q.where("walletAddress", "==", opts.wallet.toLowerCase());
   }
   if (opts.dateFrom) {
     const from = new Date(opts.dateFrom);
-    constraints.push(where("loginAt", ">=", Timestamp.fromDate(from)));
+    q = q.where("loginAt", ">=", Timestamp.fromDate(from));
   }
   if (opts.dateTo) {
     const to = new Date(opts.dateTo);
     to.setHours(23, 59, 59, 999);
-    constraints.push(where("loginAt", "<=", Timestamp.fromDate(to)));
+    q = q.where("loginAt", "<=", Timestamp.fromDate(to));
   }
 
-  constraints.push(firestoreLimit(opts.max || 50));
+  q = q.orderBy("loginAt", "desc").limit(opts.max || 50);
 
-  const q = query(collection(db, SESSIONS_COL), ...constraints);
-  const snap = await getDocs(q);
+  const snap = await q.get();
 
   return snap.docs.map((d) => {
     const data = d.data();
@@ -254,12 +244,11 @@ export async function getUserProfiles(opts: {
   search?: string;
 }): Promise<UserProfile[]> {
   const sortField = opts.sortBy || "lastSeen";
-  const q = query(
-    collection(db, PROFILES_COL),
-    orderBy(sortField, "desc"),
-    firestoreLimit(opts.max || 50),
-  );
-  const snap = await getDocs(q);
+  const snap = await adminDb()
+    .collection(PROFILES_COL)
+    .orderBy(sortField, "desc")
+    .limit(opts.max || 50)
+    .get();
 
   let profiles = snap.docs.map((d) => {
     const data = d.data();
@@ -289,6 +278,7 @@ export async function getUserProfiles(opts: {
 // ── Query: Analytics Overview ──
 
 export async function getAnalyticsOverview(): Promise<OverviewMetrics> {
+  const db = adminDb();
   const now = new Date();
   const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
@@ -297,12 +287,11 @@ export async function getAnalyticsOverview(): Promise<OverviewMetrics> {
   const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   // Fetch sessions from last 30 days for all metrics
-  const q = query(
-    collection(db, SESSIONS_COL),
-    where("loginAt", ">=", Timestamp.fromDate(monthAgo)),
-    orderBy("loginAt", "desc"),
-  );
-  const snap = await getDocs(q);
+  const snap = await db
+    .collection(SESSIONS_COL)
+    .where("loginAt", ">=", Timestamp.fromDate(monthAgo))
+    .orderBy("loginAt", "desc")
+    .get();
 
   const sessions = snap.docs.map((d) => {
     const data = d.data();
@@ -359,15 +348,13 @@ export async function getAnalyticsOverview(): Promise<OverviewMetrics> {
   }
 
   // New users this week
-  const profilesQ = query(
-    collection(db, PROFILES_COL),
-    where("firstSeen", ">=", Timestamp.fromDate(weekAgo)),
-  );
-  const newUsersSnap = await getDocs(profilesQ);
+  const newUsersSnap = await db
+    .collection(PROFILES_COL)
+    .where("firstSeen", ">=", Timestamp.fromDate(weekAgo))
+    .get();
 
   // Total users
-  const totalUsersQ = query(collection(db, PROFILES_COL));
-  const totalUsersSnap = await getDocs(totalUsersQ);
+  const totalUsersSnap = await db.collection(PROFILES_COL).get();
 
   const dailySessions = Array.from(dailyMap.entries()).map(([date, count]) => ({
     date: date.slice(5), // MM-DD format

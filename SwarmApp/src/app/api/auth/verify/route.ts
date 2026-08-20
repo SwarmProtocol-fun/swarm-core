@@ -11,7 +11,8 @@ import {
   signSessionJWT,
   setSessionCookie,
 } from "@/lib/session";
-import { getOrganizationsByWallet } from "@/lib/firestore";
+import { getOrganizationsByWalletAdmin } from "@/lib/firestore-admin";
+import { adminAuth } from "@/lib/firebase-admin";
 import { getCachedOrgs, cacheOrgs } from "@/lib/org-cache";
 import { checkRateLimit, getClientIp } from "@/lib/rate-limit-firestore";
 import { getThirdwebAuth, getDomainFromRequest } from "../thirdweb-auth";
@@ -107,7 +108,7 @@ export async function POST(req: Request) {
       orgs = getCachedOrgs(address);
       if (!orgs) {
         // Cache miss - fetch from Firestore
-        orgs = await getOrganizationsByWallet(address);
+        orgs = await getOrganizationsByWalletAdmin(address);
         // Cache the result
         cacheOrgs(address, orgs);
       }
@@ -158,7 +159,25 @@ export async function POST(req: Request) {
       // Don't fail - cookie might still work
     }
 
-    // 4. Record login for platform analytics (non-blocking)
+    // 4. Mint a Firebase custom token so the client SDK can establish a real
+    // Firebase Auth session (uid = wallet address). Firestore rules key off
+    // request.auth for anything the client reads/writes directly — without
+    // this, request.auth is always null and rules can't distinguish a
+    // verified wallet from an anonymous visitor.
+    let firebaseToken: string | undefined;
+    try {
+      firebaseToken = await adminAuth().createCustomToken(
+        address.toLowerCase(),
+        { role }
+      );
+    } catch (err) {
+      console.error("[auth/verify] createCustomToken error:", err);
+      // Don't fail login over this — the httpOnly session cookie still
+      // works for server-side auth. The client just won't get direct
+      // Firestore access until this is resolved.
+    }
+
+    // 5. Record login for platform analytics (non-blocking)
     recordLogin(address, role, sessionId, req).catch((err) => {
       console.warn("[auth/verify] analytics recordLogin error:", err);
     });
@@ -169,6 +188,7 @@ export async function POST(req: Request) {
         address,
         role,
       },
+      firebaseToken,
     });
   } catch (err) {
     console.error("[auth/verify] Unhandled error:", err);
