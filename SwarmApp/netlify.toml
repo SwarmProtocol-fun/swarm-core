@@ -1,6 +1,7 @@
 [build]
   ignore = "exit 1"
   command = "node --max-old-space-size=3072 node_modules/.bin/next build"
+  publish = ".next"
 
 [build.environment]
   NODE_OPTIONS = "--max-old-space-size=3072"
