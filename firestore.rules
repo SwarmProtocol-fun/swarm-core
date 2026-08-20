@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── NOTE on this app's auth model ──────────────────────────────────
+    // SwarmApp uses wallet/SIWE login (Thirdweb) + a custom `swarm_session`
+    // cookie. It does NOT use Firebase Authentication, and there is no
+    // Firebase Admin SDK / service account anywhere in the codebase — every
+    // Firestore call, client or server, goes through the same client SDK
+    // (src/lib/firebase.ts). That means `request.auth` is always null here,
+    // and Firestore rules are the *only* security boundary this app has.
+    //
+    // These rules unblock exactly what the login flow touches. Everything
+    // else stays denied by the fallback rule at the bottom until proper
+    // Firebase Auth (or Admin SDK server-side writes) is wired up in code —
+    // no rules change alone can secure a write path that doesn't exist yet.
+
+    // Organizations — read needed to resolve login role (owner/member) and
+    // to populate the org switcher post-login. Writes stay denied: org
+    // creation has no server-trusted write path either, so it remains
+    // broken until that's built (see follow-up).
+    match /organizations/{orgId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Sessions — created/read/deleted by src/lib/session.ts during login.
+    // Session IDs are opaque random tokens; there's no server-only identity
+    // to scope this to, so it's open to anyone holding/guessing an ID.
+    match /sessions/{sessionId} {
+      allow read, write: if true;
+    }
+
+    // Login rate-limit counters (src/lib/rate-limit-firestore.ts).
+    match /rateLimits/{key} {
+      allow read, write: if true;
+    }
+
+    // Public system/health-check doc.
+    match /system/{document=**} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // Default deny — ~45 other collections in use (agents, tasks, credit
+    // ledger, secrets, subscriptions, marketplace, etc.) are all
+    // inaccessible via the client SDK until real auth/Admin SDK exists.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
