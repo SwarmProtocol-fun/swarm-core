@@ -15,8 +15,7 @@
  * - Interval: 30s
  */
 
-import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -39,8 +38,7 @@ async function checkFirestore(): Promise<boolean> {
   try {
     // Try to read a lightweight system document
     // You can create a "health" collection with a single doc for this purpose
-    const testDoc = doc(db, "system", "health");
-    await getDoc(testDoc);
+    await adminDb().collection("system").doc("health").get();
     return true;
   } catch (err) {
     console.error("[Health] Firestore check failed:", err);

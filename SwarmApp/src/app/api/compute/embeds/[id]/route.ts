@@ -15,12 +15,11 @@ export async function DELETE(
 
   // Look up the embed token to verify workspace access
   // Use a direct Firestore read since validateEmbedToken rejects expired tokens
-  const { getDoc, doc } = await import("firebase/firestore");
-  const { db } = await import("@/lib/firebase");
-  const snap = await getDoc(doc(db, "computeEmbedTokens", id));
-  if (!snap.exists()) return Response.json({ error: "Embed token not found" }, { status: 404 });
+  const { adminDb } = await import("@/lib/firebase-admin");
+  const snap = await adminDb().collection("computeEmbedTokens").doc(id).get();
+  if (!snap.exists) return Response.json({ error: "Embed token not found" }, { status: 404 });
 
-  const tokenData = snap.data();
+  const tokenData = snap.data()!;
   const workspace = await getWorkspace(tokenData.workspaceId);
   if (!workspace) return Response.json({ error: "Workspace not found" }, { status: 404 });
 

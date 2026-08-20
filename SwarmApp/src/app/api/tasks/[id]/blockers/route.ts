@@ -5,8 +5,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, getDoc, getDocs, collection, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function GET(
   request: NextRequest,
@@ -16,12 +15,12 @@ export async function GET(
 
   try {
     // Get the task
-    const taskDoc = await getDoc(doc(db, "kanbanTasks", id));
-    if (!taskDoc.exists()) {
+    const taskDoc = await adminDb().collection("kanbanTasks").doc(id).get();
+    if (!taskDoc.exists) {
       return Response.json({ error: "Task not found" }, { status: 404 });
     }
 
-    const taskData = taskDoc.data();
+    const taskData = taskDoc.data()!;
     const blockedBy = taskData.blockedBy || [];
 
     if (blockedBy.length === 0) {
@@ -35,11 +34,11 @@ export async function GET(
 
     // Fetch all blocker tasks
     const blockerDocs = await Promise.all(
-      blockedBy.map((blockerId: string) => getDoc(doc(db, "kanbanTasks", blockerId)))
+      blockedBy.map((blockerId: string) => adminDb().collection("kanbanTasks").doc(blockerId).get())
     );
 
     const blockers = blockerDocs
-      .filter((d) => d.exists())
+      .filter((d) => d.exists)
       .map((d) => ({
         id: d.id,
         ...d.data(),

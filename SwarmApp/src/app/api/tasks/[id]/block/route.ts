@@ -6,8 +6,8 @@
  */
 
 import { NextRequest } from "next/server";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { FieldValue } from "firebase-admin/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { getWalletAddress, requireOrgMember, unauthorized, forbidden } from "@/lib/auth-guard";
 import { rateLimit } from "@/app/api/v1/rate-limit";
 
@@ -51,13 +51,12 @@ export async function POST(
   }
 
   try {
-    await setDoc(
-      doc(db, "kanbanTasks", id),
+    await adminDb().collection("kanbanTasks").doc(id).set(
       {
         blockedBy: blockedBy || [],
         blockReason: blockReason || "",
-        blockedAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
+        blockedAt: FieldValue.serverTimestamp(),
+        updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
     );

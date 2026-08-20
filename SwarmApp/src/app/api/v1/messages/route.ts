@@ -7,17 +7,8 @@
 import { NextRequest } from "next/server";
 import { verifyAgentRequest, isTimestampFresh, unauthorized } from "../verify";
 import { rateLimit } from "../rate-limit";
-import { db } from "@/lib/firebase";
-import {
-    collection,
-    doc,
-    getDoc,
-    getDocs,
-    query,
-    where,
-    orderBy,
-    Timestamp,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { Timestamp, type Query } from "firebase-admin/firestore";
 
 export async function GET(request: NextRequest) {
     const { searchParams } = request.nextUrl;
@@ -44,11 +35,11 @@ export async function GET(request: NextRequest) {
 
     try {
         // Get agent's projects and org
-        const agentSnap = await getDoc(doc(db, "agents", agent.agentId));
-        if (!agentSnap.exists()) {
+        const agentSnap = await adminDb().collection("agents").doc(agent.agentId).get();
+        if (!agentSnap.exists) {
             return Response.json({ error: "Agent not found" }, { status: 404 });
         }
-        const agentData = agentSnap.data();
+        const agentData = agentSnap.data()!;
         const projectIds: string[] = agentData.projectIds || [];
         const orgId = agentData.orgId || agent.orgId;
 
@@ -57,11 +48,7 @@ export async function GET(request: NextRequest) {
         const channelMeta: Record<string, { name: string; projectId: string }> = {};
 
         for (const projectId of projectIds.slice(0, 10)) {
-            const channelsQ = query(
-                collection(db, "channels"),
-                where("projectId", "==", projectId)
-            );
-            const channelsSnap = await getDocs(channelsQ);
+            const channelsSnap = await adminDb().collection("channels").where("projectId", "==", projectId).get();
             for (const chDoc of channelsSnap.docs) {
                 channelIds.push(chDoc.id);
                 channelMeta[chDoc.id] = {
@@ -73,12 +60,10 @@ export async function GET(request: NextRequest) {
 
         // Always include the Agent Hub channel (org-wide, no projectId)
         if (orgId) {
-            const hubQ = query(
-                collection(db, "channels"),
-                where("orgId", "==", orgId),
-                where("name", "==", "Agent Hub")
-            );
-            const hubSnap = await getDocs(hubQ);
+            const hubSnap = await adminDb().collection("channels")
+                .where("orgId", "==", orgId)
+                .where("name", "==", "Agent Hub")
+                .get();
             if (!hubSnap.empty) {
                 const hubDoc = hubSnap.docs[0];
                 if (!channelIds.includes(hubDoc.id)) {
@@ -108,24 +93,14 @@ export async function GET(request: NextRequest) {
         }> = [];
 
         for (const channelId of channelIds) {
-            let messagesQ;
+            let messagesQ: Query = adminDb().collection("messages").where("channelId", "==", channelId);
             if (sinceMs > 0) {
                 const sinceTs = Timestamp.fromMillis(sinceMs);
-                messagesQ = query(
-                    collection(db, "messages"),
-                    where("channelId", "==", channelId),
-                    where("createdAt", ">", sinceTs),
-                    orderBy("createdAt", "asc")
-                );
-            } else {
-                messagesQ = query(
-                    collection(db, "messages"),
-                    where("channelId", "==", channelId),
-                    orderBy("createdAt", "asc")
-                );
+                messagesQ = messagesQ.where("createdAt", ">", sinceTs);
             }
+            messagesQ = messagesQ.orderBy("createdAt", "asc");
 
-            const msgsSnap = await getDocs(messagesQ);
+            const msgsSnap = await messagesQ.get();
             for (const mDoc of msgsSnap.docs) {
                 const m = mDoc.data();
                 if (m.senderId === agent.agentId) continue;

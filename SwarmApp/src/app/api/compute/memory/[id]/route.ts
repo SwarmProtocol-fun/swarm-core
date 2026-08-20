@@ -11,12 +11,11 @@ async function getMemoryAndVerifyAccess(req: NextRequest, memoryId: string) {
   const wallet = getWalletAddress(req);
   if (!wallet) return { error: "Authentication required", status: 401 };
 
-  const { getDoc, doc } = await import("firebase/firestore");
-  const { db } = await import("@/lib/firebase");
-  const snap = await getDoc(doc(db, "computeMemory", memoryId));
-  if (!snap.exists()) return { error: "Memory entry not found", status: 404 };
+  const { adminDb } = await import("@/lib/firebase-admin");
+  const snap = await adminDb().collection("computeMemory").doc(memoryId).get();
+  if (!snap.exists) return { error: "Memory entry not found", status: 404 };
 
-  const data = snap.data();
+  const data = snap.data()!;
   // Memory entries scoped to a workspace — verify org access
   if (data.workspaceId) {
     const workspace = await getWorkspace(data.workspaceId);

@@ -11,8 +11,8 @@
  */
 import { NextRequest } from "next/server";
 import { ethers } from "ethers";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import {
     HEDERA_CONTRACTS,
     HEDERA_GAS_LIMIT,
@@ -77,13 +77,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Load agent from Firestore
-    const agentRef = doc(db, "agents", agentId);
-    const agentSnap = await getDoc(agentRef);
-    if (!agentSnap.exists()) {
+    const agentRef = adminDb().collection("agents").doc(agentId);
+    const agentSnap = await agentRef.get();
+    if (!agentSnap.exists) {
         return Response.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    const agentData = agentSnap.data();
+    const agentData = agentSnap.data()!;
     const asn = (agentData.asn as string) || "";
 
     // Bump credit score: +5 per task, capped at 900
@@ -94,10 +94,10 @@ export async function POST(request: NextRequest) {
     const newTrust = Math.min(currentTrust + 1, 100);
 
     // Update Firestore
-    await updateDoc(agentRef, {
+    await agentRef.update({
         creditScore: newCredit,
         trustScore: newTrust,
-        lastCreditUpdate: serverTimestamp(),
+        lastCreditUpdate: FieldValue.serverTimestamp(),
     });
 
     // Record credit audit entry (non-blocking)
@@ -143,9 +143,9 @@ export async function POST(request: NextRequest) {
             resolvedTier = policyResult.tier;
 
             // Update cached policy tier on agent if score crossed a tier boundary
-            await updateDoc(agentRef, {
+            await agentRef.update({
                 policyTier: policyResult.tier,
-                policyTierResolvedAt: serverTimestamp(),
+                policyTierResolvedAt: FieldValue.serverTimestamp(),
             });
 
             await recordPolicyEvent({

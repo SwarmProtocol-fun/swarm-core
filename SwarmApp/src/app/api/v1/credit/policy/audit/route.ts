@@ -5,8 +5,7 @@
  */
 
 import { NextRequest } from "next/server";
-import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, limit as firestoreLimit, getDocs } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 
 export async function GET(req: NextRequest) {
     const agentId = req.nextUrl.searchParams.get("agentId");
@@ -18,14 +17,11 @@ export async function GET(req: NextRequest) {
     const cap = Math.min(Math.max(limitParam, 1), 200);
 
     try {
-        const q = query(
-            collection(db, "creditPolicyLog"),
-            where("agentId", "==", agentId),
-            orderBy("timestamp", "desc"),
-            firestoreLimit(cap),
-        );
-
-        const snap = await getDocs(q);
+        const snap = await adminDb().collection("creditPolicyLog")
+            .where("agentId", "==", agentId)
+            .orderBy("timestamp", "desc")
+            .limit(cap)
+            .get();
         const events = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
         return Response.json({ agentId, count: events.length, events });

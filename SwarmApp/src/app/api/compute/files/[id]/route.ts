@@ -17,12 +17,11 @@ export async function DELETE(
   // Since we don't have a getFile(id) helper, we need to verify via workspace
   // For now, we check the file exists by trying to find it in any accessible workspace
   // A proper getFile(id) should be added
-  const { getDoc, doc } = await import("firebase/firestore");
-  const { db } = await import("@/lib/firebase");
-  const snap = await getDoc(doc(db, "computeFiles", id));
-  if (!snap.exists()) return Response.json({ error: "File not found" }, { status: 404 });
+  const { adminDb } = await import("@/lib/firebase-admin");
+  const snap = await adminDb().collection("computeFiles").doc(id).get();
+  if (!snap.exists) return Response.json({ error: "File not found" }, { status: 404 });
 
-  const fileData = snap.data();
+  const fileData = snap.data()!;
   const workspace = await getWorkspace(fileData.workspaceId);
   if (!workspace) return Response.json({ error: "Workspace not found" }, { status: 404 });
 

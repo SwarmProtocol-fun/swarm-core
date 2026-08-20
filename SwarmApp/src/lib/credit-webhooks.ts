@@ -7,17 +7,8 @@
  * Firestore collection: "creditWebhooks"
  */
 
-import { db } from "@/lib/firebase";
-import {
-    collection,
-    doc,
-    addDoc,
-    getDocs,
-    deleteDoc,
-    query,
-    where,
-    serverTimestamp,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import crypto from "crypto";
 
 // ═══════════════════════════════════════════════════════════════
@@ -54,27 +45,25 @@ export interface WebhookPayload {
 export async function registerWebhook(
     webhook: Omit<CreditWebhook, "id" | "createdAt">,
 ): Promise<string> {
-    const ref = await addDoc(collection(db, "creditWebhooks"), {
+    const ref = await adminDb().collection("creditWebhooks").add({
         ...webhook,
-        createdAt: serverTimestamp(),
+        createdAt: FieldValue.serverTimestamp(),
     });
     return ref.id;
 }
 
 /** List active webhooks for an agent. */
 export async function listWebhooks(agentId: string): Promise<CreditWebhook[]> {
-    const q = query(
-        collection(db, "creditWebhooks"),
-        where("agentId", "==", agentId),
-        where("active", "==", true),
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb().collection("creditWebhooks")
+        .where("agentId", "==", agentId)
+        .where("active", "==", true)
+        .get();
     return snap.docs.map(d => ({ id: d.id, ...d.data() } as CreditWebhook));
 }
 
 /** Delete (hard-delete) a webhook. */
 export async function deleteWebhook(webhookId: string): Promise<void> {
-    await deleteDoc(doc(db, "creditWebhooks", webhookId));
+    await adminDb().collection("creditWebhooks").doc(webhookId).delete();
 }
 
 /** Count active webhooks for an agent (for max limit enforcement). */

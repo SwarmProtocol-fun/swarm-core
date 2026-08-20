@@ -11,15 +11,9 @@ import { NextRequest } from "next/server";
 import { verifyAgentRequest, unauthorized } from "../verify";
 import { rateLimit } from "../rate-limit";
 import { getRedis } from "@/lib/redis";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import crypto from "crypto";
-import {
-    collection,
-    doc,
-    getDoc,
-    addDoc,
-    serverTimestamp,
-} from "firebase/firestore";
 
 // ── Replay Protection ────────────────────────────────────────────────────────
 // Primary: Upstash Redis (SET NX EX — atomic, shared across instances).
@@ -170,7 +164,7 @@ export async function POST(request: NextRequest) {
             orgId: agentData.orgId,
             nonce,
             verified: true, // signature verified by hub
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         };
 
         if (replyTo) {
@@ -186,17 +180,17 @@ export async function POST(request: NextRequest) {
             }));
         }
 
-        const ref = await addDoc(collection(db, "messages"), messageData);
+        const ref = await adminDb().collection("messages").add(messageData);
 
         // Look up channel name for readable agentComms entry
         let channelName = `#${channelId}`;
         try {
-            const chSnap = await getDoc(doc(db, "channels", channelId));
-            if (chSnap.exists()) channelName = `#${chSnap.data().name || channelId}`;
+            const chSnap = await adminDb().collection("channels").doc(channelId).get();
+            if (chSnap.exists) channelName = `#${chSnap.data()!.name || channelId}`;
         } catch { /* use default */ }
 
         // Also log to agentComms so it appears in the Agent Comms feed
-        await addDoc(collection(db, "agentComms"), {
+        await adminDb().collection("agentComms").add({
             orgId: agentData.orgId,
             fromAgentId: agentData.agentId,
             fromAgentName: agentData.agentName,
@@ -210,7 +204,7 @@ export async function POST(request: NextRequest) {
                 verified: true,
                 ...(replyTo ? { replyTo } : {}),
             },
-            createdAt: serverTimestamp(),
+            createdAt: FieldValue.serverTimestamp(),
         }).catch(() => { }); // non-blocking — don't fail the send if comms log fails
 
         return Response.json({

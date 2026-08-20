@@ -4,23 +4,13 @@
  * Collections:
  *   gatewayWorkers — registered workers with heartbeat
  *   gatewayTaskQueue — task queue (pull-based)
+ *
+ * Server-only (Firebase Admin SDK) — verified no client-side importers
+ * before converting from the client SDK.
  */
 
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  addDoc,
-  updateDoc,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit as firestoreLimit,
-  serverTimestamp,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue, type Query } from "firebase-admin/firestore";
 import type {
   GatewayWorker,
   QueuedTask,
@@ -34,23 +24,27 @@ const WORKERS = "gatewayWorkers";
 const QUEUE = "gatewayTaskQueue";
 const JOB_LOGS = "gatewayJobLogs";
 
+function db() {
+  return adminDb();
+}
+
 // ── Workers ──────────────────────────────────────────────────────────────────
 
 export async function registerWorker(
   data: Omit<GatewayWorker, "id" | "registeredAt" | "updatedAt" | "lastHeartbeat">,
 ): Promise<string> {
-  const ref = await addDoc(collection(db, WORKERS), {
+  const ref = await db().collection(WORKERS).add({
     ...data,
-    lastHeartbeat: serverTimestamp(),
-    registeredAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    lastHeartbeat: FieldValue.serverTimestamp(),
+    registeredAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return ref.id;
 }
 
 export async function getWorker(id: string): Promise<GatewayWorker | null> {
-  const snap = await getDoc(doc(db, WORKERS, id));
-  if (!snap.exists()) return null;
+  const snap = await db().collection(WORKERS).doc(id).get();
+  if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as GatewayWorker;
 }
 
@@ -58,9 +52,9 @@ export async function updateWorker(
   id: string,
   data: Partial<Pick<GatewayWorker, "status" | "resources" | "capabilities" | "region">>,
 ): Promise<void> {
-  await updateDoc(doc(db, WORKERS, id), {
+  await db().collection(WORKERS).doc(id).update({
     ...data,
-    updatedAt: serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -69,41 +63,35 @@ export async function heartbeatWorker(
   resources?: Partial<GatewayWorker["resources"]>,
 ): Promise<void> {
   const update: Record<string, unknown> = {
-    lastHeartbeat: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    lastHeartbeat: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   };
   if (resources) update.resources = resources;
-  await updateDoc(doc(db, WORKERS, id), update);
+  await db().collection(WORKERS).doc(id).update(update);
 }
 
 export async function deregisterWorker(id: string): Promise<void> {
-  await deleteDoc(doc(db, WORKERS, id));
+  await db().collection(WORKERS).doc(id).delete();
 }
 
 export async function getOrgWorkers(
   orgId: string,
   status?: WorkerStatus,
 ): Promise<GatewayWorker[]> {
-  const constraints = [
-    where("orgId", "==", orgId),
-    ...(status ? [where("status", "==", status)] : []),
-    orderBy("lastHeartbeat", "desc"),
-    firestoreLimit(100),
-  ];
-  const q = query(collection(db, WORKERS), ...constraints);
-  const snap = await getDocs(q);
+  let q: Query = db().collection(WORKERS).where("orgId", "==", orgId);
+  if (status) q = q.where("status", "==", status);
+  q = q.orderBy("lastHeartbeat", "desc").limit(100);
+  const snap = await q.get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GatewayWorker);
 }
 
 export async function getAvailableWorkers(
   orgId: string,
 ): Promise<GatewayWorker[]> {
-  const q = query(
-    collection(db, WORKERS),
-    where("orgId", "==", orgId),
-    where("status", "in", ["idle", "busy"]),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(WORKERS)
+    .where("orgId", "==", orgId)
+    .where("status", "in", ["idle", "busy"])
+    .get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as GatewayWorker);
 }
 
@@ -112,19 +100,19 @@ export async function getAvailableWorkers(
 export async function enqueueTask(
   data: Omit<QueuedTask, "id" | "createdAt" | "updatedAt" | "retriesUsed" | "status">,
 ): Promise<string> {
-  const ref = await addDoc(collection(db, QUEUE), {
+  const ref = await db().collection(QUEUE).add({
     ...data,
     status: "queued",
     retriesUsed: 0,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
   return ref.id;
 }
 
 export async function getTask(id: string): Promise<QueuedTask | null> {
-  const snap = await getDoc(doc(db, QUEUE, id));
-  if (!snap.exists()) return null;
+  const snap = await db().collection(QUEUE).doc(id).get();
+  if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as QueuedTask;
 }
 
@@ -134,9 +122,9 @@ export async function updateTask(
     Pick<QueuedTask, "status" | "claimedBy" | "claimedAt" | "result" | "error" | "retriesUsed" | "completedAt">
   >,
 ): Promise<void> {
-  await updateDoc(doc(db, QUEUE, id), {
+  await db().collection(QUEUE).doc(id).update({
     ...data,
-    updatedAt: serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
   });
 }
 
@@ -150,15 +138,13 @@ export async function getQueuedTasks(
   max = 10,
 ): Promise<QueuedTask[]> {
   // Query for queued tasks matching the worker's supported types
-  const q = query(
-    collection(db, QUEUE),
-    where("orgId", "==", orgId),
-    where("status", "==", "queued"),
-    where("taskType", "in", taskTypes.slice(0, 10)), // Firestore 'in' max 10
-    orderBy("createdAt", "asc"),
-    firestoreLimit(max),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(QUEUE)
+    .where("orgId", "==", orgId)
+    .where("status", "==", "queued")
+    .where("taskType", "in", taskTypes.slice(0, 10)) // Firestore 'in' max 10
+    .orderBy("createdAt", "asc")
+    .limit(max)
+    .get();
   const tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QueuedTask);
 
   // Sort by priority (highest first) then by creation time (oldest first)
@@ -181,12 +167,10 @@ export async function getQueuedTasks(
 export async function getWorkerTasks(
   workerId: string,
 ): Promise<QueuedTask[]> {
-  const q = query(
-    collection(db, QUEUE),
-    where("claimedBy", "==", workerId),
-    where("status", "in", ["claimed", "running"]),
-  );
-  const snap = await getDocs(q);
+  const snap = await db().collection(QUEUE)
+    .where("claimedBy", "==", workerId)
+    .where("status", "in", ["claimed", "running"])
+    .get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QueuedTask);
 }
 
@@ -203,12 +187,10 @@ export async function getQueueStats(orgId: string): Promise<{
   const counts: Record<string, number> = {};
 
   for (const status of statuses) {
-    const q = query(
-      collection(db, QUEUE),
-      where("orgId", "==", orgId),
-      where("status", "==", status),
-    );
-    const snap = await getDocs(q);
+    const snap = await db().collection(QUEUE)
+      .where("orgId", "==", orgId)
+      .where("status", "==", status)
+      .get();
     counts[status] = snap.size;
   }
 
@@ -228,12 +210,12 @@ export async function appendJobLogs(
   orgId: string,
   lines: string[],
 ): Promise<string> {
-  const ref = await addDoc(collection(db, JOB_LOGS), {
+  const ref = await db().collection(JOB_LOGS).add({
     taskId,
     workerId,
     orgId,
     lines,
-    timestamp: serverTimestamp(),
+    timestamp: FieldValue.serverTimestamp(),
   });
   return ref.id;
 }
@@ -242,13 +224,11 @@ export async function getJobLogs(
   taskId: string,
   since?: number,
 ): Promise<JobLogEntry[]> {
-  const constraints = [
-    where("taskId", "==", taskId),
-    orderBy("timestamp", "asc"),
-    firestoreLimit(500),
-  ];
-  const q = query(collection(db, JOB_LOGS), ...constraints);
-  const snap = await getDocs(q);
+  const snap = await db().collection(JOB_LOGS)
+    .where("taskId", "==", taskId)
+    .orderBy("timestamp", "asc")
+    .limit(500)
+    .get();
   return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as JobLogEntry);
 }
 
@@ -261,14 +241,10 @@ export async function getOrgTasks(
   max = 50,
   offsetCount = 0,
 ): Promise<QueuedTask[]> {
-  const constraints = [
-    where("orgId", "==", orgId),
-    ...(status ? [where("status", "==", status)] : []),
-    orderBy("createdAt", "desc"),
-    firestoreLimit(max + offsetCount),
-  ];
-  const q = query(collection(db, QUEUE), ...constraints);
-  const snap = await getDocs(q);
+  let q: Query = db().collection(QUEUE).where("orgId", "==", orgId);
+  if (status) q = q.where("status", "==", status);
+  q = q.orderBy("createdAt", "desc").limit(max + offsetCount);
+  const snap = await q.get();
   const tasks = snap.docs.map((d) => ({ id: d.id, ...d.data() }) as QueuedTask);
   return tasks.slice(offsetCount);
 }

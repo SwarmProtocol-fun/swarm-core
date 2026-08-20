@@ -19,8 +19,8 @@ import { NextRequest } from "next/server";
 import { verifyAgentRequest, isTimestampFresh, unauthorized } from "../verify";
 import { rateLimit } from "../rate-limit";
 import { authenticateAgent, unauthorized as webhookUnauthorized } from "../../webhooks/auth";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { Timestamp } from "firebase-admin/firestore";
 
 interface AgentResult {
     id: string;
@@ -75,8 +75,7 @@ export async function GET(req: NextRequest) {
     const statusFilter = url.searchParams.get("status");
 
     try {
-        const q = query(collection(db, "agents"), where("orgId", "==", orgId));
-        const snap = await getDocs(q);
+        const snap = await adminDb().collection("agents").where("orgId", "==", orgId).get();
 
         let agents: AgentResult[] = snap.docs.map(d => {
             const data = d.data();

@@ -7,8 +7,7 @@
 
 import { NextRequest } from "next/server";
 import { updateGatewayMetrics } from "@/lib/gateways";
-import { getDoc, doc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { adminDb } from "@/lib/firebase-admin";
 import type { Gateway } from "@/lib/gateways";
 
 export async function GET(
@@ -18,9 +17,9 @@ export async function GET(
   const { id: gatewayId } = await params;
 
   try {
-    const gatewayDoc = await getDoc(doc(db, "gateways", gatewayId));
+    const gatewayDoc = await adminDb().collection("gateways").doc(gatewayId).get();
 
-    if (!gatewayDoc.exists()) {
+    if (!gatewayDoc.exists) {
       return Response.json({ error: "Gateway not found" }, { status: 404 });
     }
 

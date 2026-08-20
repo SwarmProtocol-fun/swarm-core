@@ -13,18 +13,7 @@ import {
   requireOrgMember,
   requireInternalService,
 } from "@/lib/auth-guard";
-import { db } from "@/lib/firebase";
-import {
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  deleteDoc,
-  query,
-  where,
-  orderBy,
-  limit as firestoreLimit,
-} from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
 import { enqueueTask } from "@/lib/gateway/store";
 
 const DLQ_COLLECTION = "gatewayDeadLetterQueue";
@@ -65,13 +54,11 @@ export async function GET(req: NextRequest) {
   );
 
   try {
-    const q = query(
-      collection(db, DLQ_COLLECTION),
-      where("orgId", "==", orgId),
-      orderBy("movedAt", "desc"),
-      firestoreLimit(max),
-    );
-    const snap = await getDocs(q);
+    const snap = await adminDb().collection(DLQ_COLLECTION)
+      .where("orgId", "==", orgId)
+      .orderBy("movedAt", "desc")
+      .limit(max)
+      .get();
     const entries = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
     return Response.json({ ok: true, entries, count: entries.length });
@@ -105,9 +92,9 @@ export async function POST(req: NextRequest) {
 
   try {
     // 1. Load the DLQ entry
-    const dlqRef = doc(db, DLQ_COLLECTION, body.dlqId);
-    const dlqSnap = await getDoc(dlqRef);
-    if (!dlqSnap.exists()) {
+    const dlqRef = adminDb().collection(DLQ_COLLECTION).doc(body.dlqId);
+    const dlqSnap = await dlqRef.get();
+    if (!dlqSnap.exists) {
       return Response.json({ error: "DLQ entry not found" }, { status: 404 });
     }
 
@@ -138,7 +125,7 @@ export async function POST(req: NextRequest) {
     });
 
     // 3. Remove from DLQ
-    await deleteDoc(dlqRef);
+    await dlqRef.delete();
 
     return Response.json({
       ok: true,

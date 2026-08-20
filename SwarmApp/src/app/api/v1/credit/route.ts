@@ -11,8 +11,8 @@
  */
 import { NextRequest } from "next/server";
 import { ethers } from "ethers";
-import { db } from "@/lib/firebase";
-import { doc, getDoc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { adminDb } from "@/lib/firebase-admin";
+import { FieldValue } from "firebase-admin/firestore";
 import {
     HEDERA_CONTRACTS,
     HEDERA_GAS_LIMIT,
@@ -72,13 +72,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Load agent from Firestore
-    const agentRef = doc(db, "agents", agentId);
-    const agentSnap = await getDoc(agentRef);
-    if (!agentSnap.exists()) {
+    const agentRef = adminDb().collection("agents").doc(agentId);
+    const agentSnap = await agentRef.get();
+    if (!agentSnap.exists) {
         return Response.json({ error: "Agent not found" }, { status: 404 });
     }
 
-    const agentData = agentSnap.data();
+    const agentData = agentSnap.data()!;
     const asn = (agentData.asn as string) || "";
 
     const creditScore = body.creditScore as number | undefined;
@@ -103,10 +103,10 @@ export async function POST(request: NextRequest) {
     const previousTrust = (agentData.trustScore as number) || 50;
 
     // Update Firestore
-    await updateDoc(agentRef, {
+    await agentRef.update({
         creditScore,
         trustScore,
-        lastCreditUpdate: serverTimestamp(),
+        lastCreditUpdate: FieldValue.serverTimestamp(),
         ...(reason ? { lastCreditReason: reason } : {}),
     });
 
